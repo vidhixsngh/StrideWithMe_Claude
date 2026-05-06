@@ -6,6 +6,7 @@ import DashboardPage from './pages/DashboardPage'
 import LogPage from './pages/LogPage'
 import FeedPage from './pages/FeedPage'
 import SprintRecordPage from './pages/SprintRecordPage'
+import RecordListPage from './pages/RecordListPage'
 import SprintFullLogPage from './pages/SprintFullLogPage'
 import ProfilePage from './pages/ProfilePage'
 import AuthPage from './pages/AuthPage'
@@ -22,6 +23,7 @@ function App() {
         <Route path="/log" element={<ProtectedRoute><LogPage /></ProtectedRoute>} />
         <Route path="/feed" element={<ProtectedRoute><FeedPage /></ProtectedRoute>} />
         <Route path="/waiting" element={<ProtectedRoute><WaitingPage /></ProtectedRoute>} />
+        <Route path="/record" element={<ProtectedRoute><RecordListPage /></ProtectedRoute>} />
         <Route path="/record/:id" element={<ProtectedRoute><SprintRecordPage /></ProtectedRoute>} />
         <Route path="/record/:id/full" element={<ProtectedRoute><SprintFullLogPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />

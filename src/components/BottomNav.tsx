@@ -5,7 +5,7 @@ const NAV_ITEMS = [
   { icon: Home, label: 'Home', path: '/dashboard' },
   { icon: Users, label: 'Feed', path: '/feed' },
   { icon: null, label: '', path: '/log' }, // center button placeholder
-  { icon: FileText, label: 'Record', path: '/record/1' },
+  { icon: FileText, label: 'Record', path: '/record' },
   { icon: User, label: 'Profile', path: '/profile' },
 ]
 
@@ -62,7 +62,8 @@ export default function BottomNav() {
         }
         const Icon = item.icon!
         const active = location.pathname === item.path ||
-          (item.path === '/dashboard' && location.pathname === '/')
+          (item.path === '/dashboard' && location.pathname === '/') ||
+          (item.path === '/record' && location.pathname.startsWith('/record'))
         return (
           <button
             key={item.label}
