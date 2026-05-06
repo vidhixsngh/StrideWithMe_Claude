@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check } from 'lucide-react'
+import { Check, Link2, X } from 'lucide-react'
 import PageWrapper from '../components/PageWrapper'
 import BloomOverlay from '../components/BloomOverlay'
 
@@ -95,6 +95,38 @@ function VerifyingPhase() {
 function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, onHonest }: {
   logText: string; setLogText: (v: string) => void; activeTab: string; setActiveTab: (v: string) => void; onVerify: () => void; onHonest: () => void
 }) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imageCaption, setImageCaption] = useState('')
+  const [linkUrl, setLinkUrl] = useState('')
+  const [linkAdded, setLinkAdded] = useState(false)
+  const [linkError, setLinkError] = useState('')
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImageFile(file)
+    const reader = new FileReader()
+    reader.onload = () => setImagePreview(reader.result as string)
+    reader.readAsDataURL(file)
+  }
+
+  const handleAddLink = () => {
+    if (!linkUrl.startsWith('http')) {
+      setLinkError('Please enter a valid URL starting with http')
+      return
+    }
+    setLinkError('')
+    setLinkAdded(true)
+  }
+
+  const canVerify =
+    (activeTab === 'text' && logText.length >= 20) ||
+    (activeTab === 'image' && imageFile !== null) ||
+    (activeTab === 'link' && linkAdded)
+
   return (
     <>
       <LogHeader />
@@ -132,35 +164,244 @@ function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, on
         ))}
       </div>
 
-      {/* Text area */}
-      <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 600, color: '#1A3028', margin: '0 0 4px' }}>Today's progress log</p>
-      <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', margin: '0 0 8px' }}>What happened? What was hard? What moved?</p>
+      {/* ── TAB 1: TEXT ── */}
+      {activeTab === 'text' && (
+        <>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 600, color: '#1A3028', margin: '0 0 4px' }}>Today's progress log</p>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', margin: '0 0 8px' }}>What happened? What was hard? What moved?</p>
+          <textarea
+            value={logText}
+            onChange={(e) => setLogText(e.target.value)}
+            placeholder="I worked on… The hardest was… I learned that…"
+            style={{
+              width: '100%',
+              minHeight: '180px',
+              backgroundColor: '#FFFFFF',
+              borderRadius: '16px',
+              border: '1.5px solid #D4EDE3',
+              padding: '14px',
+              fontFamily: 'var(--font-body)',
+              fontSize: '13px',
+              lineHeight: 1.6,
+              color: '#1A3028',
+              resize: 'none',
+              outline: 'none',
+              boxSizing: 'border-box',
+            }}
+            onFocus={(e) => (e.target.style.borderColor = '#7AB5A0')}
+            onBlur={(e) => (e.target.style.borderColor = '#D4EDE3')}
+          />
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', textAlign: 'right', margin: '4px 0 16px' }}>
+            {logText.length} / 20 min
+          </p>
+        </>
+      )}
 
-      <textarea
-        value={logText}
-        onChange={(e) => setLogText(e.target.value)}
-        placeholder="I worked on… The hardest was… I learned that…"
-        style={{
-          width: '100%',
-          minHeight: '180px',
-          backgroundColor: '#FFFFFF',
-          borderRadius: '16px',
-          border: '1.5px solid #D4EDE3',
-          padding: '14px',
-          fontFamily: 'var(--font-body)',
-          fontSize: '13px',
-          lineHeight: 1.6,
-          color: '#1A3028',
-          resize: 'none',
-          outline: 'none',
-          boxSizing: 'border-box',
-        }}
-        onFocus={(e) => (e.target.style.borderColor = '#7AB5A0')}
-        onBlur={(e) => (e.target.style.borderColor = '#D4EDE3')}
-      />
-      <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', textAlign: 'right', margin: '4px 0 16px' }}>
-        {logText.length} / 20 min
-      </p>
+      {/* ── TAB 2: IMAGE ── */}
+      {activeTab === 'image' && (
+        <div style={{ marginBottom: '16px' }}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleImageChange}
+            style={{ display: 'none' }}
+          />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleImageChange}
+            style={{ display: 'none' }}
+          />
+
+          {!imagePreview ? (
+            <div
+              style={{
+                border: '2px dashed #B8D9CC',
+                borderRadius: '16px',
+                padding: '40px 20px',
+                textAlign: 'center',
+                background: 'rgba(255,255,255,0.6)',
+              }}
+            >
+              <span style={{ fontSize: '32px', display: 'block', marginBottom: '12px' }}>📸</span>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 600, color: '#1A3028', margin: 0 }}>Capture your work</p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A', margin: '6px 0 0' }}>
+                Take a photo of your screen, notebook, or workspace
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '16px' }}>
+                <button
+                  onClick={() => cameraInputRef.current?.click()}
+                  style={{
+                    backgroundColor: '#3D7A5F',
+                    border: 'none',
+                    borderRadius: '9999px',
+                    padding: '8px 16px',
+                    fontFamily: 'var(--font-body)',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    color: '#FFFFFF',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Take a photo
+                </button>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    backgroundColor: '#EAF5F0',
+                    border: '1px solid #B8D9CC',
+                    borderRadius: '9999px',
+                    padding: '8px 16px',
+                    fontFamily: 'var(--font-body)',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    color: '#3D7A5F',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Choose from camera roll
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <img
+                src={imagePreview}
+                alt="Preview"
+                style={{ width: '100%', borderRadius: '16px', maxHeight: '220px', objectFit: 'cover', border: '1.5px solid #D4EDE3', display: 'block' }}
+              />
+              <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                <button
+                  onClick={() => { setImagePreview(null); setImageFile(null) }}
+                  style={{ flex: 1, height: '36px', backgroundColor: '#FEF3E8', color: '#D97706', borderRadius: '9999px', border: 'none', fontFamily: 'var(--font-body)', fontSize: '12px', cursor: 'pointer' }}
+                >
+                  Remove
+                </button>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{ flex: 1, height: '36px', backgroundColor: '#EAF5F0', color: '#3D7A5F', borderRadius: '9999px', border: 'none', fontFamily: 'var(--font-body)', fontSize: '12px', cursor: 'pointer' }}
+                >
+                  Change photo
+                </button>
+              </div>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', marginTop: '12px', marginBottom: '4px' }}>Add a caption (optional)</p>
+              <input
+                type="text"
+                value={imageCaption}
+                onChange={(e) => setImageCaption(e.target.value)}
+                placeholder="What does this show?"
+                style={{
+                  width: '100%',
+                  border: '1px solid #D4EDE3',
+                  borderRadius: '10px',
+                  padding: '10px 14px',
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '13px',
+                  color: '#1A3028',
+                  backgroundColor: '#FFFFFF',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+                onFocus={(e) => (e.target.style.borderColor = '#7AB5A0')}
+                onBlur={(e) => (e.target.style.borderColor = '#D4EDE3')}
+              />
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── TAB 3: LINK ── */}
+      {activeTab === 'link' && (
+        <div style={{ marginBottom: '16px' }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 600, color: '#1A3028', margin: '0 0 4px' }}>Share a link as proof</p>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A', margin: '0 0 12px' }}>
+            A GitHub commit, Figma file, published post, or any work artifact.
+          </p>
+
+          {!linkAdded ? (
+            <>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="text"
+                  value={linkUrl}
+                  onChange={(e) => { setLinkUrl(e.target.value); setLinkError('') }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleAddLink() }}
+                  placeholder="https://github.com/you/project/commit/..."
+                  style={{
+                    flex: 1,
+                    height: '44px',
+                    border: '1.5px solid #D4EDE3',
+                    borderRadius: '10px',
+                    padding: '0 12px',
+                    fontFamily: 'var(--font-body)',
+                    fontSize: '13px',
+                    color: '#1A3028',
+                    backgroundColor: '#FFFFFF',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                  onFocus={(e) => (e.target.style.borderColor = '#3D7A5F')}
+                  onBlur={(e) => (e.target.style.borderColor = '#D4EDE3')}
+                />
+                <button
+                  onClick={handleAddLink}
+                  style={{
+                    width: '48px',
+                    height: '44px',
+                    backgroundColor: '#3D7A5F',
+                    color: '#FFFFFF',
+                    borderRadius: '10px',
+                    border: 'none',
+                    fontFamily: 'var(--font-body)',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Add
+                </button>
+              </div>
+              {linkError && (
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#D97706', marginTop: '6px' }}>
+                  ⚠ {linkError}
+                </p>
+              )}
+            </>
+          ) : (
+            <>
+              <div style={{
+                backgroundColor: '#EAF5F0',
+                border: '1px solid #B8D9CC',
+                borderRadius: '12px',
+                padding: '12px 14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+              }}>
+                <Link2 size={16} color="#3D7A5F" style={{ flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 600, color: '#3D7A5F', margin: 0 }}>Link added ✓</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {linkUrl.length > 40 ? linkUrl.slice(0, 40) + '...' : linkUrl}
+                  </p>
+                </div>
+                <button
+                  onClick={() => { setLinkAdded(false); setLinkUrl('') }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
+                >
+                  <X size={16} color="#9BBFB2" />
+                </button>
+              </div>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', marginTop: '8px' }}>
+                Your link will be included with your log for AI verification.
+              </p>
+            </>
+          )}
+        </div>
+      )}
 
       {/* AI notice */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', backgroundColor: '#FFFFFF', borderRadius: '12px', padding: '12px', border: '1px solid #EDF2EF', marginBottom: '16px' }}>
@@ -173,7 +414,7 @@ function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, on
       {/* Primary CTA */}
       <button
         onClick={onVerify}
-        disabled={logText.length < 20}
+        disabled={!canVerify}
         style={{
           width: '100%',
           padding: '16px',
@@ -184,8 +425,8 @@ function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, on
           fontFamily: 'var(--font-body)',
           fontSize: '15px',
           fontWeight: 500,
-          cursor: logText.length < 20 ? 'not-allowed' : 'pointer',
-          opacity: logText.length < 20 ? 0.4 : 1,
+          cursor: !canVerify ? 'not-allowed' : 'pointer',
+          opacity: !canVerify ? 0.4 : 1,
           boxShadow: '0 4px 16px rgba(61, 122, 95, 0.25)',
         }}
       >
