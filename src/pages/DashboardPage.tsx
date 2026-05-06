@@ -1,55 +1,117 @@
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bell, Calendar } from 'lucide-react'
 import PageWrapper from '../components/PageWrapper'
-
-const mockSprint = {
-  goalText: "Launch my SaaS product from idea to first paying customer",
-  currentDay: 14,
-  totalDays: 30,
-  daysLeft: 16,
-  dayStreak: 4,
-  percentComplete: 47,
-  verifiedCount: 11,
-  honestCount: 3,
-  bestStreak: 7,
-  startDate: "Mar 10",
-  endDate: "Apr 8",
-  todayTask: "Outline your go-to-market strategy for first 100 users",
-  todayLogged: false,
-}
-
-const recentLogs = [
-  {
-    day: 13,
-    type: "VERIFIED" as const,
-    task: "Create a waitlist landing page and publish it",
-    aiInsight: "You're building in public through this log. The clarity of your thinking is improving day by day...",
-  },
-  {
-    day: 12,
-    type: "HONEST" as const,
-    task: "Deep in a rabbit hole on a related problem. Didn't complete the task but learned...",
-    aiInsight: null,
-  },
-  {
-    day: 11,
-    type: "VERIFIED" as const,
-    task: "Write your first LinkedIn post about the problem you're solving",
-    aiInsight: "The specificity in your log entry is striking. You named the exact friction point...",
-  },
-]
-
-// Heatmap: days 1-11 verified, days 9,12 honest, day 14 today, 15-30 upcoming
-function getDayInfo(day: number): { type: 'TODAY' | 'VERIFIED' | 'HONEST' | 'UPCOMING' | 'EMPTY' } {
-  if (day > 30) return { type: 'EMPTY' }
-  if (day === mockSprint.currentDay) return { type: 'TODAY' }
-  if (day === 9 || day === 12) return { type: 'HONEST' }
-  if (day < mockSprint.currentDay) return { type: 'VERIFIED' }
-  return { type: 'UPCOMING' }
-}
+import WelcomeDashboard from '../components/WelcomeDashboard'
+import { useAuth } from '../context/AuthContext'
+import { getActiveSprint, getLogsForSprint, getTodayTask, getTodayLog, calculateDayNumber } from '../lib/db'
+import type { Sprint, Task, DailyLog } from '../lib/db'
 
 export default function DashboardPage() {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const [sprint, setSprint] = useState<Sprint | null>(null)
+  const [logs, setLogs] = useState<DailyLog[]>([])
+  const [todayTask, setTodayTask] = useState<Task | null>(null)
+  const [todayLog, setTodayLog] = useState<DailyLog | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!user) return
+    loadDashboard()
+  }, [user])
+
+  async function loadDashboard() {
+    setLoading(true)
+    const activeSprint = await getActiveSprint(user!.id)
+
+    if (!activeSprint) {
+      setLoading(false)
+      return
+    }
+
+    setSprint(activeSprint)
+
+    const dayNumber = calculateDayNumber(activeSprint.start_date)
+
+    const [sprintLogs, todayT, todayL] = await Promise.all([
+      getLogsForSprint(activeSprint.id),
+      getTodayTask(activeSprint.id, dayNumber),
+      getTodayLog(activeSprint.id, dayNumber),
+    ])
+
+    setLogs(sprintLogs)
+    setTodayTask(todayT)
+    setTodayLog(todayL)
+    setLoading(false)
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <PageWrapper>
+        <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: '32px', height: '32px', border: '3px solid #D4EDE3', borderTopColor: '#3D7A5F', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        </div>
+      </PageWrapper>
+    )
+  }
+
+  // No sprint state
+  if (!sprint) {
+    return <WelcomeDashboard />
+  }
+
+  // Derived values
+  const dayNumber = calculateDayNumber(sprint.start_date)
+  const daysLeft = Math.max(sprint.sprint_length - dayNumber, 0)
+  const verifiedCount = logs.filter(l => l.log_type === 'VERIFIED').length
+  const honestCount = logs.filter(l => l.log_type === 'HONEST').length
+  const percentComplete = Math.round((dayNumber / sprint.sprint_length) * 100)
+  const todayLogged = todayLog !== null
+
+  const dayStreak = (() => {
+    if (!logs.length) return 0
+    let streak = 0
+    for (let d = dayNumber; d >= 1; d--) {
+      const log = logs.find(l => l.day_number === d)
+      if (log) streak++
+      else break
+    }
+    return streak
+  })()
+
+  const bestStreak = (() => {
+    let best = 0
+    let current = 0
+    for (let d = 1; d <= dayNumber; d++) {
+      const log = logs.find(l => l.day_number === d)
+      if (log) { current++; best = Math.max(best, current) }
+      else { current = 0 }
+    }
+    return best
+  })()
+
+  // Heatmap data
+  const totalCells = Math.ceil(sprint.sprint_length / 7) * 7
+  const heatmapDays = Array.from({ length: totalCells }, (_, i) => {
+    const dayNum = i + 1
+    if (dayNum > sprint.sprint_length) return { dayNum, type: 'EMPTY' as const }
+    if (dayNum === dayNumber) return { dayNum, type: 'TODAY' as const }
+    if (dayNum > dayNumber) return { dayNum, type: 'UPCOMING' as const }
+    const log = logs.find(l => l.day_number === dayNum)
+    if (!log) return { dayNum, type: 'MISSED' as const }
+    if (log.log_type === 'VERIFIED') return { dayNum, type: 'VERIFIED' as const }
+    if (log.log_type === 'HONEST') return { dayNum, type: 'HONEST' as const }
+    return { dayNum, type: 'UPCOMING' as const }
+  })
+
+  // Recent logs
+  const recentLogs = [...logs].sort((a, b) => b.day_number - a.day_number).slice(0, 5)
+
+  // Format dates
+  const startFormatted = new Date(sprint.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const endFormatted = new Date(sprint.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
   return (
     <PageWrapper>
@@ -90,7 +152,7 @@ export default function DashboardPage() {
               color: '#FFFFFF',
             }}
           >
-            AM
+            {(user?.user_metadata?.full_name || user?.email || 'U').slice(0, 2).toUpperCase()}
           </div>
         </div>
       </div>
@@ -137,7 +199,7 @@ export default function DashboardPage() {
                 stroke="#7AB5A0"
                 strokeWidth="4"
                 strokeDasharray={`${2 * Math.PI * 28}`}
-                strokeDashoffset={`${2 * Math.PI * 28 * (1 - mockSprint.currentDay / mockSprint.totalDays)}`}
+                strokeDashoffset={`${2 * Math.PI * 28 * (1 - dayNumber / sprint.sprint_length)}`}
                 strokeLinecap="round"
                 transform="rotate(-90 32 32)"
               />
@@ -152,10 +214,10 @@ export default function DashboardPage() {
               }}
             >
               <div style={{ fontFamily: 'var(--font-heading)', fontSize: '20px', fontWeight: 700, color: '#FFFFFF' }}>
-                {mockSprint.currentDay}
+                {dayNumber}
               </div>
               <div style={{ fontFamily: 'var(--font-body)', fontSize: '10px', color: '#7AB5A0' }}>
-                of {mockSprint.totalDays}
+                of {sprint.sprint_length}
               </div>
             </div>
           </div>
@@ -175,27 +237,27 @@ export default function DashboardPage() {
             lineHeight: 1.4,
           }}
         >
-          {mockSprint.goalText}
+          {sprint.goal_text}
         </p>
 
         {/* Stats row */}
         <div className="flex justify-between" style={{ marginTop: '16px' }}>
           <div>
             <span style={{ fontFamily: 'var(--font-body)', fontSize: '18px', fontWeight: 700, color: '#FFFFFF' }}>
-              {mockSprint.daysLeft}
+              {daysLeft}
             </span>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#7AB5A0', margin: 0 }}>days left</p>
           </div>
           <div>
             <span style={{ fontFamily: 'var(--font-body)', fontSize: '18px', fontWeight: 700, color: '#FFFFFF' }}>
-              {mockSprint.dayStreak}
+              {dayStreak}
             </span>
             <span style={{ marginLeft: '2px' }}>🔥</span>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#7AB5A0', margin: 0 }}>day streak</p>
           </div>
           <div>
             <span style={{ fontFamily: 'var(--font-body)', fontSize: '18px', fontWeight: 700, color: '#F59E4A' }}>
-              {mockSprint.percentComplete}%
+              {percentComplete}%
             </span>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#7AB5A0', margin: 0 }}>complete</p>
           </div>
@@ -217,20 +279,33 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2">
             <Calendar size={16} color="#7AB5A0" />
             <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#7AB5A0' }}>
-              TODAY · DAY {mockSprint.currentDay}
+              TODAY · DAY {dayNumber}
             </span>
           </div>
-          <div
-            className="flex items-center gap-1"
-            style={{
-              backgroundColor: '#FEF3E8',
-              borderRadius: '9999px',
-              padding: '4px 10px',
-            }}
-          >
-            <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#F59E4A' }} />
-            <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#D97706' }}>Awaiting log</span>
-          </div>
+          {todayLogged ? (
+            <div
+              className="flex items-center gap-1"
+              style={{
+                backgroundColor: '#D4EDE3',
+                borderRadius: '9999px',
+                padding: '4px 10px',
+              }}
+            >
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#3D7A5F' }}>✓ Logged today</span>
+            </div>
+          ) : (
+            <div
+              className="flex items-center gap-1"
+              style={{
+                backgroundColor: '#FEF3E8',
+                borderRadius: '9999px',
+                padding: '4px 10px',
+              }}
+            >
+              <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#F59E4A' }} />
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#D97706' }}>Awaiting log</span>
+            </div>
+          )}
         </div>
 
         <p style={{
@@ -240,7 +315,7 @@ export default function DashboardPage() {
           color: '#1A3028',
           margin: '8px 0',
         }}>
-          {mockSprint.todayTask}
+          {todayTask?.task_text ?? 'Your task for today is being prepared...'}
         </p>
 
         <button
@@ -259,7 +334,7 @@ export default function DashboardPage() {
             boxShadow: '0 4px 16px rgba(61, 122, 95, 0.25)',
           }}
         >
-          Log today's progress →
+          {todayLogged ? "View today's log →" : "Log today's progress →"}
         </button>
       </div>
 
@@ -273,10 +348,10 @@ export default function DashboardPage() {
         }}
       >
         {[
-          { emoji: '✅', value: mockSprint.verifiedCount, label: 'Verified' },
-          { emoji: '🤍', value: mockSprint.honestCount, label: 'Honest' },
-          { emoji: '🔥', value: mockSprint.dayStreak, label: 'Streak' },
-          { emoji: '⭐', value: mockSprint.bestStreak, label: 'Best' },
+          { emoji: '✅', value: verifiedCount, label: 'Verified' },
+          { emoji: '🤍', value: honestCount, label: 'Honest' },
+          { emoji: '🔥', value: dayStreak, label: 'Streak' },
+          { emoji: '⭐', value: bestStreak, label: 'Best' },
         ].map((stat) => (
           <div
             key={stat.label}
@@ -311,19 +386,17 @@ export default function DashboardPage() {
       >
         <div className="flex items-center justify-between" style={{ marginBottom: '12px' }}>
           <span style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 600, color: '#1A3028' }}>
-            Your 30-day journey
+            Your {sprint.sprint_length}-day journey
           </span>
           <span style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A' }}>
-            {mockSprint.startDate} — {mockSprint.endDate}
+            {startFormatted} — {endFormatted}
           </span>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px' }}>
-          {Array.from({ length: 35 }, (_, i) => {
-            const day = i + 1
-            const { type } = getDayInfo(day)
-            if (type === 'EMPTY') return <div key={i} style={{ width: '28px', height: '28px' }} />
-            if (type === 'TODAY') return (
+          {heatmapDays.map((d, i) => {
+            if (d.type === 'EMPTY') return <div key={i} style={{ width: '28px', height: '28px' }} />
+            if (d.type === 'TODAY') return (
               <div key={i} style={{ width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '2px solid #3D7A5F', borderRadius: '6px', boxSizing: 'border-box', fontSize: '18px', lineHeight: 1 }}>🌱</div>
             )
             return (
@@ -334,9 +407,9 @@ export default function DashboardPage() {
                   height: '28px',
                   borderRadius: '6px',
                   boxSizing: 'border-box',
-                  ...(type === 'VERIFIED' ? { backgroundColor: '#3D7A5F' } :
-                    type === 'HONEST' ? { backgroundColor: '#F59E4A' } :
-                    type === 'UPCOMING' ? { backgroundColor: '#D4EDE3' } :
+                  ...(d.type === 'VERIFIED' ? { backgroundColor: '#3D7A5F' } :
+                    d.type === 'HONEST' ? { backgroundColor: '#F59E4A' } :
+                    d.type === 'UPCOMING' ? { backgroundColor: '#D4EDE3' } :
                     { backgroundColor: '#FFFFFF', border: '1.5px solid #D4EDE3' }),
                 }}
               />
@@ -407,97 +480,82 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {recentLogs.map((log) => (
-          <div
-            key={log.day}
-            className="flex"
-            style={{
-              backgroundColor: '#FFFFFF',
-              borderRadius: '16px',
-              border: '1px solid #EDF2EF',
-              padding: '14px',
-              marginBottom: '8px',
-              gap: '12px',
-            }}
-          >
-            {/* Day badge */}
+        {recentLogs.length === 0 ? (
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', color: '#6B9E8A', textAlign: 'center', padding: '20px 0' }}>No logs yet. Start with Day 1 →</p>
+        ) : (
+          recentLogs.map((log) => (
             <div
-              className="flex flex-col items-center justify-center shrink-0"
+              key={log.id}
+              className="flex"
               style={{
-                width: '40px',
-                borderRadius: '10px',
-                padding: '6px 0',
-                backgroundColor: log.type === 'VERIFIED' ? '#D4EDE3' : '#FEF3E8',
+                backgroundColor: '#FFFFFF',
+                borderRadius: '16px',
+                border: '1px solid #EDF2EF',
+                padding: '14px',
+                marginBottom: '8px',
+                gap: '12px',
               }}
             >
-              <span
+              {/* Day badge */}
+              <div
+                className="flex flex-col items-center justify-center shrink-0"
                 style={{
-                  fontFamily: 'var(--font-body)',
-                  fontSize: '9px',
-                  textTransform: 'uppercase',
-                  color: log.type === 'VERIFIED' ? '#3D7A5F' : '#D97706',
+                  width: '40px',
+                  borderRadius: '10px',
+                  padding: '6px 0',
+                  backgroundColor: log.log_type === 'VERIFIED' ? '#D4EDE3' : '#FEF3E8',
                 }}
               >
-                DAY
-              </span>
-              <span
-                style={{
-                  fontFamily: 'var(--font-body)',
-                  fontSize: '16px',
-                  fontWeight: 700,
-                  color: log.type === 'VERIFIED' ? '#3D7A5F' : '#D97706',
-                }}
-              >
-                {log.day}
-              </span>
-            </div>
-
-            {/* Content */}
-            <div className="flex-1" style={{ minWidth: 0 }}>
-              <div className="flex items-center gap-1">
-                <span style={{ fontSize: '12px' }}>{log.type === 'VERIFIED' ? '✅' : '🤍'}</span>
                 <span
                   style={{
                     fontFamily: 'var(--font-body)',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    fontStyle: 'italic',
-                    color: log.type === 'VERIFIED' ? '#3D7A5F' : '#D97706',
+                    fontSize: '9px',
+                    textTransform: 'uppercase',
+                    color: log.log_type === 'VERIFIED' ? '#3D7A5F' : '#D97706',
                   }}
                 >
-                  {log.type === 'VERIFIED' ? 'Verified' : 'Honest check-in'}
+                  DAY
                 </span>
-              </div>
-              <p style={{
-                fontFamily: 'var(--font-body)',
-                fontSize: '14px',
-                color: '#1A3028',
-                margin: '4px 0',
-              }}>
-                {log.task}
-              </p>
-              {log.aiInsight && (
-                <p
+                <span
                   style={{
                     fontFamily: 'var(--font-body)',
-                    fontSize: '12px',
-                    fontStyle: 'italic',
-                    color: '#6B9E8A',
-                    borderLeft: '2px solid #B8D9CC',
-                    paddingLeft: '8px',
-                    margin: '4px 0 0 0',
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
+                    fontSize: '16px',
+                    fontWeight: 700,
+                    color: log.log_type === 'VERIFIED' ? '#3D7A5F' : '#D97706',
                   }}
                 >
-                  {log.aiInsight}
+                  {log.day_number}
+                </span>
+              </div>
+
+              {/* Content */}
+              <div className="flex-1" style={{ minWidth: 0 }}>
+                <div className="flex items-center gap-1">
+                  <span style={{ fontSize: '12px' }}>{log.log_type === 'VERIFIED' ? '✅' : '🤍'}</span>
+                  <span
+                    style={{
+                      fontFamily: 'var(--font-body)',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      fontStyle: 'italic',
+                      color: log.log_type === 'VERIFIED' ? '#3D7A5F' : '#D97706',
+                    }}
+                  >
+                    {log.log_type === 'VERIFIED' ? 'Verified' : 'Honest check-in'}
+                  </span>
+                </div>
+                <p style={{
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '14px',
+                  color: '#1A3028',
+                  margin: '4px 0',
+                }}>
+                  {log.log_text || 'No details logged.'}
                 </p>
-              )}
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </PageWrapper>
   )

@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Home, Rss, PlusCircle, BookOpen, User, Lock, Users, Globe, Sprout } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+import { createSprint, createTasks, calculateEndDate } from '../lib/db'
 
 type Visibility = 'PRIVATE' | 'COHORT' | 'PUBLIC'
 
@@ -21,12 +23,15 @@ const CARD_STYLE: React.CSSProperties = {
 
 export default function OnboardingPage() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [step, setStep] = useState(1)
   const [goal, setGoal] = useState('')
   const [sprintLength, setSprintLength] = useState<number | null>(null)
   const [visibility, setVisibility] = useState<Visibility>('PRIVATE')
   const [animating, setAnimating] = useState(false)
   const [direction, setDirection] = useState<'in' | 'out'>('in')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
 
   const goToStep = (next: number) => {
     setDirection('out')
@@ -38,8 +43,46 @@ export default function OnboardingPage() {
     }, 200)
   }
 
-  const handleBeginDay1 = () => {
-    navigate('/dashboard')
+  const handleBeginDay1 = async () => {
+    if (!user || !sprintLength) return
+    setSubmitting(true)
+    setSubmitError('')
+
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      const endDate = calculateEndDate(today, sprintLength)
+
+      const sprint = await createSprint({
+        user_id: user.id,
+        goal_text: goal,
+        goal_category: 'general',
+        sprint_length: sprintLength,
+        visibility: visibility,
+        start_date: today,
+        end_date: endDate,
+      })
+
+      if (!sprint) {
+        setSubmitError('Something went wrong. Please try again.')
+        setSubmitting(false)
+        return
+      }
+
+      const placeholderTasks = [
+        { sprint_id: sprint.id, day_number: 1, task_text: 'Define your core value proposition', task_type: 'research' as const },
+        { sprint_id: sprint.id, day_number: 2, task_text: 'Map your target customer', task_type: 'research' as const },
+        { sprint_id: sprint.id, day_number: 3, task_text: 'Write hero copy for your approach', task_type: 'build' as const },
+        { sprint_id: sprint.id, day_number: 4, task_text: 'Identify your 3 closest competitors', task_type: 'research' as const },
+        { sprint_id: sprint.id, day_number: 5, task_text: 'Build a clickable prototype or outline', task_type: 'build' as const },
+      ]
+
+      await createTasks(placeholderTasks)
+      navigate('/dashboard', { replace: true })
+    } catch (err) {
+      console.error('Sprint creation error:', err)
+      setSubmitError('Something went wrong. Please try again.')
+      setSubmitting(false)
+    }
   }
 
   const transitionStyle: React.CSSProperties = {
@@ -80,7 +123,7 @@ export default function OnboardingPage() {
         {step === 3 && (
           <Step3Visibility visibility={visibility} setVisibility={setVisibility} onNext={() => goToStep(4)} />
         )}
-        {step === 4 && <Step4Preview goal={goal} onBegin={handleBeginDay1} />}
+        {step === 4 && <Step4Preview goal={goal} onBegin={handleBeginDay1} submitting={submitting} submitError={submitError} />}
       </div>
 
       {/* Bottom Nav */}
@@ -373,7 +416,7 @@ function Step3Visibility({
 }
 
 /* ============ STEP 4 ============ */
-function Step4Preview({ goal, onBegin }: { goal: string; onBegin: () => void }) {
+function Step4Preview({ goal, onBegin, submitting, submitError }: { goal: string; onBegin: () => void; submitting?: boolean; submitError?: string }) {
   return (
     <div className="flex-1 flex flex-col">
       <StepLabel step={4} label="Your plan" />
@@ -491,7 +534,12 @@ function Step4Preview({ goal, onBegin }: { goal: string; onBegin: () => void }) 
       </div>
 
       <div className="mt-auto" style={{ paddingBottom: '32px' }}>
-        <CTAButton label="I'm ready. Begin Day 1 →" onClick={onBegin} />
+        <CTAButton label={submitting ? "Setting up your sprint..." : "I'm ready. Begin Day 1 →"} disabled={submitting} onClick={onBegin} />
+        {submitError && (
+          <div style={{ backgroundColor: '#FEF3E8', border: '1px solid #F5D5A8', borderRadius: '10px', padding: '10px 14px', marginTop: '8px' }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#D97706', margin: 0 }}>{submitError}</p>
+          </div>
+        )}
       </div>
     </div>
   )

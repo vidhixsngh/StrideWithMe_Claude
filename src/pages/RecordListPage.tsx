@@ -1,44 +1,38 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Lock, Clock, ShieldCheck, Share2, X } from 'lucide-react'
 import PageWrapper from '../components/PageWrapper'
 import ExampleRecordContent from '../components/ExampleRecordContent'
-
-const mockSprints = [
-  {
-    id: '1',
-    goalText: 'Launch my SaaS product from idea to first paying customer',
-    sprintLength: 30,
-    currentDay: 14,
-    daysRemaining: 16,
-    status: 'ACTIVE',
-    verifiedCount: 11,
-    honestCount: 3,
-    startDate: 'Mar 10',
-    endDate: 'Apr 8',
-    completionPercent: 47,
-  },
-  {
-    id: '2',
-    goalText: 'Land my first freelance design client',
-    sprintLength: 14,
-    currentDay: 8,
-    daysRemaining: 6,
-    status: 'ACTIVE',
-    verifiedCount: 6,
-    honestCount: 2,
-    startDate: 'Apr 10',
-    endDate: 'Apr 24',
-    completionPercent: 57,
-  },
-]
+import { useAuth } from '../context/AuthContext'
+import { getAllSprints, isSprintLocked, calculateDayNumber } from '../lib/db'
+import type { Sprint } from '../lib/db'
 
 export default function RecordListPage() {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const [sprints, setSprints] = useState<Sprint[]>([])
+  const [loading, setLoading] = useState(true)
   const [previewOpen, setPreviewOpen] = useState(false)
-  const [, setSelectedSprintId] = useState<string | null>(null)
 
-  if (mockSprints.length === 0) {
+  useEffect(() => {
+    if (!user) return
+    getAllSprints(user.id).then(data => {
+      setSprints(data)
+      setLoading(false)
+    })
+  }, [user])
+
+  if (loading) {
+    return (
+      <PageWrapper>
+        <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: '32px', height: '32px', border: '3px solid #D4EDE3', borderTopColor: '#3D7A5F', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        </div>
+      </PageWrapper>
+    )
+  }
+
+  if (!loading && sprints.length === 0) {
     return (
       <PageWrapper>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', padding: '0 24px', textAlign: 'center' }}>
@@ -65,9 +59,9 @@ export default function RecordListPage() {
       </div>
 
       {/* Sprint Cards */}
-      {mockSprints.map((sprint) => (
+      {sprints.map((sprint) => (
         <div key={sprint.id} style={{ margin: '16px 16px 0', backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #EDF2EF', boxShadow: '0 2px 12px rgba(45,90,71,0.06)', overflow: 'hidden' }}>
-          {sprint.status === 'ACTIVE' ? (
+          {isSprintLocked(sprint.end_date) ? (
             <>
               {/* Locked card */}
               <div style={{ position: 'relative', height: '140px' }}>
@@ -96,23 +90,23 @@ export default function RecordListPage() {
               </div>
 
               <div style={{ padding: '16px' }}>
-                <p style={{ fontFamily: 'var(--font-heading)', fontSize: '13px', fontWeight: 500, fontStyle: 'italic', color: '#1A3028', margin: '0 0 12px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{sprint.goalText}</p>
+                <p style={{ fontFamily: 'var(--font-heading)', fontSize: '13px', fontWeight: 500, fontStyle: 'italic', color: '#1A3028', margin: '0 0 12px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{sprint.goal_text}</p>
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: 600, color: '#1A3028', margin: '0 0 4px' }}>Sprint in Progress</p>
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A', lineHeight: 1.5, margin: 0 }}>
-                  Your Sprint Record unlocks when you complete the sprint. Keep going — Day {sprint.currentDay} of {sprint.sprintLength}.
+                  Your Sprint Record unlocks when you complete the sprint. Keep going — Day {calculateDayNumber(sprint.start_date)} of {sprint.sprint_length}.
                 </p>
 
                 <div style={{ marginTop: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px', backgroundColor: '#EAF5F0', border: '1px solid #B8D9CC', borderRadius: '9999px', padding: '7px 16px' }}>
                   <Clock size={13} color="#3D7A5F" />
-                  <span style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, color: '#3D7A5F' }}>{sprint.daysRemaining} days remaining</span>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, color: '#3D7A5F' }}>{Math.max(sprint.sprint_length - calculateDayNumber(sprint.start_date) + 1, 0)} days remaining</span>
                 </div>
 
                 <div style={{ marginTop: '12px', width: '100%', height: '5px', borderRadius: '9999px', backgroundColor: '#D4EDE3' }}>
-                  <div style={{ width: `${sprint.completionPercent}%`, height: '100%', borderRadius: '9999px', backgroundColor: '#3D7A5F' }} />
+                  <div style={{ width: `${Math.round((calculateDayNumber(sprint.start_date) / sprint.sprint_length) * 100)}%`, height: '100%', borderRadius: '9999px', backgroundColor: '#3D7A5F' }} />
                 </div>
 
                 <button
-                  onClick={() => { setSelectedSprintId(sprint.id); setPreviewOpen(true) }}
+                  onClick={() => setPreviewOpen(true)}
                   style={{ width: '100%', marginTop: '14px', padding: '10px 16px', textAlign: 'center', color: '#FFFFFF', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, backgroundColor: '#3D7A5F', border: 'none', borderRadius: '9999px', cursor: 'pointer', boxShadow: '0 2px 8px rgba(61,122,95,0.2)' }}
                 >
                   See what you're working toward →
@@ -125,7 +119,7 @@ export default function RecordListPage() {
               <div style={{ backgroundColor: '#2D5A47', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <p style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', letterSpacing: '0.15em', color: '#7AB5A0', margin: '0 0 2px', textTransform: 'uppercase' }}>SPRINT RECORD</p>
-                  <p style={{ fontFamily: 'var(--font-heading)', fontSize: '14px', color: '#FFFFFF', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '220px' }}>{sprint.goalText}</p>
+                  <p style={{ fontFamily: 'var(--font-heading)', fontSize: '14px', color: '#FFFFFF', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '220px' }}>{sprint.goal_text}</p>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
                   <ShieldCheck size={18} color="#7AB5A0" />
@@ -142,10 +136,10 @@ export default function RecordListPage() {
               <div style={{ padding: '14px 16px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', marginBottom: '12px' }}>
                   {[
-                    { label: 'Days', value: String(sprint.sprintLength), color: '#1A3028' },
-                    { label: 'Logged', value: String(sprint.verifiedCount + sprint.honestCount), color: '#1A3028' },
-                    { label: 'Verified', value: sprint.verifiedCount + ' ✓', color: '#3D7A5F' },
-                    { label: 'Honest', value: sprint.honestCount + ' 🤍', color: '#7B6FA0' },
+                    { label: 'Days', value: String(sprint.sprint_length), color: '#1A3028' },
+                    { label: 'Logged', value: '0', color: '#1A3028' },
+                    { label: 'Verified', value: '0 ✓', color: '#3D7A5F' },
+                    { label: 'Honest', value: '0 🤍', color: '#7B6FA0' },
                   ].map((s) => (
                     <div key={s.label} style={{ textAlign: 'center' }}>
                       <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', color: '#9BBFB2', margin: '0 0 2px' }}>{s.label}</p>

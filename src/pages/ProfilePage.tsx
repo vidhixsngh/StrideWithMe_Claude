@@ -1,20 +1,45 @@
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import PageWrapper from '../components/PageWrapper'
 import { useAuth } from '../context/AuthContext'
-
-const mockProfile = {
-  initials: 'AM',
-  name: 'Arjun Mehta',
-  tagline: 'Building in public · 2 sprints',
-  sprints: [
-    { id: 1, title: "SaaS from idea to customer", days: 30, verified: 24, honest: 3, status: 'COMPLETED' as const, completion: 92 },
-    { id: 2, title: "Land my first freelance client", days: 14, verified: 11, honest: 3, status: 'ACTIVE' as const, completion: 47 },
-  ],
-}
+import { getProfile, getAllSprints, calculateDayNumber, isSprintLocked } from '../lib/db'
+import type { Sprint, Profile } from '../lib/db'
 
 export default function ProfilePage() {
   const navigate = useNavigate()
-  const { signOut } = useAuth()
+  const { user, signOut } = useAuth()
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [sprints, setSprints] = useState<Sprint[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!user) return
+    async function load() {
+      const [p, s] = await Promise.all([
+        getProfile(user!.id),
+        getAllSprints(user!.id),
+      ])
+      setProfile(p)
+      setSprints(s)
+      setLoading(false)
+    }
+    load()
+  }, [user])
+
+  if (loading) {
+    return (
+      <PageWrapper>
+        <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: '32px', height: '32px', border: '3px solid #D4EDE3', borderTopColor: '#3D7A5F', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        </div>
+      </PageWrapper>
+    )
+  }
+
+  const displayName = profile?.display_name ?? user?.email ?? 'You'
+  const initials = (profile?.display_name || user?.email || 'U').slice(0, 2).toUpperCase()
+  const tagline = `${sprints.length} sprint${sprints.length !== 1 ? 's' : ''}`
+  const totalDays = sprints.reduce((sum, s) => sum + s.sprint_length, 0)
 
   return (
     <PageWrapper>
@@ -22,18 +47,18 @@ export default function ProfilePage() {
         {/* Avatar + info */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '24px' }}>
           <div style={{ width: '72px', height: '72px', borderRadius: '50%', backgroundColor: '#3D7A5F', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontSize: '28px', color: '#FFFFFF' }}>
-            {mockProfile.initials}
+            {initials}
           </div>
-          <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '22px', color: '#1A3028', marginTop: '12px', marginBottom: '4px' }}>{mockProfile.name}</h1>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', color: '#6B9E8A', margin: 0 }}>{mockProfile.tagline}</p>
+          <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '22px', color: '#1A3028', marginTop: '12px', marginBottom: '4px' }}>{displayName}</h1>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', color: '#6B9E8A', margin: 0 }}>{tagline}</p>
         </div>
 
         {/* Stats */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: '24px', marginBottom: '24px' }}>
           {[
-            { value: '2', label: 'Sprints', color: '#1A3028' },
-            { value: '35', label: 'Days logged', color: '#3D7A5F' },
-            { value: '7', label: 'Best streak', color: '#1A3028' },
+            { value: String(sprints.length), label: 'Sprints', color: '#1A3028' },
+            { value: String(totalDays), label: 'Total days', color: '#3D7A5F' },
+            { value: '0', label: 'Best streak', color: '#1A3028' },
           ].map((s) => (
             <div key={s.label} style={{ textAlign: 'center' }}>
               <div style={{ fontFamily: 'var(--font-body)', fontSize: '20px', fontWeight: 700, color: s.color }}>{s.value}</div>
@@ -48,42 +73,50 @@ export default function ProfilePage() {
         <h2 style={{ fontFamily: 'var(--font-body)', fontSize: '16px', fontWeight: 600, color: '#1A3028', margin: '0 0 12px' }}>Sprint history</h2>
 
         {/* Sprint cards */}
-        {mockProfile.sprints.map((sprint) => (
-          <div key={sprint.id} style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #EDF2EF', padding: '16px', marginBottom: '12px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: 500, color: '#1A3028' }}>{sprint.title}</span>
-              <span style={{
-                fontFamily: 'var(--font-body)',
-                fontSize: '11px',
-                padding: '3px 10px',
-                borderRadius: '9999px',
-                backgroundColor: sprint.status === 'COMPLETED' ? '#D4EDE3' : '#FEF3E8',
-                color: sprint.status === 'COMPLETED' ? '#3D7A5F' : '#D97706',
-              }}>
-                {sprint.status === 'COMPLETED' ? 'Completed' : 'Active'}
-              </span>
-            </div>
+        {sprints.length === 0 ? (
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', color: '#6B9E8A', textAlign: 'center', padding: '20px 0' }}>No sprints yet.</p>
+        ) : (
+          sprints.map((sprint) => {
+            const isActive = isSprintLocked(sprint.end_date)
+            const completion = Math.min(Math.round((calculateDayNumber(sprint.start_date) / sprint.sprint_length) * 100), 100)
+            return (
+              <div key={sprint.id} style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #EDF2EF', padding: '16px', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: 500, color: '#1A3028' }}>{sprint.goal_text}</span>
+                  <span style={{
+                    fontFamily: 'var(--font-body)',
+                    fontSize: '11px',
+                    padding: '3px 10px',
+                    borderRadius: '9999px',
+                    backgroundColor: !isActive ? '#D4EDE3' : '#FEF3E8',
+                    color: !isActive ? '#3D7A5F' : '#D97706',
+                  }}>
+                    {!isActive ? 'Completed' : 'Active'}
+                  </span>
+                </div>
 
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A', margin: '0 0 10px' }}>
-              {sprint.days} days · {sprint.verified} verified ✓ · {sprint.honest} honest 🤍
-            </p>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A', margin: '0 0 10px' }}>
+                  {sprint.sprint_length} days · 0 verified ✓ · 0 honest 🤍
+                </p>
 
-            {/* Progress bar */}
-            <div style={{ width: '100%', height: '6px', borderRadius: '9999px', backgroundColor: '#D4EDE3', marginBottom: '4px' }}>
-              <div style={{ width: `${sprint.completion}%`, height: '100%', borderRadius: '9999px', backgroundColor: sprint.status === 'ACTIVE' ? '#F59E4A' : '#3D7A5F' }} />
-            </div>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 700, color: sprint.status === 'ACTIVE' ? '#F59E4A' : '#3D7A5F', textAlign: 'right', margin: '0 0 8px' }}>
-              {sprint.completion}%
-            </p>
+                {/* Progress bar */}
+                <div style={{ width: '100%', height: '6px', borderRadius: '9999px', backgroundColor: '#D4EDE3', marginBottom: '4px' }}>
+                  <div style={{ width: `${completion}%`, height: '100%', borderRadius: '9999px', backgroundColor: isActive ? '#F59E4A' : '#3D7A5F' }} />
+                </div>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 700, color: isActive ? '#F59E4A' : '#3D7A5F', textAlign: 'right', margin: '0 0 8px' }}>
+                  {completion}%
+                </p>
 
-            <button
-              onClick={() => navigate(`/record/${sprint.id}`)}
-              style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#3D7A5F', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-            >
-              View Sprint Record →
-            </button>
-          </div>
-        ))}
+                <button
+                  onClick={() => navigate(`/record/${sprint.id}`)}
+                  style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#3D7A5F', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                >
+                  View Sprint Record →
+                </button>
+              </div>
+            )
+          })
+        )}
 
         {/* Settings */}
         <div style={{ marginTop: '24px' }}>
