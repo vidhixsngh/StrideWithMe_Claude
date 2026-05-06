@@ -1,8 +1,13 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check, Link2, X } from 'lucide-react'
 import PageWrapper from '../components/PageWrapper'
 import BloomOverlay from '../components/BloomOverlay'
+import { verifyLog, generatePostDraft } from '../lib/gemini'
+import type { VerificationResult } from '../lib/gemini'
+import { createLog, getLogsForSprint, getActiveSprint, getTodayTask, calculateDayNumber } from '../lib/db'
+import { useAuth } from '../context/AuthContext'
+import type { Sprint, Task } from '../lib/db'
 
 const mockLog = {
   day: 14,
@@ -14,13 +19,100 @@ const mockLog = {
 
 export default function LogPage() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [logText, setLogText] = useState('')
   const [activeTab, setActiveTab] = useState('text')
   const [phase, setPhase] = useState<'input' | 'verifying' | 'verified' | 'honest'>('input')
   const [showBloom, setShowBloom] = useState(false)
+  const [sprint, setSprint] = useState<Sprint | null>(null)
+  const [todayTaskData, setTodayTaskData] = useState<Task | null>(null)
+  const [dayNumber, setDayNumber] = useState(0)
+  const [verifying, setVerifying] = useState(false)
+  const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null)
+  const [attemptNumber, setAttemptNumber] = useState(1)
+  const [recentLogTexts, setRecentLogTexts] = useState<string[]>([])
+  const [verifiedCountState, setVerifiedCountState] = useState(0)
+  const [postDraft, setPostDraft] = useState('')
+  const [generatingDraft, setGeneratingDraft] = useState(false)
+  const [draftReady, setDraftReady] = useState(false)
+  const [linkUrl, setLinkUrlParent] = useState('')
 
-  const handleVerify = () => {
-    setShowBloom(true)
+  useEffect(() => {
+    if (!user) return
+    async function load() {
+      const activeSprint = await getActiveSprint(user!.id)
+      if (!activeSprint) return
+      setSprint(activeSprint)
+      const dn = calculateDayNumber(activeSprint.start_date)
+      setDayNumber(dn)
+      const task = await getTodayTask(activeSprint.id, dn)
+      setTodayTaskData(task)
+      const logs = await getLogsForSprint(activeSprint.id)
+      const recent = logs.sort((a, b) => b.day_number - a.day_number).slice(0, 3).map(l => l.log_text ?? '').filter(Boolean)
+      setRecentLogTexts(recent)
+      setVerifiedCountState(logs.filter(l => l.log_type === 'VERIFIED').length)
+    }
+    load()
+  }, [user])
+
+  const handleVerify = async () => {
+    if (!sprint || !user) return
+    setVerifying(true)
+    setVerificationResult(null)
+
+    const result = await verifyLog({
+      goalText: sprint.goal_text,
+      todayTask: todayTaskData?.task_text ?? '',
+      logText,
+      dayNumber,
+      sprintLength: sprint.sprint_length,
+      attemptNumber,
+      mediaType: activeTab === 'image' ? 'image' : activeTab === 'link' ? 'link' : null,
+      linkUrl: activeTab === 'link' ? linkUrl : undefined,
+      recentLogs: recentLogTexts,
+    })
+
+    setVerifying(false)
+
+    if (result.verified) {
+      await createLog({
+        sprint_id: sprint.id,
+        user_id: user.id,
+        day_number: dayNumber,
+        log_type: 'VERIFIED',
+        log_text: logText,
+        media_url: null,
+        ai_verification_result: { verified: result.verified, reason: result.reason, confidence: result.confidence },
+        ai_draft_post: null,
+        posted_to_feed: false,
+        verification_attempts: attemptNumber,
+      })
+      setVerificationResult(result)
+      setShowBloom(true)
+      // Generate post draft in background
+      generateAndSaveDraft(false)
+    } else {
+      setAttemptNumber(prev => prev + 1)
+      setVerificationResult(result)
+      if (attemptNumber >= 3) {
+        setPhase('honest')
+      }
+    }
+  }
+
+  const generateAndSaveDraft = async (isHonest: boolean) => {
+    setGeneratingDraft(true)
+    const draft = await generatePostDraft({
+      goalText: sprint?.goal_text ?? '',
+      logText: isHonest ? '' : logText,
+      dayNumber,
+      sprintLength: sprint?.sprint_length ?? 30,
+      isHonestDay: isHonest,
+      mediaType: activeTab === 'image' ? 'image' : activeTab === 'link' ? 'link' : null,
+    })
+    setPostDraft(draft)
+    setGeneratingDraft(false)
+    setDraftReady(true)
   }
 
   return (
@@ -34,11 +126,34 @@ export default function LogPage() {
             setActiveTab={setActiveTab}
             onVerify={handleVerify}
             onHonest={() => setPhase('honest')}
+            taskText={todayTaskData?.task_text ?? mockLog.todayTask}
+            dayNum={dayNumber || mockLog.day}
+            verifying={verifying}
+            verificationResult={verificationResult}
+            attemptNumber={attemptNumber}
+            onSetLinkUrl={setLinkUrlParent}
+            verifiedCount={verifiedCountState}
           />
         )}
         {phase === 'verifying' && <VerifyingPhase />}
-        {phase === 'verified' && <VerifiedPhase logText={logText} onBack={() => navigate('/dashboard')} />}
-        {phase === 'honest' && <HonestPhase onSubmit={() => navigate('/dashboard')} />}
+        {phase === 'verified' && <VerifiedPhase logText={logText} onBack={() => navigate('/dashboard')} postDraft={postDraft} setPostDraft={setPostDraft} generatingDraft={generatingDraft} draftReady={draftReady} taskText={todayTaskData?.task_text ?? mockLog.todayTask} dayNum={dayNumber || mockLog.day} verifiedCount={verifiedCountState} />}
+        {phase === 'honest' && <HonestPhase onSubmit={async (honestText: string) => {
+          if (sprint && user) {
+            await createLog({
+              sprint_id: sprint.id,
+              user_id: user.id,
+              day_number: dayNumber,
+              log_type: 'HONEST',
+              log_text: honestText,
+              media_url: null,
+              ai_verification_result: null,
+              ai_draft_post: null,
+              posted_to_feed: false,
+              verification_attempts: 0,
+            })
+          }
+          navigate('/dashboard')
+        }} />}
       </div>
       {showBloom && (
         <BloomOverlay
@@ -52,7 +167,7 @@ export default function LogPage() {
   )
 }
 
-function LogHeader() {
+function LogHeader({ dayNum, verifiedCount }: { dayNum: number; verifiedCount: number }) {
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -60,23 +175,23 @@ function LogHeader() {
           DAILY LOG
         </span>
         <span style={{ fontFamily: 'var(--font-body)', fontSize: '12px', backgroundColor: '#D4EDE3', color: '#3D7A5F', borderRadius: '9999px', padding: '4px 10px' }}>
-          {mockLog.verifiedCount} verified ✓
+          {verifiedCount} verified ✓
         </span>
       </div>
       <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '28px', color: '#1A3028', margin: '8px 0 16px' }}>
-        Day {mockLog.day}
+        Day {dayNum}
       </h1>
     </>
   )
 }
 
-function TodayTaskCard() {
+function TodayTaskCard({ taskText }: { taskText: string }) {
   return (
     <div style={{ backgroundColor: '#EAF5F0', borderRadius: '0 16px 16px 0', padding: '16px', borderLeft: '4px solid #3D7A5F', marginBottom: '16px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
         <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.12em', color: '#3D7A5F' }}>TODAY'S TASK</span>
       </div>
-      <p style={{ fontFamily: 'var(--font-heading)', fontSize: '15px', fontWeight: 600, color: '#1A3028', margin: '4px 0 0' }}>{mockLog.todayTask}</p>
+      <p style={{ fontFamily: 'var(--font-heading)', fontSize: '15px', fontWeight: 600, color: '#1A3028', margin: '4px 0 0' }}>{taskText}</p>
     </div>
   )
 }
@@ -92,8 +207,8 @@ function VerifyingPhase() {
   )
 }
 
-function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, onHonest }: {
-  logText: string; setLogText: (v: string) => void; activeTab: string; setActiveTab: (v: string) => void; onVerify: () => void; onHonest: () => void
+function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, onHonest, taskText, dayNum, verifying, verificationResult, attemptNumber, onSetLinkUrl, verifiedCount }: {
+  logText: string; setLogText: (v: string) => void; activeTab: string; setActiveTab: (v: string) => void; onVerify: () => void; onHonest: () => void; taskText?: string; dayNum?: number; verifying?: boolean; verificationResult?: VerificationResult | null; attemptNumber?: number; onSetLinkUrl?: (v: string) => void; verifiedCount?: number
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
@@ -129,14 +244,14 @@ function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, on
 
   return (
     <>
-      <LogHeader />
-      <TodayTaskCard />
+      <LogHeader dayNum={dayNum ?? 1} verifiedCount={verifiedCount ?? 0} />
+      <TodayTaskCard taskText={taskText ?? mockLog.todayTask} />
 
       {/* Encouragement */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', backgroundColor: '#FFFFFF', borderRadius: '12px', padding: '12px', marginBottom: '16px' }}>
         <span>🌱</span>
         <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A', margin: 0 }}>
-          You've shown up 14 days. Today is Day 14. Write what happened — honestly.
+          You've shown up {dayNum ?? 1} days. Today is Day {dayNum ?? 1}. Write what happened — honestly.
         </p>
       </div>
 
@@ -327,7 +442,7 @@ function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, on
                 <input
                   type="text"
                   value={linkUrl}
-                  onChange={(e) => { setLinkUrl(e.target.value); setLinkError('') }}
+                  onChange={(e) => { setLinkUrl(e.target.value); setLinkError(''); onSetLinkUrl?.(e.target.value) }}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleAddLink() }}
                   placeholder="https://github.com/you/project/commit/..."
                   style={{
@@ -403,6 +518,19 @@ function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, on
         </div>
       )}
 
+      {/* Retry feedback */}
+      {verificationResult && !verificationResult.verified && (
+        <div style={{ backgroundColor: '#FEF3E8', border: '1px solid #F5D5A8', borderRadius: '12px', padding: '12px 14px', marginBottom: '12px' }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 500, color: '#D97706', margin: 0 }}>{verificationResult.reason}</p>
+          {verificationResult.guidanceForRetry && (
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A', margin: '8px 0 0' }}>Try adding: {verificationResult.guidanceForRetry}</p>
+          )}
+          {(attemptNumber ?? 1) >= 3 && (
+            <button onClick={onHonest} style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#D97706', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', marginTop: '8px', padding: 0 }}>Or log this as an honest day &rarr;</button>
+          )}
+        </div>
+      )}
+
       {/* AI notice */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', backgroundColor: '#FFFFFF', borderRadius: '12px', padding: '12px', border: '1px solid #EDF2EF', marginBottom: '16px' }}>
         <span>🤖</span>
@@ -414,7 +542,7 @@ function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, on
       {/* Primary CTA */}
       <button
         onClick={onVerify}
-        disabled={!canVerify}
+        disabled={!canVerify || verifying}
         style={{
           width: '100%',
           padding: '16px',
@@ -425,12 +553,12 @@ function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, on
           fontFamily: 'var(--font-body)',
           fontSize: '15px',
           fontWeight: 500,
-          cursor: !canVerify ? 'not-allowed' : 'pointer',
-          opacity: !canVerify ? 0.4 : 1,
+          cursor: (!canVerify || verifying) ? 'not-allowed' : 'pointer',
+          opacity: (!canVerify || verifying) ? 0.4 : 1,
           boxShadow: '0 4px 16px rgba(61, 122, 95, 0.25)',
         }}
       >
-        Verify with AI →
+        {verifying ? 'Verifying...' : 'Verify with AI \u2192'}
       </button>
 
       {/* Divider */}
@@ -465,11 +593,11 @@ function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, on
   )
 }
 
-function VerifiedPhase({ logText, onBack }: { logText: string; onBack: () => void }) {
+function VerifiedPhase({ logText, onBack, postDraft, setPostDraft, generatingDraft, draftReady, taskText, dayNum, verifiedCount }: { logText: string; onBack: () => void; postDraft?: string; setPostDraft?: (v: string) => void; generatingDraft?: boolean; draftReady?: boolean; taskText?: string; dayNum?: number; verifiedCount?: number }) {
   return (
     <>
-      <LogHeader />
-      <TodayTaskCard />
+      <LogHeader dayNum={dayNum ?? 1} verifiedCount={(verifiedCount ?? 0) + 1} />
+      <TodayTaskCard taskText={taskText ?? mockLog.todayTask} />
 
       {/* Success card */}
       <div style={{ background: 'linear-gradient(135deg, #D4EDE3, #EAF5F0)', borderRadius: '24px', padding: '24px', textAlign: 'center', marginBottom: '16px' }}>
@@ -523,6 +651,32 @@ function VerifiedPhase({ logText, onBack }: { logText: string; onBack: () => voi
         </div>
       </div>
 
+      {/* Post Draft */}
+      <div style={{ marginBottom: '16px' }}>
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', letterSpacing: '0.1em', color: '#7AB5A0', textTransform: 'uppercase' }}>YOUR POST DRAFT</span>
+        {generatingDraft && (
+          <div style={{ marginTop: '8px' }}>
+            <div style={{ height: '12px', width: '100%', backgroundColor: '#EAF5F0', borderRadius: '4px', marginBottom: '6px' }} />
+            <div style={{ height: '12px', width: '80%', backgroundColor: '#EAF5F0', borderRadius: '4px', marginBottom: '6px' }} />
+            <div style={{ height: '12px', width: '60%', backgroundColor: '#EAF5F0', borderRadius: '4px' }} />
+          </div>
+        )}
+        {draftReady && postDraft && setPostDraft && (
+          <>
+            <textarea
+              value={postDraft}
+              onChange={(e) => setPostDraft(e.target.value)}
+              style={{ width: '100%', marginTop: '8px', backgroundColor: '#F5FAF7', borderRadius: '12px', border: '1px solid #D4EDE3', padding: '12px', fontFamily: 'var(--font-body)', fontSize: '13px', color: '#2D4A3E', fontStyle: 'italic', lineHeight: 1.6, minHeight: '80px', resize: 'none', outline: 'none', boxSizing: 'border-box' }}
+            />
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: postDraft.length > 200 ? '#D97706' : '#9BBFB2', textAlign: 'right', margin: '4px 0 0' }}>{postDraft.length}/200</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
+              <button onClick={onBack} style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#9BBFB2', background: 'none', border: 'none', cursor: 'pointer' }}>Skip</button>
+              <button onClick={onBack} style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, color: '#FFFFFF', backgroundColor: '#3D7A5F', border: 'none', borderRadius: '9999px', padding: '8px 16px', cursor: 'pointer' }}>Post to feed &rarr;</button>
+            </div>
+          </>
+        )}
+      </div>
+
       <button
         onClick={onBack}
         style={{
@@ -539,13 +693,13 @@ function VerifiedPhase({ logText, onBack }: { logText: string; onBack: () => voi
           boxShadow: '0 4px 16px rgba(61, 122, 95, 0.25)',
         }}
       >
-        Back to my sprint →
+        Back to my sprint &rarr;
       </button>
     </>
   )
 }
 
-function HonestPhase({ onSubmit }: { onSubmit: () => void }) {
+function HonestPhase({ onSubmit }: { onSubmit: (text: string) => void }) {
   const [honestText, setHonestText] = useState('')
 
   return (
@@ -580,7 +734,7 @@ function HonestPhase({ onSubmit }: { onSubmit: () => void }) {
       />
 
       <button
-        onClick={onSubmit}
+        onClick={() => onSubmit(honestText)}
         style={{
           width: '100%',
           padding: '16px',

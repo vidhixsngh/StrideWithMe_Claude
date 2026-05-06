@@ -6,6 +6,9 @@ import WelcomeDashboard from '../components/WelcomeDashboard'
 import { useAuth } from '../context/AuthContext'
 import { getActiveSprint, getLogsForSprint, getTodayTask, getTodayLog, calculateDayNumber } from '../lib/db'
 import type { Sprint, Task, DailyLog } from '../lib/db'
+import { shouldTriggerReplan, generateReplan, getReplanThreshold } from '../lib/gemini'
+import { createTasks, getTasksForSprint } from '../lib/db'
+import { supabase } from '../lib/supabase'
 
 export default function DashboardPage() {
   const navigate = useNavigate()
@@ -15,6 +18,11 @@ export default function DashboardPage() {
   const [todayTask, setTodayTask] = useState<Task | null>(null)
   const [todayLog, setTodayLog] = useState<DailyLog | null>(null)
   const [loading, setLoading] = useState(true)
+  const [upcomingTasks, setUpcomingTasks] = useState<Task[]>([])
+  const [showFullPlan, setShowFullPlan] = useState(false)
+  const [replanNeeded, setReplanNeeded] = useState(false)
+  const [replanLoading, setReplanLoading] = useState(false)
+  const [replanDone, setReplanDone] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -34,16 +42,52 @@ export default function DashboardPage() {
 
     const dayNumber = calculateDayNumber(activeSprint.start_date)
 
-    const [sprintLogs, todayT, todayL] = await Promise.all([
+    const [sprintLogs, todayT, todayL, allTasks] = await Promise.all([
       getLogsForSprint(activeSprint.id),
       getTodayTask(activeSprint.id, dayNumber),
       getTodayLog(activeSprint.id, dayNumber),
+      getTasksForSprint(activeSprint.id),
     ])
 
     setLogs(sprintLogs)
     setTodayTask(todayT)
     setTodayLog(todayL)
+    setUpcomingTasks(allTasks.filter(t => t.day_number >= dayNumber).slice(0, 5))
+
+    const shouldReplan = shouldTriggerReplan(sprintLogs, dayNumber, activeSprint.sprint_length)
+    if (shouldReplan) setReplanNeeded(true)
+
     setLoading(false)
+  }
+
+  async function handleReplan() {
+    if (!sprint) return
+    setReplanLoading(true)
+
+    const allTasks = await getTasksForSprint(sprint.id)
+    const dn = calculateDayNumber(sprint.start_date)
+    const missedDays = Array.from({ length: dn }, (_, i) => i + 1)
+      .filter(d => !logs.find(l => l.day_number === d && l.log_type === 'VERIFIED'))
+    const daysRemaining = sprint.sprint_length - dn
+
+    const newTasks = await generateReplan({
+      goalText: sprint.goal_text,
+      originalTasks: allTasks.map(t => ({ day: t.day_number, task_text: t.task_text, task_type: t.task_type })),
+      completedLogs: logs.map(l => ({ day_number: l.day_number, log_text: l.log_text, log_type: l.log_type })),
+      missedDays,
+      daysRemaining,
+      currentDay: dn,
+      sprintLength: sprint.sprint_length,
+    })
+
+    await supabase.from('tasks').delete().eq('sprint_id', sprint.id).gt('day_number', dn)
+    await createTasks(newTasks.map(t => ({ sprint_id: sprint.id, day_number: t.day, task_text: t.task_text, task_type: t.task_type })))
+
+    setReplanLoading(false)
+    setReplanDone(true)
+    setReplanNeeded(false)
+    setTimeout(() => setReplanDone(false), 3000)
+    loadDashboard()
   }
 
   // Loading state
@@ -264,6 +308,25 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Replan Banner */}
+      {replanNeeded && !replanDone && (
+        <div style={{ margin: '0 16px 12px', background: 'linear-gradient(135deg, #FEF8F0, #FEF3E8)', borderRadius: '20px', padding: '16px', border: '1px solid #F5D5A8' }}>
+          <p style={{ fontFamily: 'var(--font-heading)', fontSize: '15px', fontWeight: 600, color: '#1A3028', margin: '0 0 4px' }}>🔄 Life happened. Your plan can adapt.</p>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', color: '#6B9E8A', margin: '0 0 12px' }}>You've had {getReplanThreshold(sprint.sprint_length)} consecutive hard days. Want us to rebuild your remaining plan?</p>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button onClick={handleReplan} disabled={replanLoading} style={{ height: '38px', backgroundColor: '#3D7A5F', color: '#FFFFFF', border: 'none', borderRadius: '9999px', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, cursor: 'pointer', padding: '0 16px', opacity: replanLoading ? 0.6 : 1 }}>
+              {replanLoading ? 'Regenerating...' : 'Regenerate my plan →'}
+            </button>
+            <button onClick={() => setReplanNeeded(false)} style={{ background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#9BBFB2', cursor: 'pointer' }}>Keep original plan</button>
+          </div>
+        </div>
+      )}
+      {replanDone && (
+        <div style={{ margin: '0 16px 12px', textAlign: 'center' }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', color: '#3D7A5F' }}>✓ Your plan has been updated</p>
+        </div>
+      )}
+
       {/* Today Card */}
       <div
         style={{
@@ -337,6 +400,37 @@ export default function DashboardPage() {
           {todayLogged ? "View today's log →" : "Log today's progress →"}
         </button>
       </div>
+
+      {/* Your Plan */}
+      {upcomingTasks.length > 0 && (
+        <div style={{ margin: '16px 16px 0', backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #EDF2EF', padding: '16px' }}>
+          <div className="flex items-center justify-between" style={{ marginBottom: '12px' }}>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 600, color: '#1A3028' }}>Your plan</span>
+            <button onClick={() => setShowFullPlan(!showFullPlan)} style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#3D7A5F', background: 'none', border: 'none', cursor: 'pointer' }}>
+              {showFullPlan ? 'Show less' : 'View all →'}
+            </button>
+          </div>
+          {(showFullPlan ? upcomingTasks : upcomingTasks.slice(0, 3)).map((task) => {
+            const isToday = task.day_number === dayNumber
+            const log = logs.find(l => l.day_number === task.day_number)
+            return (
+              <div key={task.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '8px 0', borderBottom: '1px solid #F5F5F5' }}>
+                <div style={{ width: '28px', height: '28px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, backgroundColor: log ? '#3D7A5F' : isToday ? '#FFFFFF' : '#D4EDE3', border: isToday && !log ? '2px solid #3D7A5F' : 'none', boxSizing: 'border-box', fontFamily: 'var(--font-body)', fontSize: isToday && !log ? '14px' : '11px', fontWeight: 600, color: log ? '#FFFFFF' : isToday ? '#1A3028' : '#6B9E8A' }}>
+                  {isToday && !log ? '🌱' : task.day_number}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', color: isToday ? '#3D7A5F' : '#9BBFB2', fontStyle: 'italic', margin: '0 0 2px' }}>
+                    Day {task.day_number}{isToday ? ' · Today' : ''}{log ? ' · ✓' : ''}
+                  </p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: log ? '#6B9E8A' : '#1A3028', margin: 0, textDecoration: log ? 'line-through' : 'none' }}>
+                    {task.task_text}
+                  </p>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* Stats Row */}
       <div

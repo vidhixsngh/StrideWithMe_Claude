@@ -90,7 +90,7 @@ export async function createSprint(sprint: {
     .insert({ ...sprint, status: 'ACTIVE' })
     .select()
     .single()
-  if (error) { console.error('createSprint:', error); return null }
+  if (error) { console.error('createSprint:', error.message, error.code, error.details, error.hint); return null }
   return data
 }
 

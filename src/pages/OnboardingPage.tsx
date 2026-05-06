@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { Home, Rss, PlusCircle, BookOpen, User, Lock, Users, Globe, Sprout } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { createSprint, createTasks, calculateEndDate } from '../lib/db'
+import { supabase } from '../lib/supabase'
+import { generateSprintPlan } from '../lib/gemini'
+import type { GeneratedTask } from '../lib/gemini'
 
 type Visibility = 'PRIVATE' | 'COHORT' | 'PUBLIC'
 
@@ -32,6 +35,10 @@ export default function OnboardingPage() {
   const [direction, setDirection] = useState<'in' | 'out'>('in')
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
+  const [aiTasks, setAiTasks] = useState<GeneratedTask[]>([])
+  const [generatingPlan, setGeneratingPlan] = useState(false)
+  const [wasVague, setWasVague] = useState(false)
+  const [, setPlanGenerated] = useState(false)
 
   const goToStep = (next: number) => {
     setDirection('out')
@@ -49,40 +56,56 @@ export default function OnboardingPage() {
     setSubmitError('')
 
     try {
+      // Ensure profile exists before creating sprint
+      const { data: existingProfile } = await supabase.from('profiles').select('id').eq('id', user.id).maybeSingle()
+      if (!existingProfile) {
+        await supabase.from('profiles').upsert({ id: user.id, display_name: user.user_metadata?.full_name ?? user.email ?? '' })
+      }
+
       const today = new Date().toISOString().split('T')[0]
       const endDate = calculateEndDate(today, sprintLength)
 
+      console.log('[Onboarding] Creating sprint:', { userId: user.id, goal, sprintLength, visibility, today, endDate })
       const sprint = await createSprint({
         user_id: user.id,
         goal_text: goal,
         goal_category: 'general',
-        sprint_length: sprintLength,
+        sprint_length: sprintLength!,
         visibility: visibility,
         start_date: today,
         end_date: endDate,
       })
 
+      console.log('[Onboarding] Sprint result:', sprint)
       if (!sprint) {
-        setSubmitError('Something went wrong. Please try again.')
+        setSubmitError('Failed to create sprint. Check console for details.')
         setSubmitting(false)
         return
       }
 
-      const placeholderTasks = [
-        { sprint_id: sprint.id, day_number: 1, task_text: 'Define your core value proposition', task_type: 'research' as const },
-        { sprint_id: sprint.id, day_number: 2, task_text: 'Map your target customer', task_type: 'research' as const },
-        { sprint_id: sprint.id, day_number: 3, task_text: 'Write hero copy for your approach', task_type: 'build' as const },
-        { sprint_id: sprint.id, day_number: 4, task_text: 'Identify your 3 closest competitors', task_type: 'research' as const },
-        { sprint_id: sprint.id, day_number: 5, task_text: 'Build a clickable prototype or outline', task_type: 'build' as const },
-      ]
+      const tasksToInsert = aiTasks.length > 0
+        ? aiTasks.map(t => ({ sprint_id: sprint.id, day_number: t.day, task_text: t.task_text, task_type: t.task_type }))
+        : Array.from({ length: sprintLength ?? 30 }, (_, i) => ({ sprint_id: sprint.id, day_number: i + 1, task_text: `Day ${i + 1} task`, task_type: 'build' as const }))
 
-      await createTasks(placeholderTasks)
+      console.log('[Onboarding] Inserting tasks:', tasksToInsert.length)
+      const tasksOk = await createTasks(tasksToInsert)
+      console.log('[Onboarding] Tasks result:', tasksOk)
       navigate('/dashboard', { replace: true })
     } catch (err) {
       console.error('Sprint creation error:', err)
       setSubmitError('Something went wrong. Please try again.')
       setSubmitting(false)
     }
+  }
+
+  const handleGoToStep4 = async () => {
+    setGeneratingPlan(true)
+    const result = await generateSprintPlan(goal, sprintLength ?? 30, 'general')
+    setAiTasks(result.tasks)
+    setWasVague(result.wasVague)
+    setPlanGenerated(true)
+    setGeneratingPlan(false)
+    goToStep(4)
   }
 
   const transitionStyle: React.CSSProperties = {
@@ -121,9 +144,9 @@ export default function OnboardingPage() {
           <Step2Sprint sprintLength={sprintLength} setSprintLength={setSprintLength} onNext={() => goToStep(3)} />
         )}
         {step === 3 && (
-          <Step3Visibility visibility={visibility} setVisibility={setVisibility} onNext={() => goToStep(4)} />
+          <Step3Visibility visibility={visibility} setVisibility={setVisibility} onNext={handleGoToStep4} generatingPlan={generatingPlan} />
         )}
-        {step === 4 && <Step4Preview goal={goal} onBegin={handleBeginDay1} submitting={submitting} submitError={submitError} />}
+        {step === 4 && <Step4Preview goal={goal} onBegin={handleBeginDay1} submitting={submitting} submitError={submitError} aiTasks={aiTasks} wasVague={wasVague} onRegenerate={handleGoToStep4} generatingPlan={generatingPlan} />}
       </div>
 
       {/* Bottom Nav */}
@@ -354,10 +377,12 @@ function Step3Visibility({
   visibility,
   setVisibility,
   onNext,
+  generatingPlan,
 }: {
   visibility: Visibility
   setVisibility: (v: Visibility) => void
   onNext: () => void
+  generatingPlan?: boolean
 }) {
   const options: { value: Visibility; icon: React.ReactNode; title: string; desc: string }[] = [
     { value: 'PRIVATE', icon: <Lock size={20} />, title: 'Just me for now', desc: 'Your logs stay completely private' },
@@ -409,14 +434,14 @@ function Step3Visibility({
       </div>
 
       <div className="mt-auto" style={{ paddingBottom: '32px' }}>
-        <CTAButton label="Got it, let's go →" onClick={onNext} />
+        <CTAButton label={generatingPlan ? "Building your plan..." : "Got it, let's go →"} disabled={generatingPlan} onClick={onNext} />
       </div>
     </div>
   )
 }
 
 /* ============ STEP 4 ============ */
-function Step4Preview({ goal, onBegin, submitting, submitError }: { goal: string; onBegin: () => void; submitting?: boolean; submitError?: string }) {
+function Step4Preview({ goal, onBegin, submitting, submitError, aiTasks, wasVague, onRegenerate, generatingPlan }: { goal: string; onBegin: () => void; submitting?: boolean; submitError?: string; aiTasks?: GeneratedTask[]; wasVague?: boolean; onRegenerate?: () => void; generatingPlan?: boolean }) {
   return (
     <div className="flex-1 flex flex-col">
       <StepLabel step={4} label="Your plan" />
@@ -462,8 +487,13 @@ function Step4Preview({ goal, onBegin, submitting, submitError }: { goal: string
       </div>
 
       {/* Day cards */}
+      {wasVague && (
+        <div style={{ backgroundColor: '#FEF3E8', border: '1px solid #F5D5A8', borderRadius: '12px', padding: '12px 14px', marginBottom: '12px' }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#D97706', margin: 0 }}>We made some assumptions about your goal. Edit any task below that doesn't fit your actual plan.</p>
+        </div>
+      )}
       <div className="flex flex-col gap-3 mb-4">
-        {PLACEHOLDER_TASKS.map((task, i) => (
+        {(aiTasks && aiTasks.length > 0 ? aiTasks.slice(0, 5) : PLACEHOLDER_TASKS.map((t, i) => ({ day: i + 1, task_text: t, task_type: 'build' as const }))).map((task, i) => (
           <div
             key={i}
             className="flex items-start gap-3 p-3"
@@ -504,13 +534,18 @@ function Step4Preview({ goal, onBegin, submitting, submitError }: { goal: string
                 color: '#2D4A3E',
                 margin: 0,
               }}>
-                {task}
+                {typeof task === 'string' ? task : task.task_text}
               </p>
             </div>
           </div>
         ))}
       </div>
 
+      {onRegenerate && (
+        <button onClick={onRegenerate} disabled={generatingPlan} style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#3D7A5F', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0', marginBottom: '12px' }}>
+          {generatingPlan ? '↺ Regenerating...' : '↺ Regenerate plan'}
+        </button>
+      )}
       {/* Info box */}
       <div
         className="flex items-start gap-3 p-4 mb-6"
