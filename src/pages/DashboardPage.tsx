@@ -40,12 +40,12 @@ const recentLogs = [
 ]
 
 // Heatmap: days 1-11 verified, days 9,12 honest, day 14 today, 15-30 upcoming
-function getDayColor(day: number): { bg: string; border?: string } {
-  if (day > 30) return { bg: 'transparent' }
-  if (day === 14) return { bg: '#FFFFFF', border: '2px solid #3D7A5F' }
-  if (day === 9 || day === 12) return { bg: '#F59E4A' }
-  if (day >= 15) return { bg: '#D4EDE3' }
-  return { bg: '#3D7A5F' }
+function getDayInfo(day: number): { type: 'TODAY' | 'VERIFIED' | 'HONEST' | 'UPCOMING' | 'EMPTY' } {
+  if (day > 30) return { type: 'EMPTY' }
+  if (day === mockSprint.currentDay) return { type: 'TODAY' }
+  if (day === 9 || day === 12) return { type: 'HONEST' }
+  if (day < mockSprint.currentDay) return { type: 'VERIFIED' }
+  return { type: 'UPCOMING' }
 }
 
 export default function DashboardPage() {
@@ -321,7 +321,11 @@ export default function DashboardPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px' }}>
           {Array.from({ length: 35 }, (_, i) => {
             const day = i + 1
-            const { bg, border } = getDayColor(day)
+            const { type } = getDayInfo(day)
+            if (type === 'EMPTY') return <div key={i} style={{ width: '28px', height: '28px' }} />
+            if (type === 'TODAY') return (
+              <div key={i} style={{ width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', border: '2px solid #3D7A5F', borderRadius: '6px', boxSizing: 'border-box', fontSize: '18px', lineHeight: 1 }}>🌱</div>
+            )
             return (
               <div
                 key={i}
@@ -329,9 +333,11 @@ export default function DashboardPage() {
                   width: '28px',
                   height: '28px',
                   borderRadius: '6px',
-                  backgroundColor: bg,
-                  border: border || 'none',
                   boxSizing: 'border-box',
+                  ...(type === 'VERIFIED' ? { backgroundColor: '#3D7A5F' } :
+                    type === 'HONEST' ? { backgroundColor: '#F59E4A' } :
+                    type === 'UPCOMING' ? { backgroundColor: '#D4EDE3' } :
+                    { backgroundColor: '#FFFFFF', border: '1.5px solid #D4EDE3' }),
                 }}
               />
             )
@@ -339,18 +345,27 @@ export default function DashboardPage() {
         </div>
 
         {/* Legend */}
-        <div style={{ display: 'flex', gap: '16px', marginTop: '12px' }}>
-          {[
-            { color: '#3D7A5F', label: 'Verified', border: undefined },
-            { color: '#F59E4A', label: 'Honest day', border: undefined },
-            { color: '#FFFFFF', label: 'Missed', border: '1.5px solid #D4EDE3' },
-            { color: '#D4EDE3', label: 'Upcoming', border: undefined },
-          ].map((item) => (
-            <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: item.color, border: item.border || 'none', boxSizing: 'border-box' }} />
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#6B9E8A' }}>{item.label}</span>
-            </div>
-          ))}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ width: '10px', height: '10px', borderRadius: '3px', backgroundColor: '#3D7A5F' }} />
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#6B9E8A' }}>Verified</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ width: '10px', height: '10px', borderRadius: '3px', backgroundColor: '#F59E4A' }} />
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#6B9E8A' }}>Honest day</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ width: '10px', height: '10px', borderRadius: '3px', backgroundColor: '#FFFFFF', border: '1.5px solid #D4EDE3', boxSizing: 'border-box' }} />
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#6B9E8A' }}>Missed</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ fontSize: '12px' }}>🌱</span>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#6B9E8A' }}>Today</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ width: '10px', height: '10px', borderRadius: '3px', backgroundColor: '#D4EDE3' }} />
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#6B9E8A' }}>Upcoming</span>
+          </div>
         </div>
       </div>
 
