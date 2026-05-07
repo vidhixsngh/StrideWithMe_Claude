@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Lock, Clock, ShieldCheck, Share2, X } from 'lucide-react'
+import { Lock, Clock, ShieldCheck, Share2, X, Camera, Briefcase, Link2 } from 'lucide-react'
 import PageWrapper from '../components/PageWrapper'
 import ExampleRecordContent from '../components/ExampleRecordContent'
 import { useAuth } from '../context/AuthContext'
@@ -60,7 +60,7 @@ export default function RecordListPage() {
 
       {/* Sprint Cards */}
       {sprints.map((sprint) => (
-        <div key={sprint.id} style={{ margin: '16px 16px 0', backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #EDF2EF', boxShadow: '0 2px 12px rgba(45,90,71,0.06)', overflow: 'hidden' }}>
+        <div key={sprint.id} style={{ margin: '16px 16px 0', backgroundColor: '#FFFFFF', borderRadius: '20px', border: isSprintLocked(sprint.end_date) ? '2px solid #2D5A47' : '1px solid #EDF2EF', boxShadow: isSprintLocked(sprint.end_date) ? '0 0 0 4px rgba(45,90,71,0.08)' : '0 2px 12px rgba(45,90,71,0.06)', overflow: 'hidden' }}>
           {isSprintLocked(sprint.end_date) ? (
             <>
               {/* Locked card */}
@@ -168,6 +168,31 @@ export default function RecordListPage() {
         </div>
       ))}
 
+      {/* Share it anywhere */}
+      <div style={{ margin: '12px 16px 0', backgroundColor: '#FFFFFF', borderRadius: '16px', border: '1px solid #EDF2EF', padding: '14px 16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, fontStyle: 'italic', color: '#1A3028' }}>When you earn it, share it anywhere.</span>
+          <span style={{ fontSize: '16px' }}>🏆</span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {[
+            { icon: <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 700, color: '#FFFFFF' }}>in</span>, bg: '#0A66C2', text: 'Pin to LinkedIn as a verified proof-of-work credential.' },
+            { icon: <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: 700, color: '#FFFFFF' }}>N</span>, bg: '#FF7555', text: 'Link on Naukri alongside your resume.' },
+            { icon: <Camera size={11} color="#FFFFFF" />, bg: 'linear-gradient(45deg, #f09433, #dc2743, #bc1888)', text: 'Share as an Instagram story or carousel post.' },
+            { icon: <Briefcase size={11} color="#FFFFFF" />, bg: '#4A8C6F', text: 'Send to a client as proof you ship consistently.' },
+            { icon: <Link2 size={11} color="#FFFFFF" />, bg: '#7B6FA0', text: 'Keep it private — proof you showed up for yourself.' },
+          ].map((row, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: row.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{row.icon}</div>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#2D4A3E' }}>{row.text}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: '10px', borderTop: '1px solid #F5F5F5', paddingTop: '10px', textAlign: 'center' }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', margin: 0 }}>AI-verified proof of work. Not a badge — a record.</p>
+        </div>
+      </div>
+
       {/* Preview Bottom Sheet */}
       {previewOpen && (
         <>
@@ -200,6 +225,26 @@ export default function RecordListPage() {
               onCTA={() => { setPreviewOpen(false); navigate('/onboarding') }}
               ctaLabel="Start your sprint to earn this →"
             />
+
+            {/* Share preview */}
+            <div style={{ margin: '16px 20px 0' }}>
+              <div style={{ height: '1px', backgroundColor: '#F0F0F0', marginBottom: '16px' }} />
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', textAlign: 'center', margin: '0 0 12px' }}>When you earn this — you can share it:</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
+                {[
+                  { left: <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: 700, color: '#0A66C2' }}>in</span>, label: 'LinkedIn' },
+                  { left: <Camera size={12} color="#E1306C" />, label: 'Instagram' },
+                  { left: <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: 700, color: '#FF7555' }}>N</span>, label: 'Naukri' },
+                  { left: <Link2 size={12} color="#6B9E8A" />, label: 'Copy link' },
+                ].map((pill, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '9999px', border: '1px solid #EDF2EF', backgroundColor: '#FFFFFF' }}>
+                    {pill.left}
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, color: '#1A3028' }}>{pill.label}</span>
+                  </div>
+                ))}
+              </div>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', textAlign: 'center', marginTop: '10px' }}>Your record. Your proof. Share it anywhere.</p>
+            </div>
           </div>
         </>
       )}

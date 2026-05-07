@@ -24,7 +24,7 @@ function App() {
         <Route path="/feed" element={<ProtectedRoute><FeedPage /></ProtectedRoute>} />
         <Route path="/waiting" element={<ProtectedRoute><WaitingPage /></ProtectedRoute>} />
         <Route path="/record" element={<ProtectedRoute><RecordListPage /></ProtectedRoute>} />
-        <Route path="/record/:id" element={<ProtectedRoute><SprintRecordPage /></ProtectedRoute>} />
+        <Route path="/record/:id" element={<SprintRecordPage />} />
         <Route path="/record/:id/full" element={<ProtectedRoute><SprintFullLogPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       </Routes>

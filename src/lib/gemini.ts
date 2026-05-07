@@ -313,6 +313,8 @@ export function shouldTriggerReplan(
   return consecutive >= threshold
 }
 
+// ── AI-4: ADAPTIVE RE-PLANNING ──
+
 export async function generateReplan(params: {
   goalText: string
   originalTasks: Array<{ day: number; task_text: string; task_type: string }>
@@ -369,5 +371,65 @@ OUTPUT FORMAT (strict JSON array):
   } catch (err) {
     console.error('AI-4 error:', err)
     return getFallbackTasks(daysRemaining).map((t, i) => ({ ...t, day: currentDay + 1 + i }))
+  }
+}
+
+// ── AI-6: SPRINT NARRATIVE ──
+
+export async function generateSprintNarrative(params: {
+  goalText: string
+  logs: Array<{ day_number: number; log_type: string; log_text: string | null }>
+  sprintLength: number
+  verifiedCount: number
+  honestCount: number
+}): Promise<string> {
+  const { goalText, logs, sprintLength, verifiedCount, honestCount } = params
+
+  const logsSummary = logs
+    .sort((a, b) => a.day_number - b.day_number)
+    .map(l => `Day ${l.day_number} (${l.log_type}): ${l.log_text?.slice(0, 120) ?? 'no entry'}`)
+    .join('\n')
+
+  const completionRate = Math.round((logs.length / sprintLength) * 100)
+
+  const prompt = `
+You are the Sprint Record narrator for StrideWithMe.
+Write an AI-generated narrative for a completed sprint.
+
+GOAL: "${goalText}"
+SPRINT: ${sprintLength} days
+LOGGED: ${logs.length} days (${verifiedCount} verified, ${honestCount} honest)
+COMPLETION: ${completionRate}%
+
+DAILY LOG ENTRIES:
+${logsSummary}
+
+TASK:
+Write exactly 2 paragraphs.
+
+Paragraph 1: What happened — the arc of the sprint. Mention specific days, specific moments, any pivots or breakthroughs you can see in the logs. Be concrete. Reference actual log content where possible.
+
+Paragraph 2: What this shows about the person — their pattern, consistency, resilience, what changed or emerged over the sprint. This should feel like a character observation, not a performance review.
+
+RULES:
+1. Output ONLY the two paragraphs as plain text. No JSON. No headers. No markdown. Just paragraph 1, blank line, paragraph 2.
+2. Never use corporate language.
+3. Never fabricate specific details not present in the logs.
+4. If completion is under 50%, be honest about the gaps — but find something true and meaningful to say.
+5. If all logs are honest days with no verified logs, acknowledge the difficulty and what that shows.
+6. Tone: warm, specific, human. Like a thoughtful mentor who read every single entry.
+7. Each paragraph: 60-100 words. Not too long — this lives on a shareable credential.
+`
+
+  try {
+    const raw = await callGemini(prompt)
+    const cleaned = raw.trim()
+    if (!cleaned) {
+      return 'This sprint tells its own story through the logs above. Every day logged — whether verified or honest — is evidence of someone who chose to show up and be accountable to themselves.\n\nThe consistency of logging, even on hard days, reveals a pattern worth building on.'
+    }
+    return cleaned
+  } catch (err) {
+    console.error('AI-6 error:', err)
+    return 'This sprint tells its own story through the logs above. Every day logged — whether verified or honest — is evidence of someone who chose to show up and be accountable to themselves.\n\nThe consistency of logging, even on hard days, reveals a pattern worth building on.'
   }
 }
