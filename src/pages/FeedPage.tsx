@@ -1,5 +1,20 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useAuth } from '../context/AuthContext'
+import { getFeedPosts } from '../lib/db'
+import type { FeedPost } from '../lib/db'
 import PageWrapper from '../components/PageWrapper'
+
+function getTimeAgo(dateStr: string): string {
+  const now = new Date()
+  const date = new Date(dateStr)
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  if (diffMins < 60) return `${diffMins}m`
+  const diffHours = Math.floor(diffMins / 60)
+  if (diffHours < 24) return `${diffHours}h`
+  const diffDays = Math.floor(diffHours / 24)
+  return `${diffDays}d`
+}
 
 const mockPosts = [
   { id: 1, initials: 'MI', name: 'Meera Iyer', day: 27, hoursAgo: '2h', type: 'PROGRESS' as const, goal: 'Build and launch a Notion template business', text: 'Published template #4 today — a project tracker for freelancers. Got 3 organic downloads within the first hour. The SEO work from Day 20 is paying off. Feeling the compound effect.', witnessed: 3, facingThis: 0 },
@@ -10,8 +25,20 @@ const mockPosts = [
 ]
 
 export default function FeedPage() {
+  const { user: _user } = useAuth()
   const [reactions, setReactions] = useState<Record<string, boolean>>({})
   const [expanded, setExpanded] = useState<Record<number, boolean>>({})
+  const [realPosts, setRealPosts] = useState<FeedPost[]>([])
+  const [, setLoadingPosts] = useState(true)
+
+  useEffect(() => {
+    getFeedPosts().then(posts => {
+      setRealPosts(posts)
+      setLoadingPosts(false)
+    })
+  }, [])
+
+  const hasRealPosts = realPosts.length > 0
 
   const toggleReaction = (key: string) => {
     setReactions((prev) => ({ ...prev, [key]: !prev[key] }))
@@ -71,6 +98,7 @@ export default function FeedPage() {
         </div>
 
         {/* Disclaimer */}
+        {!hasRealPosts && (
         <div style={{ background: 'rgba(234,245,240,0.9)', border: '1px solid #B8D9CC', borderRadius: '16px', padding: '12px 16px', margin: '16px 0', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
           <span style={{ fontSize: '16px', flexShrink: 0, marginTop: '1px' }}>🌱</span>
           <div>
@@ -78,10 +106,64 @@ export default function FeedPage() {
             <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A', lineHeight: 1.5, margin: 0 }}>Right now you're seeing example posts to show you how the feed works. Once you and your cohort start logging, this fills with real stories.</p>
           </div>
         </div>
+        )}
 
         {/* Posts */}
         <div style={{ marginTop: '16px' }}>
-          {mockPosts.map((post) => {
+          {/* Real posts */}
+          {hasRealPosts && realPosts.map((post) => {
+            const displayName = (post.profiles as any)?.display_name ?? 'Anonymous'
+            const initials = displayName.slice(0, 2).toUpperCase()
+            const dayNumber = (post.daily_logs as any)?.day_number ?? 0
+            const logType = (post.daily_logs as any)?.log_type ?? 'VERIFIED'
+            const goalText = (post.sprints as any)?.goal_text ?? ''
+            const isHonest = logType === 'HONEST'
+            const goalTruncated = goalText.length > 45 ? goalText.slice(0, 45) + '...' : goalText
+            const timeAgo = getTimeAgo(post.created_at)
+
+            return (
+              <div
+                key={post.id}
+                style={{
+                  backgroundColor: isHonest ? 'rgba(255, 248, 240, 0.6)' : '#FFFFFF',
+                  borderRadius: '20px',
+                  border: '1px solid #EDF2EF',
+                  borderLeft: isHonest ? '2px solid #F59E4A' : '1px solid #EDF2EF',
+                  boxShadow: '0 1px 8px rgba(26, 46, 37, 0.06)',
+                  padding: '14px 20px',
+                  marginBottom: '14px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: isHonest ? '#F59E4A' : '#3D7A5F', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-body)', fontSize: '14px', color: '#FFFFFF', flexShrink: 0 }}>
+                    {initials}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 600, color: '#1A3028' }}>{displayName}</span>
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', fontWeight: 500, letterSpacing: '0.06em', color: isHonest ? '#D97706' : '#4A8C6F' }}>
+                        {isHonest ? 'HONEST' : 'PROGRESS'}
+                      </span>
+                    </div>
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2' }}>
+                      Day {dayNumber} · {timeAgo}
+                    </span>
+                  </div>
+                </div>
+                {goalText && (
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#7AB5A0', margin: '0 0 6px' }}>
+                    Goal: {goalTruncated}
+                  </p>
+                )}
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', lineHeight: 1.55, color: '#2D4A3E', margin: 0 }}>
+                  {post.post_text}
+                </p>
+              </div>
+            )
+          })}
+
+          {/* Mock posts shown only when no real posts */}
+          {!hasRealPosts && mockPosts.map((post) => {
             const isHonest = post.type === 'HONEST'
             const witnessedKey = `witnessed-${post.id}`
             const facingKey = `facing-${post.id}`

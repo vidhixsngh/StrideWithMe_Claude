@@ -5,7 +5,7 @@ import PageWrapper from '../components/PageWrapper'
 import BloomOverlay from '../components/BloomOverlay'
 import { verifyLog, generatePostDraft } from '../lib/gemini'
 import type { VerificationResult } from '../lib/gemini'
-import { createLog, getLogsForSprint, getActiveSprint, getTodayTask, getTasksForSprint, calculateDayNumber } from '../lib/db'
+import { createLog, getLogsForSprint, getActiveSprint, getTodayTask, getTasksForSprint, calculateDayNumber, createFeedPost, markLogPostedToFeed } from '../lib/db'
 import { useAuth } from '../context/AuthContext'
 import type { Sprint, Task } from '../lib/db'
 
@@ -38,6 +38,7 @@ export default function LogPage() {
   const [linkUrl, setLinkUrlParent] = useState('')
   const [upcomingTasks, setUpcomingTasks] = useState<Task[]>([])
   const [sprintLogs, setSprintLogs] = useState<Array<{ day_number: number; log_type: string }>>([])
+  const [lastLogId, setLastLogId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -82,7 +83,7 @@ export default function LogPage() {
     setVerifying(false)
 
     if (result.verified) {
-      await createLog({
+      const newLog = await createLog({
         sprint_id: sprint.id,
         user_id: user.id,
         day_number: dayNumber,
@@ -94,6 +95,7 @@ export default function LogPage() {
         posted_to_feed: false,
         verification_attempts: attemptNumber,
       })
+      if (newLog) setLastLogId(newLog.id)
       setVerificationResult(result)
       setShowBloom(true)
       // Generate post draft in background
@@ -105,6 +107,18 @@ export default function LogPage() {
         setPhase('honest')
       }
     }
+  }
+
+  const handlePostToFeed = async () => {
+    if (!sprint || !user || !lastLogId || !postDraft) return
+    await createFeedPost({
+      log_id: lastLogId,
+      sprint_id: sprint.id,
+      user_id: user.id,
+      post_text: postDraft,
+    })
+    await markLogPostedToFeed(lastLogId)
+    navigate('/dashboard')
   }
 
   const generateAndSaveDraft = async (isHonest: boolean) => {
@@ -146,7 +160,7 @@ export default function LogPage() {
           />
         )}
         {phase === 'verifying' && <VerifyingPhase />}
-        {phase === 'verified' && <VerifiedPhase logText={logText} onBack={() => navigate('/dashboard')} postDraft={postDraft} setPostDraft={setPostDraft} generatingDraft={generatingDraft} draftReady={draftReady} taskText={todayTaskData?.task_text ?? mockLog.todayTask} dayNum={dayNumber || mockLog.day} verifiedCount={verifiedCountState} />}
+        {phase === 'verified' && <VerifiedPhase logText={logText} onBack={() => navigate('/dashboard')} onPostToFeed={handlePostToFeed} postDraft={postDraft} setPostDraft={setPostDraft} generatingDraft={generatingDraft} draftReady={draftReady} taskText={todayTaskData?.task_text ?? mockLog.todayTask} dayNum={dayNumber || mockLog.day} verifiedCount={verifiedCountState} />}
         {phase === 'honest' && <HonestPhase onSubmit={async (honestText: string) => {
           if (sprint && user) {
             await createLog({
@@ -629,7 +643,7 @@ function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, on
   )
 }
 
-function VerifiedPhase({ logText, onBack, postDraft, setPostDraft, generatingDraft, draftReady, taskText, dayNum, verifiedCount }: { logText: string; onBack: () => void; postDraft?: string; setPostDraft?: (v: string) => void; generatingDraft?: boolean; draftReady?: boolean; taskText?: string; dayNum?: number; verifiedCount?: number }) {
+function VerifiedPhase({ logText, onBack, onPostToFeed, postDraft, setPostDraft, generatingDraft, draftReady, taskText, dayNum, verifiedCount }: { logText: string; onBack: () => void; onPostToFeed?: () => void; postDraft?: string; setPostDraft?: (v: string) => void; generatingDraft?: boolean; draftReady?: boolean; taskText?: string; dayNum?: number; verifiedCount?: number }) {
   return (
     <>
       <LogHeader dayNum={dayNum ?? 1} verifiedCount={(verifiedCount ?? 0) + 1} />
@@ -707,7 +721,7 @@ function VerifiedPhase({ logText, onBack, postDraft, setPostDraft, generatingDra
             <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: postDraft.length > 200 ? '#D97706' : '#9BBFB2', textAlign: 'right', margin: '4px 0 0' }}>{postDraft.length}/200</p>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
               <button onClick={onBack} style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#9BBFB2', background: 'none', border: 'none', cursor: 'pointer' }}>Skip</button>
-              <button onClick={onBack} style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, color: '#FFFFFF', backgroundColor: '#3D7A5F', border: 'none', borderRadius: '9999px', padding: '8px 16px', cursor: 'pointer' }}>Post to feed &rarr;</button>
+              <button onClick={onPostToFeed ?? onBack} style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, color: '#FFFFFF', backgroundColor: '#3D7A5F', border: 'none', borderRadius: '9999px', padding: '8px 16px', cursor: 'pointer' }}>Post to feed &rarr;</button>
             </div>
           </>
         )}

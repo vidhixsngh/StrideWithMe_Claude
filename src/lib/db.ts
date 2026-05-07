@@ -212,3 +212,92 @@ export function isSprintLocked(endDate: string): boolean {
   end.setHours(0, 0, 0, 0)
   return end > today
 }
+
+// ── FEED OPERATIONS ──
+
+export interface FeedPost {
+  id: string
+  log_id: string
+  sprint_id: string
+  user_id: string
+  post_text: string
+  created_at: string
+  // joined fields
+  profiles?: { display_name: string | null }
+  daily_logs?: { day_number: number; log_type: string }
+  sprints?: { goal_text: string }
+}
+
+export async function createFeedPost(post: {
+  log_id: string
+  sprint_id: string
+  user_id: string
+  post_text: string
+}): Promise<FeedPost | null> {
+  const { data, error } = await supabase
+    .from('feed_posts')
+    .insert(post)
+    .select()
+    .single()
+  if (error) { console.error('createFeedPost:', error.message); return null }
+  return data
+}
+
+export async function getFeedPosts(): Promise<FeedPost[]> {
+  const { data, error } = await supabase
+    .from('feed_posts')
+    .select(`
+      *,
+      profiles:user_id(display_name),
+      daily_logs:log_id(day_number, log_type),
+      sprints:sprint_id(goal_text)
+    `)
+    .order('created_at', { ascending: false })
+    .limit(20)
+  if (error) { console.error('getFeedPosts:', error.message); return [] }
+  return data || []
+}
+
+export async function markLogPostedToFeed(logId: string): Promise<void> {
+  await supabase
+    .from('daily_logs')
+    .update({ posted_to_feed: true })
+    .eq('id', logId)
+}
+
+// ── REACTION OPERATIONS ──
+
+export async function toggleReaction(postId: string, userId: string, reactionType: 'WITNESSED' | 'FACING_THIS_TOO'): Promise<boolean> {
+  // Check if reaction exists
+  const { data: existing } = await supabase
+    .from('reactions')
+    .select('id')
+    .eq('post_id', postId)
+    .eq('user_id', userId)
+    .eq('reaction_type', reactionType)
+    .maybeSingle()
+
+  if (existing) {
+    await supabase.from('reactions').delete().eq('id', existing.id)
+    return false // removed
+  } else {
+    await supabase.from('reactions').insert({ post_id: postId, user_id: userId, reaction_type: reactionType })
+    return true // added
+  }
+}
+
+export async function getReactionCounts(postId: string): Promise<{ witnessed: number; facingThis: number }> {
+  const { count: witnessed } = await supabase
+    .from('reactions')
+    .select('*', { count: 'exact', head: true })
+    .eq('post_id', postId)
+    .eq('reaction_type', 'WITNESSED')
+
+  const { count: facingThis } = await supabase
+    .from('reactions')
+    .select('*', { count: 'exact', head: true })
+    .eq('post_id', postId)
+    .eq('reaction_type', 'FACING_THIS_TOO')
+
+  return { witnessed: witnessed ?? 0, facingThis: facingThis ?? 0 }
+}
