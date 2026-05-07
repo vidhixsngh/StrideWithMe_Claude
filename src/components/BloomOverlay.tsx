@@ -9,16 +9,16 @@ interface Petal {
 }
 
 const petals: Petal[] = [
-  { tx: '-70px', ty: '-90px', color: '#3D7A5F', delay: '0ms',   size: '10px' },
-  { tx: '70px',  ty: '-90px', color: '#F59E4A', delay: '40ms',  size: '12px' },
-  { tx: '95px',  ty: '10px',  color: '#7AB5A0', delay: '80ms',  size: '8px'  },
-  { tx: '65px',  ty: '90px',  color: '#FFD700', delay: '60ms',  size: '10px' },
-  { tx: '-65px', ty: '90px',  color: '#B8D9CC', delay: '100ms', size: '14px' },
-  { tx: '-95px', ty: '10px',  color: '#F59E4A', delay: '20ms',  size: '8px'  },
+  { tx: '-70px', ty: '-90px', color: '#FFD700', delay: '0ms',   size: '10px' },
+  { tx: '70px',  ty: '-90px', color: '#F5A623', delay: '40ms',  size: '12px' },
+  { tx: '95px',  ty: '10px',  color: '#FFD700', delay: '80ms',  size: '8px'  },
+  { tx: '65px',  ty: '90px',  color: '#3D7A5F', delay: '60ms',  size: '10px' },
+  { tx: '-65px', ty: '90px',  color: '#F5A623', delay: '100ms', size: '14px' },
+  { tx: '-95px', ty: '10px',  color: '#FFD700', delay: '20ms',  size: '8px'  },
   { tx: '30px',  ty: '-110px',color: '#3D7A5F', delay: '50ms',  size: '9px'  },
-  { tx: '-30px', ty: '-110px',color: '#FFD700', delay: '90ms',  size: '11px' },
-  { tx: '110px', ty: '-40px', color: '#7AB5A0', delay: '30ms',  size: '8px'  },
-  { tx: '-110px',ty: '-40px', color: '#F59E4A', delay: '70ms',  size: '10px' },
+  { tx: '-30px', ty: '-110px',color: '#F5A623', delay: '90ms',  size: '11px' },
+  { tx: '110px', ty: '-40px', color: '#FFD700', delay: '30ms',  size: '8px'  },
+  { tx: '-110px',ty: '-40px', color: '#3D7A5F', delay: '70ms',  size: '10px' },
 ]
 
 interface BloomOverlayProps {
@@ -89,7 +89,7 @@ export default function BloomOverlay({ onComplete }: BloomOverlayProps) {
               : 'none',
           }}
         >
-          🌸
+          🌻
         </div>
 
         {/* "Verified!" text below flower */}
