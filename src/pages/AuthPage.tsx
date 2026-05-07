@@ -182,15 +182,15 @@ export default function AuthPage() {
             letterSpacing: '0.02em',
           }}
         >
-          {loading ? dots : mode === 'signup' ? 'Create my account \u2192' : 'Sign in \u2192'}
+          {loading ? dots : mode === 'signup' ? 'Create my account →' : 'Sign in →'}
         </button>
 
         {/* Mode toggle */}
         <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', color: '#6B9E8A', textAlign: 'center', marginTop: '20px' }}>
           {mode === 'signin' ? (
-            <>Don't have an account?{' '}<span onClick={() => { setMode('signup'); setError(''); setMessage('') }} style={{ color: '#3D7A5F', textDecoration: 'underline', cursor: 'pointer' }}>Start here \u2192</span></>
+            <>Don't have an account?{' '}<span onClick={() => { setMode('signup'); setError(''); setMessage('') }} style={{ color: '#3D7A5F', textDecoration: 'underline', cursor: 'pointer' }}>Start here →</span></>
           ) : (
-            <>Already have an account?{' '}<span onClick={() => { setMode('signin'); setError(''); setMessage('') }} style={{ color: '#3D7A5F', textDecoration: 'underline', cursor: 'pointer' }}>Sign in \u2192</span></>
+            <>Already have an account?{' '}<span onClick={() => { setMode('signin'); setError(''); setMessage('') }} style={{ color: '#3D7A5F', textDecoration: 'underline', cursor: 'pointer' }}>Sign in →</span></>
           )}
         </p>
 
