@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 import { getFeedPosts } from '../lib/db'
 import type { FeedPost } from '../lib/db'
 import PageWrapper from '../components/PageWrapper'
@@ -25,23 +26,55 @@ const mockPosts = [
 ]
 
 export default function FeedPage() {
-  const { user: _user } = useAuth()
+  const { user } = useAuth()
   const [reactions, setReactions] = useState<Record<string, boolean>>({})
+  const [reactionCounts, setReactionCounts] = useState<Record<string, { witnessed: number; facingThis: number; userWitnessed: boolean; userFacingThis: boolean }>>({})
   const [expanded, setExpanded] = useState<Record<number, boolean>>({})
   const [realPosts, setRealPosts] = useState<FeedPost[]>([])
   const [, setLoadingPosts] = useState(true)
 
   useEffect(() => {
-    getFeedPosts().then(posts => {
+    async function loadFeed() {
+      const posts = await getFeedPosts()
       setRealPosts(posts)
       setLoadingPosts(false)
-    })
-  }, [])
+      for (const post of posts) {
+        const { data: reactions } = await supabase.from('reactions').select('*').eq('post_id', post.id)
+        setReactionCounts(prev => ({ ...prev, [post.id]: {
+          witnessed: reactions?.filter(r => r.reaction_type === 'WITNESSED').length ?? 0,
+          facingThis: reactions?.filter(r => r.reaction_type === 'FACING_THIS_TOO').length ?? 0,
+          userWitnessed: reactions?.some(r => r.reaction_type === 'WITNESSED' && r.user_id === user?.id) ?? false,
+          userFacingThis: reactions?.some(r => r.reaction_type === 'FACING_THIS_TOO' && r.user_id === user?.id) ?? false,
+        }}))
+      }
+    }
+    loadFeed()
+  }, [user])
 
   const hasRealPosts = realPosts.length > 0
 
   const toggleReaction = (key: string) => {
     setReactions((prev) => ({ ...prev, [key]: !prev[key] }))
+  }
+
+  const handleRealReaction = async (postId: string, type: 'WITNESSED' | 'FACING_THIS_TOO') => {
+    if (!user) return
+    const counts = reactionCounts[postId]
+    const isActive = type === 'WITNESSED' ? counts?.userWitnessed : counts?.userFacingThis
+
+    if (isActive) {
+      await supabase.from('reactions').delete().eq('post_id', postId).eq('user_id', user.id).eq('reaction_type', type)
+    } else {
+      await supabase.from('reactions').insert({ post_id: postId, user_id: user.id, reaction_type: type })
+    }
+
+    const { data: updated } = await supabase.from('reactions').select('*').eq('post_id', postId)
+    setReactionCounts(prev => ({ ...prev, [postId]: {
+      witnessed: updated?.filter(r => r.reaction_type === 'WITNESSED').length ?? 0,
+      facingThis: updated?.filter(r => r.reaction_type === 'FACING_THIS_TOO').length ?? 0,
+      userWitnessed: updated?.some(r => r.reaction_type === 'WITNESSED' && r.user_id === user.id) ?? false,
+      userFacingThis: updated?.some(r => r.reaction_type === 'FACING_THIS_TOO' && r.user_id === user.id) ?? false,
+    }}))
   }
 
   const avatarColors = ['#3D7A5F', '#F59E4A', '#7AB5A0', '#B8D9CC', '#3D7A5F']
@@ -158,6 +191,35 @@ export default function FeedPage() {
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', lineHeight: 1.55, color: '#2D4A3E', margin: 0 }}>
                   {post.post_text}
                 </p>
+                {/* Reactions */}
+                <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                  {(() => {
+                    const counts = reactionCounts[post.id]
+                    const isOwner = post.user_id === user?.id
+                    const wCount = counts?.witnessed ?? 0
+                    const fCount = counts?.facingThis ?? 0
+                    const wActive = counts?.userWitnessed ?? false
+                    const fActive = counts?.userFacingThis ?? false
+                    return (
+                      <>
+                        <button
+                          onClick={isOwner ? undefined : () => handleRealReaction(post.id, 'WITNESSED')}
+                          title={isOwner ? "You can't react to your own post" : undefined}
+                          style={{ padding: '6px 12px', borderRadius: '9999px', border: wActive ? 'none' : '1px solid #D4EDE3', backgroundColor: wActive ? '#3D7A5F' : '#F0F7F4', color: wActive ? '#FFFFFF' : '#3D7A5F', fontFamily: 'var(--font-body)', fontSize: '11px', cursor: isOwner ? 'default' : 'pointer', opacity: isOwner ? 0.6 : 1 }}
+                        >
+                          👁 Witnessed{wCount > 0 ? ` ${wCount}` : ''}
+                        </button>
+                        <button
+                          onClick={isOwner ? undefined : () => handleRealReaction(post.id, 'FACING_THIS_TOO')}
+                          title={isOwner ? "You can't react to your own post" : undefined}
+                          style={{ padding: '6px 12px', borderRadius: '9999px', border: fActive ? 'none' : '1px solid #F5D5A8', backgroundColor: fActive ? '#F59E4A' : '#FEF9F4', color: fActive ? '#FFFFFF' : '#D97706', fontFamily: 'var(--font-body)', fontSize: '11px', cursor: isOwner ? 'default' : 'pointer', opacity: isOwner ? 0.6 : 1 }}
+                        >
+                          🤍 Facing this too{fCount > 0 ? ` ${fCount}` : ''}
+                        </button>
+                      </>
+                    )
+                  })()}
+                </div>
               </div>
             )
           })}

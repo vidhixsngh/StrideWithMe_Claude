@@ -7,7 +7,7 @@ import { verifyLog, generatePostDraft } from '../lib/gemini'
 import type { VerificationResult } from '../lib/gemini'
 import { createLog, getLogsForSprint, getActiveSprint, getTodayTask, getTasksForSprint, calculateDayNumber, createFeedPost, markLogPostedToFeed } from '../lib/db'
 import { useAuth } from '../context/AuthContext'
-import type { Sprint, Task } from '../lib/db'
+import type { Sprint, Task, DailyLog } from '../lib/db'
 
 const mockLog = {
   day: 14,
@@ -22,7 +22,7 @@ export default function LogPage() {
   const { user } = useAuth()
   const [logText, setLogText] = useState('')
   const [activeTab, setActiveTab] = useState('text')
-  const [phase, setPhase] = useState<'input' | 'verifying' | 'verified' | 'honest'>('input')
+  const [phase, setPhase] = useState<'input' | 'verifying' | 'verified' | 'honest' | 'done'>('input')
   const [showBloom, setShowBloom] = useState(false)
   const [sprint, setSprint] = useState<Sprint | null>(null)
   const [todayTaskData, setTodayTaskData] = useState<Task | null>(null)
@@ -32,6 +32,9 @@ export default function LogPage() {
   const [attemptNumber, setAttemptNumber] = useState(1)
   const [recentLogTexts, setRecentLogTexts] = useState<string[]>([])
   const [verifiedCountState, setVerifiedCountState] = useState(0)
+  const [currentStreak, setCurrentStreak] = useState(0)
+  const [, setAlreadyLogged] = useState(false)
+  const [existingLog, setExistingLog] = useState<DailyLog | null>(null)
   const [postDraft, setPostDraft] = useState('')
   const [generatingDraft, setGeneratingDraft] = useState(false)
   const [draftReady, setDraftReady] = useState(false)
@@ -58,6 +61,24 @@ export default function LogPage() {
       const recent = logs.sort((a, b) => b.day_number - a.day_number).slice(0, 3).map(l => l.log_text ?? '').filter(Boolean)
       setRecentLogTexts(recent)
       setVerifiedCountState(logs.filter(l => l.log_type === 'VERIFIED').length)
+
+      // Calculate streak
+      let streak = 0
+      for (let d = dn; d >= 1; d--) {
+        const dayLog = logs.find(l => l.day_number === d)
+        if (dayLog) streak++
+        else break
+      }
+      setCurrentStreak(streak)
+
+      // Check if already logged today
+      const todayLogData = logs.find(l => l.day_number === dn)
+      if (todayLogData) {
+        setAlreadyLogged(true)
+        setExistingLog(todayLogData)
+        setPhase('done')
+      }
+
       setSprintLogs(logs.map(l => ({ day_number: l.day_number, log_type: l.log_type })))
       setUpcomingTasks(allTasks.filter(t => t.day_number > dn).slice(0, 5))
     }
@@ -165,7 +186,7 @@ export default function LogPage() {
           />
         )}
         {phase === 'verifying' && <VerifyingPhase />}
-        {phase === 'verified' && <VerifiedPhase logText={logText} onBack={() => navigate('/dashboard')} onPostToFeed={handlePostToFeed} postDraft={postDraft} setPostDraft={setPostDraft} generatingDraft={generatingDraft} draftReady={draftReady} taskText={todayTaskData?.task_text ?? mockLog.todayTask} dayNum={dayNumber || mockLog.day} verifiedCount={verifiedCountState} />}
+        {phase === 'verified' && <VerifiedPhase logText={logText} onBack={() => navigate('/dashboard')} onPostToFeed={handlePostToFeed} postDraft={postDraft} setPostDraft={setPostDraft} generatingDraft={generatingDraft} draftReady={draftReady} taskText={todayTaskData?.task_text ?? mockLog.todayTask} dayNum={dayNumber || mockLog.day} verifiedCount={verifiedCountState} daysLeft={sprint ? sprint.sprint_length - dayNumber : 0} currentStreak={currentStreak} />}
         {phase === 'honest' && <HonestPhase onSubmit={async (honestText: string) => {
           if (sprint && user) {
             await createLog({
@@ -183,6 +204,17 @@ export default function LogPage() {
           }
           navigate('/dashboard')
         }} />}
+        {phase === 'done' && existingLog && (
+          <DonePhase
+            dayNum={dayNumber || 1}
+            verifiedCount={verifiedCountState}
+            currentStreak={currentStreak}
+            daysLeft={sprint ? sprint.sprint_length - dayNumber : 0}
+            existingLog={existingLog}
+            taskText={todayTaskData?.task_text ?? mockLog.todayTask}
+            onBack={() => navigate('/dashboard')}
+          />
+        )}
       </div>
       {showBloom && (
         <BloomOverlay
@@ -660,7 +692,7 @@ function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, on
   )
 }
 
-function VerifiedPhase({ logText, onBack, onPostToFeed, postDraft, setPostDraft, generatingDraft, draftReady, taskText, dayNum, verifiedCount }: { logText: string; onBack: () => void; onPostToFeed?: () => void; postDraft?: string; setPostDraft?: (v: string) => void; generatingDraft?: boolean; draftReady?: boolean; taskText?: string; dayNum?: number; verifiedCount?: number }) {
+function VerifiedPhase({ logText, onBack, onPostToFeed, postDraft, setPostDraft, generatingDraft, draftReady, taskText, dayNum, verifiedCount, daysLeft, currentStreak }: { logText: string; onBack: () => void; onPostToFeed?: () => void; postDraft?: string; setPostDraft?: (v: string) => void; generatingDraft?: boolean; draftReady?: boolean; taskText?: string; dayNum?: number; verifiedCount?: number; daysLeft?: number; currentStreak?: number }) {
   return (
     <>
       <LogHeader dayNum={dayNum ?? 1} verifiedCount={(verifiedCount ?? 0) + 1} />
@@ -671,14 +703,14 @@ function VerifiedPhase({ logText, onBack, onPostToFeed, postDraft, setPostDraft,
         <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', boxShadow: '0 4px 16px rgba(61, 122, 95, 0.2)' }}>
           <Check size={28} color="#3D7A5F" />
         </div>
-        <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '24px', color: '#1A3028', marginTop: '16px' }}>Day 14 verified.</h2>
+        <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '24px', color: '#1A3028', marginTop: '16px' }}>Day {dayNum ?? 1} verified.</h2>
         <p style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontStyle: 'italic', color: '#6B9E8A', margin: '4px 0 16px' }}>You showed up. That's the whole game.</p>
 
         <div style={{ display: 'flex', gap: '8px' }}>
           {[
-            { value: '12', label: 'Verified days' },
-            { value: '5', emoji: '🔥', label: 'Day streak' },
-            { value: '16', label: 'Days left' },
+            { value: String((verifiedCount ?? 0) + 1), label: 'Verified days' },
+            { value: String((currentStreak ?? 0) + 1), emoji: '🔥', label: 'Day streak' },
+            { value: String(daysLeft ?? 0), label: 'Days left' },
           ].map((s) => (
             <div key={s.label} style={{ flex: 1, backgroundColor: '#FFFFFF', borderRadius: '12px', padding: '12px 16px', textAlign: 'center' }}>
               <div style={{ fontFamily: 'var(--font-body)', fontSize: '20px', fontWeight: 700, color: '#1A3028' }}>
@@ -822,5 +854,73 @@ function HonestPhase({ onSubmit }: { onSubmit: (text: string) => void }) {
         This won't hurt your Sprint Record. Honesty is the point.
       </p>
     </div>
+  )
+}
+
+function DonePhase({ dayNum, verifiedCount, currentStreak, daysLeft, existingLog, taskText, onBack }: {
+  dayNum: number; verifiedCount: number; currentStreak: number; daysLeft: number;
+  existingLog: DailyLog; taskText: string; onBack: () => void
+}) {
+  const logTime = new Date(existingLog.logged_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+
+  return (
+    <>
+      <LogHeader dayNum={dayNum} verifiedCount={verifiedCount} />
+      <TodayTaskCard taskText={taskText} />
+
+      {/* Completion card */}
+      <div style={{ background: 'linear-gradient(135deg, #D4EDE3, #EAF5F0)', borderRadius: '24px', padding: '24px', textAlign: 'center', marginBottom: '16px' }}>
+        <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', boxShadow: '0 4px 16px rgba(61, 122, 95, 0.2)' }}>
+          <Check size={28} color="#3D7A5F" />
+        </div>
+        <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '22px', color: '#1A3028', marginTop: '16px' }}>You've logged today.</h2>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', color: '#6B9E8A', marginTop: '6px' }}>Come back tomorrow for Day {dayNum + 1}.</p>
+
+        <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+          {[
+            { value: String(verifiedCount), label: 'Verified days' },
+            { value: String(currentStreak), emoji: '🔥', label: 'Day streak' },
+            { value: String(daysLeft), label: 'Days left' },
+          ].map((s) => (
+            <div key={s.label} style={{ flex: 1, backgroundColor: '#FFFFFF', borderRadius: '12px', padding: '12px 16px', textAlign: 'center' }}>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: '20px', fontWeight: 700, color: '#1A3028' }}>
+                {s.value}{s.emoji && <span style={{ marginLeft: '2px' }}>{s.emoji}</span>}
+              </div>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#6B9E8A' }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Existing log */}
+      <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', border: '1px solid #EDF2EF', padding: '14px 16px', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: existingLog.log_type === 'VERIFIED' ? '#3D7A5F' : '#D97706' }}>
+            {existingLog.log_type === 'VERIFIED' ? '✅ Verified' : '🤍 Honest check-in'}
+          </span>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2' }}>{logTime}</span>
+        </div>
+        {existingLog.log_text && (
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', lineHeight: 1.6, fontStyle: 'italic', color: '#2D4A3E', margin: 0 }}>
+            {existingLog.log_text}
+          </p>
+        )}
+        {existingLog.ai_verification_result?.reason && (
+          <div style={{ borderLeft: '2px solid #B8D9CC', paddingLeft: '10px', marginTop: '10px' }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#7AB5A0', margin: 0 }}>
+              AI: {existingLog.ai_verification_result.reason}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Back button */}
+      <button
+        onClick={onBack}
+        style={{ width: '100%', height: '48px', backgroundColor: '#EAF5F0', color: '#2D5A47', border: '1px solid #B8D9CC', borderRadius: '9999px', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}
+      >
+        ← Back to dashboard
+      </button>
+    </>
   )
 }
