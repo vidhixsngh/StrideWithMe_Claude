@@ -11,6 +11,7 @@ const mockPosts = [
 
 export default function FeedPage() {
   const [reactions, setReactions] = useState<Record<string, boolean>>({})
+  const [expanded, setExpanded] = useState<Record<number, boolean>>({})
 
   const toggleReaction = (key: string) => {
     setReactions((prev) => ({ ...prev, [key]: !prev[key] }))
@@ -20,11 +21,14 @@ export default function FeedPage() {
 
   return (
     <PageWrapper>
-      <div style={{ padding: '20px 16px' }}>
+      <div style={{ padding: '20px 16px', WebkitOverflowScrolling: 'touch' }}>
         {/* Header */}
         <div style={{ background: 'linear-gradient(180deg, #EAF5F0, transparent)', margin: '-20px -16px 0', padding: '20px 16px 16px' }}>
-          <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '24px', color: '#1A3028', margin: '0 0 4px' }}>Cohort Feed</h1>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A', margin: '0 0 16px' }}>5 people building alongside you</p>
+          <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '22px', color: '#1A3028', margin: '0 0 4px' }}>Building alongside you</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '0 0 16px' }}>
+            <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#3D7A5F', animation: 'pulse-ring 1.5s infinite' }} />
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#3D7A5F' }}>5 active this sprint</span>
+          </div>
 
           {/* Avatar stack */}
           <div style={{ display: 'flex', marginBottom: '12px' }}>
@@ -66,12 +70,26 @@ export default function FeedPage() {
           </div>
         </div>
 
+        {/* Disclaimer */}
+        <div style={{ background: 'rgba(234,245,240,0.9)', border: '1px solid #B8D9CC', borderRadius: '16px', padding: '12px 16px', margin: '16px 0', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+          <span style={{ fontSize: '16px', flexShrink: 0, marginTop: '1px' }}>🌱</span>
+          <div>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 600, color: '#3D7A5F', margin: '0 0 2px' }}>The feed grows as you do</p>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A', lineHeight: 1.5, margin: 0 }}>Right now you're seeing example posts to show you how the feed works. Once you and your cohort start logging, this fills with real stories.</p>
+          </div>
+        </div>
+
         {/* Posts */}
         <div style={{ marginTop: '16px' }}>
           {mockPosts.map((post) => {
             const isHonest = post.type === 'HONEST'
             const witnessedKey = `witnessed-${post.id}`
             const facingKey = `facing-${post.id}`
+            const witnessedCount = post.witnessed + (reactions[witnessedKey] ? 1 : 0)
+            const facingCount = post.facingThis + (reactions[facingKey] ? 1 : 0)
+            const isExpanded = expanded[post.id] ?? false
+            const goalTruncated = post.goal.length > 45 ? post.goal.slice(0, 45) + '...' : post.goal
+
             return (
               <div
                 key={post.id}
@@ -82,7 +100,7 @@ export default function FeedPage() {
                   borderLeft: isHonest ? '2px solid #F59E4A' : '1px solid #EDF2EF',
                   boxShadow: '0 1px 8px rgba(26, 46, 37, 0.06)',
                   padding: '14px 20px',
-                  marginBottom: '20px',
+                  marginBottom: '14px',
                 }}
               >
                 {/* Top row */}
@@ -90,31 +108,64 @@ export default function FeedPage() {
                   <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: isHonest ? '#F59E4A' : '#3D7A5F', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-body)', fontSize: '14px', color: '#FFFFFF', flexShrink: 0 }}>
                     {post.initials}
                   </div>
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <span style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 600, color: '#1A3028' }}>{post.name}</span>
-                      <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', fontWeight: 700, color: isHonest ? '#D97706' : '#3D7A5F' }}>
-                        {isHonest ? '🤍 HONEST' : '✓ PROGRESS'}
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', fontWeight: 500, letterSpacing: '0.06em', color: isHonest ? '#D97706' : '#4A8C6F' }}>
+                        {isHonest ? 'HONEST' : 'PROGRESS'}
                       </span>
                     </div>
-                    <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2' }}>
-                      Day {post.day} · {post.hoursAgo} ago
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2' }}>
+                        Day {post.day} · {post.hoursAgo}
+                      </span>
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', backgroundColor: '#EAF5F0', color: '#3D7A5F', borderRadius: '9999px', padding: '2px 8px', border: '1px solid #B8D9CC' }}>
+                        Day {post.day}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
                 {/* Goal */}
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#7AB5A0', margin: '0 0 8px' }}>
-                  Goal: {post.goal}
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#7AB5A0', margin: '0 0 6px' }}>
+                  Goal: {goalTruncated}
                 </p>
 
                 {/* Text */}
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', lineHeight: 1.6, color: '#2D4A3E', margin: '0 0 14px' }}>
+                <p style={{
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '13px',
+                  lineHeight: 1.55,
+                  color: '#2D4A3E',
+                  margin: '0 0 4px',
+                  ...(!isExpanded ? {
+                    display: '-webkit-box',
+                    WebkitLineClamp: 4,
+                    WebkitBoxOrient: 'vertical' as const,
+                    overflow: 'hidden',
+                  } : {}),
+                }}>
                   {post.text}
                 </p>
+                {post.text.length > 120 && !isExpanded && (
+                  <button
+                    onClick={() => setExpanded(prev => ({ ...prev, [post.id]: true }))}
+                    style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#3D7A5F', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: '10px' }}
+                  >
+                    Read more
+                  </button>
+                )}
+                {isExpanded && (
+                  <button
+                    onClick={() => setExpanded(prev => ({ ...prev, [post.id]: false }))}
+                    style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: '10px' }}
+                  >
+                    Show less
+                  </button>
+                )}
 
                 {/* Reactions */}
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
                   <button
                     onClick={() => toggleReaction(witnessedKey)}
                     style={{
@@ -128,7 +179,7 @@ export default function FeedPage() {
                       cursor: 'pointer',
                     }}
                   >
-                    👁 Witnessed {post.witnessed + (reactions[witnessedKey] ? 1 : 0)}
+                    👁 Witnessed{witnessedCount > 0 ? ` ${witnessedCount}` : ''}
                   </button>
                   <button
                     onClick={() => toggleReaction(facingKey)}
@@ -143,7 +194,7 @@ export default function FeedPage() {
                       cursor: 'pointer',
                     }}
                   >
-                    🤍 Facing this too {post.facingThis + (reactions[facingKey] ? 1 : 0)}
+                    🤍 Facing this too{facingCount > 0 ? ` ${facingCount}` : ''}
                   </button>
                 </div>
               </div>
@@ -154,7 +205,8 @@ export default function FeedPage() {
         {/* End indicator */}
         <div style={{ textAlign: 'center', margin: '24px 0' }}>
           <span style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', color: '#9BBFB2' }}>
-            🌱 You're all caught up
+            That's everyone for now. Log today to add your voice.
+            <br />🌱
           </span>
         </div>
       </div>
