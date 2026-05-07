@@ -36,6 +36,7 @@ export default function LogPage() {
   const [generatingDraft, setGeneratingDraft] = useState(false)
   const [draftReady, setDraftReady] = useState(false)
   const [linkUrl, setLinkUrlParent] = useState('')
+  const [imageFiles, setImageFiles] = useState<Array<{ file: File; preview: string; base64: string; mimeType: string; caption: string }>>([])
   const [upcomingTasks, setUpcomingTasks] = useState<Task[]>([])
   const [sprintLogs, setSprintLogs] = useState<Array<{ day_number: number; log_type: string }>>([])
   const [lastLogId, setLastLogId] = useState<string | null>(null)
@@ -65,19 +66,22 @@ export default function LogPage() {
 
   const handleVerify = async () => {
     if (!sprint || !user) return
+    const canVerify = (activeTab === 'text' && logText.length >= 20) || (activeTab === 'image' && imageFiles.length > 0) || (activeTab === 'link' && linkUrl.length > 0)
+    if (!canVerify) return
     setVerifying(true)
     setVerificationResult(null)
 
     const result = await verifyLog({
       goalText: sprint.goal_text,
       todayTask: todayTaskData?.task_text ?? '',
-      logText,
+      logText: activeTab === 'text' ? logText : '',
       dayNumber,
       sprintLength: sprint.sprint_length,
       attemptNumber,
       mediaType: activeTab === 'image' ? 'image' : activeTab === 'link' ? 'link' : null,
       linkUrl: activeTab === 'link' ? linkUrl : undefined,
       recentLogs: recentLogTexts,
+      images: activeTab === 'image' ? imageFiles.map(img => ({ base64: img.base64, mimeType: img.mimeType, caption: img.caption })) : [],
     })
 
     setVerifying(false)
@@ -88,7 +92,7 @@ export default function LogPage() {
         user_id: user.id,
         day_number: dayNumber,
         log_type: 'VERIFIED',
-        log_text: logText,
+        log_text: activeTab === 'text' ? logText : imageFiles[0]?.caption || 'Logged via ' + activeTab,
         media_url: null,
         ai_verification_result: { verified: result.verified, reason: result.reason, confidence: result.confidence },
         ai_draft_post: null,
@@ -98,14 +102,11 @@ export default function LogPage() {
       if (newLog) setLastLogId(newLog.id)
       setVerificationResult(result)
       setShowBloom(true)
-      // Generate post draft in background
-      generateAndSaveDraft(false)
+      generateAndSaveDraft()
     } else {
       setAttemptNumber(prev => prev + 1)
       setVerificationResult(result)
-      if (attemptNumber >= 3) {
-        setPhase('honest')
-      }
+      if (attemptNumber >= 3) setPhase('honest')
     }
   }
 
@@ -121,15 +122,17 @@ export default function LogPage() {
     navigate('/dashboard')
   }
 
-  const generateAndSaveDraft = async (isHonest: boolean) => {
+  const generateAndSaveDraft = async () => {
     setGeneratingDraft(true)
     const draft = await generatePostDraft({
       goalText: sprint?.goal_text ?? '',
-      logText: isHonest ? '' : logText,
+      logText: activeTab === 'text' ? logText : imageFiles[0]?.caption || '',
       dayNumber,
       sprintLength: sprint?.sprint_length ?? 30,
-      isHonestDay: isHonest,
+      isHonestDay: false,
       mediaType: activeTab === 'image' ? 'image' : activeTab === 'link' ? 'link' : null,
+      linkUrl: activeTab === 'link' ? linkUrl : undefined,
+      images: activeTab === 'image' ? imageFiles.map(img => ({ base64: img.base64, mimeType: img.mimeType, caption: img.caption })) : [],
     })
     setPostDraft(draft)
     setGeneratingDraft(false)
@@ -157,6 +160,8 @@ export default function LogPage() {
             upcomingTasks={upcomingTasks}
             currentDayNum={dayNumber}
             sprintLogs={sprintLogs}
+            imageFiles={imageFiles}
+            setImageFiles={setImageFiles}
           />
         )}
         {phase === 'verifying' && <VerifyingPhase />}
@@ -231,25 +236,36 @@ function VerifyingPhase() {
   )
 }
 
-function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, onHonest, taskText, dayNum, verifying, verificationResult, attemptNumber, onSetLinkUrl, verifiedCount, upcomingTasks, currentDayNum: _currentDayNum, sprintLogs }: {
-  logText: string; setLogText: (v: string) => void; activeTab: string; setActiveTab: (v: string) => void; onVerify: () => void; onHonest: () => void; taskText?: string; dayNum?: number; verifying?: boolean; verificationResult?: VerificationResult | null; attemptNumber?: number; onSetLinkUrl?: (v: string) => void; verifiedCount?: number; upcomingTasks?: Task[]; currentDayNum?: number; sprintLogs?: Array<{ day_number: number; log_type: string }>
+function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, onHonest, taskText, dayNum, verifying, verificationResult, attemptNumber, onSetLinkUrl, verifiedCount, upcomingTasks, currentDayNum: _currentDayNum, sprintLogs, imageFiles, setImageFiles }: {
+  logText: string; setLogText: (v: string) => void; activeTab: string; setActiveTab: (v: string) => void; onVerify: () => void; onHonest: () => void; taskText?: string; dayNum?: number; verifying?: boolean; verificationResult?: VerificationResult | null; attemptNumber?: number; onSetLinkUrl?: (v: string) => void; verifiedCount?: number; upcomingTasks?: Task[]; currentDayNum?: number; sprintLogs?: Array<{ day_number: number; log_type: string }>; imageFiles?: Array<{ file: File; preview: string; base64: string; mimeType: string; caption: string }>; setImageFiles?: (files: Array<{ file: File; preview: string; base64: string; mimeType: string; caption: string }>) => void
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
-  const [imageFile, setImageFile] = useState<File | null>(null)
-  const [imageCaption, setImageCaption] = useState('')
   const [linkUrl, setLinkUrl] = useState('')
   const [linkAdded, setLinkAdded] = useState(false)
   const [linkError, setLinkError] = useState('')
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file) return
-    setImageFile(file)
+    if (!file || !setImageFiles) return
+
+    let mimeType = file.type
+    if (!mimeType || mimeType === '') {
+      const ext = file.name.split('.').pop()?.toLowerCase()
+      const mimeMap: Record<string, string> = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', heic: 'image/jpeg', heif: 'image/jpeg', bmp: 'image/png', tiff: 'image/jpeg', pdf: 'image/jpeg' }
+      mimeType = mimeMap[ext ?? ''] ?? 'image/jpeg'
+    }
+    const claudeAccepted = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+    const finalMimeType = claudeAccepted.includes(mimeType) ? mimeType : 'image/jpeg'
+
     const reader = new FileReader()
-    reader.onload = () => setImagePreview(reader.result as string)
+    reader.onload = () => {
+      const result = reader.result as string
+      const base64 = result.split(',')[1]
+      setImageFiles([{ file, preview: result, base64, mimeType: finalMimeType, caption: '' }])
+    }
     reader.readAsDataURL(file)
+    e.target.value = ''
   }
 
   const handleAddLink = () => {
@@ -263,7 +279,7 @@ function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, on
 
   const canVerify =
     (activeTab === 'text' && logText.length >= 20) ||
-    (activeTab === 'image' && imageFile !== null) ||
+    (activeTab === 'image' && (imageFiles?.length ?? 0) > 0) ||
     (activeTab === 'link' && linkAdded)
 
   return (
@@ -342,20 +358,20 @@ function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, on
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/jpg,image/png,image/webp,image/gif,image/heic,image/heif,application/pdf"
             onChange={handleImageChange}
             style={{ display: 'none' }}
           />
           <input
             ref={cameraInputRef}
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/jpg,image/png,image/webp,image/gif,image/heic,image/heif,application/pdf"
             capture="environment"
             onChange={handleImageChange}
             style={{ display: 'none' }}
           />
 
-          {!imagePreview ? (
+          {!(imageFiles?.length) ? (
             <div
               style={{
                 border: '2px dashed #B8D9CC',
@@ -404,17 +420,18 @@ function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, on
                   Choose from camera roll
                 </button>
               </div>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2', textAlign: 'center', marginTop: '8px' }}>Supports: JPG, PNG, WEBP, GIF, HEIC, PDF</p>
             </div>
           ) : (
             <>
               <img
-                src={imagePreview}
+                src={imageFiles![0].preview}
                 alt="Preview"
                 style={{ width: '100%', borderRadius: '16px', maxHeight: '220px', objectFit: 'cover', border: '1.5px solid #D4EDE3', display: 'block' }}
               />
               <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
                 <button
-                  onClick={() => { setImagePreview(null); setImageFile(null) }}
+                  onClick={() => setImageFiles?.([])}
                   style={{ flex: 1, height: '36px', backgroundColor: '#FEF3E8', color: '#D97706', borderRadius: '9999px', border: 'none', fontFamily: 'var(--font-body)', fontSize: '12px', cursor: 'pointer' }}
                 >
                   Remove
@@ -429,8 +446,8 @@ function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, on
               <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', marginTop: '12px', marginBottom: '4px' }}>Add a caption (optional)</p>
               <input
                 type="text"
-                value={imageCaption}
-                onChange={(e) => setImageCaption(e.target.value)}
+                value={imageFiles?.[0]?.caption ?? ''}
+                onChange={(e) => setImageFiles?.(imageFiles?.map((img, i) => i === 0 ? { ...img, caption: e.target.value } : img) ?? [])}
                 placeholder="What does this show?"
                 style={{
                   width: '100%',

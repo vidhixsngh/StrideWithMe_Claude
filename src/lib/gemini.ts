@@ -3,8 +3,22 @@ const CLAUDE_URL = 'https://api.anthropic.com/v1/messages'
 
 console.log('Claude key loaded:', CLAUDE_API_KEY ? 'YES — starts with: ' + CLAUDE_API_KEY.slice(0, 10) : 'NO — KEY IS MISSING')
 
-async function callGemini(prompt: string): Promise<string> {
-  console.log('Calling Claude API...')
+async function callGemini(
+  prompt: string,
+  images?: Array<{ base64: string; mimeType: string }>,
+  useHighQuality?: boolean
+): Promise<string> {
+  const model = useHighQuality ? 'claude-sonnet-4-6' : 'claude-haiku-4-5-20251001'
+
+  const content: any[] = []
+  if (images && images.length > 0) {
+    for (const img of images) {
+      content.push({ type: 'image', source: { type: 'base64', media_type: img.mimeType, data: img.base64 } })
+    }
+  }
+  content.push({ type: 'text', text: prompt })
+
+  console.log('Calling Claude API...', { model, hasImages: !!images?.length })
 
   const response = await fetch(CLAUDE_URL, {
     method: 'POST',
@@ -14,11 +28,7 @@ async function callGemini(prompt: string): Promise<string> {
       'anthropic-version': '2023-06-01',
       'anthropic-dangerous-direct-browser-access': 'true',
     },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2048,
-      messages: [{ role: 'user', content: prompt }],
-    })
+    body: JSON.stringify({ model, max_tokens: 2048, messages: [{ role: 'user', content }] })
   })
 
   console.log('Claude response status:', response.status)
@@ -44,6 +54,8 @@ function safeParseJSON<T>(text: string, fallback: T): T {
     return fallback
   }
 }
+
+const STRONG_URL_PATTERNS = ['github.com', 'figma.com', 'notion.so', 'vercel.app', 'netlify.app', 'docs.google.com', 'drive.google.com', 'loom.com', 'linear.app', 'jira.', 'trello.com', 'miro.com']
 
 // ── AI-1: GOAL DECOMPOSITION ──
 
@@ -148,77 +160,39 @@ export interface VerificationResult {
 }
 
 export async function verifyLog(params: {
-  goalText: string
-  todayTask: string
-  logText: string
-  dayNumber: number
-  sprintLength: number
-  attemptNumber: number
-  mediaType?: 'image' | 'link' | null
-  mediaDescription?: string
-  linkUrl?: string
-  recentLogs?: string[]
+  goalText: string; todayTask: string; logText: string; dayNumber: number; sprintLength: number; attemptNumber: number;
+  mediaType?: 'image' | 'link' | null; linkUrl?: string; linkCaption?: string; recentLogs?: string[];
+  images?: Array<{ base64: string; mimeType: string; caption?: string }>
 }): Promise<VerificationResult> {
-  const { goalText, todayTask, logText, dayNumber, sprintLength, attemptNumber, mediaType, linkUrl, recentLogs = [] } = params
+  const { goalText, todayTask, logText, dayNumber, sprintLength, attemptNumber, mediaType, linkUrl, linkCaption, recentLogs = [], images = [] } = params
 
-  const STRONG_URL_PATTERNS = ['github.com', 'figma.com', 'notion.so', 'vercel.app', 'netlify.app', 'docs.google.com', 'drive.google.com', 'loom.com', 'linear.app', 'jira.', 'trello.com', 'miro.com']
-  const isStrongUrl = linkUrl ? STRONG_URL_PATTERNS.some(p => linkUrl.includes(p)) : false
+  const hasImages = images.length > 0
+  const hasText = logText.trim().length >= 10
+  const hasLink = mediaType === 'link' && !!linkUrl
+  const isStrongUrl = hasLink ? STRONG_URL_PATTERNS.some(p => linkUrl!.includes(p)) : false
 
-  const mediaContext = mediaType === 'image'
-    ? `The user also attached an image as proof of work. Treat as visual evidence. Verify as true if the image could plausibly show progress toward their goal. Verify as false ONLY if clearly unrelated. When in doubt — verify.`
-    : mediaType === 'link'
-      ? isStrongUrl
-        ? `The user shared a link: ${linkUrl}. This URL pattern strongly implies a work artifact. Treat as strong evidence of work done. ${logText.length < 20 ? 'Even with minimal text, verify as true given the strong URL evidence.' : ''}`
-        : `The user shared a link: ${linkUrl}. This is a general platform URL. Require their text to specifically describe what they did on this platform today. Do not verify based on URL alone.`
-      : ''
+  let mediaContext = ''
+  if (hasImages) {
+    const captions = images.map((img, i) => img.caption ? `Image ${i+1} caption: "${img.caption}"` : `Image ${i+1}: no caption`).join('\n')
+    mediaContext = `\nThe user has attached ${images.length} image(s) as visual proof.\n${captions}\n\nIMPORTANT — Image verification rules:\nAnalyze each image carefully. Verify as TRUE if ANY image shows notes, notebooks, screenshots, code, designs, physical work output, workspace showing active work, or any artifact plausibly related to the goal. Verify as FALSE only if images are clearly unrelated (pure selfies, entertainment). When in doubt — VERIFY TRUE.`
+  }
+  if (hasLink) {
+    mediaContext += `\nThe user shared a link: ${linkUrl}\n${linkCaption ? `Link caption: "${linkCaption}"` : ''}\n${isStrongUrl ? 'This is a recognized work platform URL. Treat as strong evidence.' : hasText ? 'Evaluate based on their text description.' : 'No supporting text — cannot verify on URL alone.'}`
+  }
 
-  const recentLogsContext = recentLogs.length > 0
-    ? `Recent logs for context (last ${recentLogs.length} days):\n${recentLogs.map((l, i) => `Day ${dayNumber - recentLogs.length + i}: "${l}"`).join('\n')}\nIf today's log appears near-identical to a recent log, flag as not-verified.`
-    : ''
+  const recentContext = recentLogs.length > 0 ? `\nRecent logs:\n${recentLogs.map((l, i) => `Day ${dayNumber - recentLogs.length + i}: "${l}"`).join('\n')}\nIf today's log is near-identical, mark not-verified.` : ''
 
-  const attemptGuidance = attemptNumber === 1
-    ? `This is attempt 1. If not verified, provide specific guidance in guidanceForRetry.`
-    : attemptNumber === 2
-      ? `This is attempt 2. Be slightly more lenient. If still not verified, provide final guidance in guidanceForRetry.`
-      : `This is attempt 3 (final). Apply the same strict-but-fair standard. This result is final.`
+  const attemptContext = attemptNumber === 1 ? 'This is attempt 1. If not verified: provide specific guidanceForRetry.' : attemptNumber === 2 ? 'This is attempt 2. Be slightly more lenient.' : 'This is attempt 3 — final. Strict-but-fair.'
 
-  const prompt = `
-You are the AI verification system for StrideWithMe, an accountability platform where users log daily progress toward a meaningful goal.
+  const logDisplay = hasText ? `"${logText}"` : hasImages ? '(no text — image provided as sole proof)' : hasLink ? '(no text — link provided as sole proof)' : '(empty)'
 
-USER'S GOAL: "${goalText}"
-TODAY'S PLANNED TASK (Day ${dayNumber} of ${sprintLength}): "${todayTask}"
-USER'S LOG: "${logText}"
-
-${mediaContext}
-${recentLogsContext}
-${attemptGuidance}
-
-VERIFICATION RULES:
-1. Output ONLY valid JSON. No explanation outside JSON.
-2. Verify as TRUE if the log shows genuine forward movement toward the stated goal. A small step counts.
-3. Verify as FALSE if: Log is vague, describes yesterday's work, is clearly unrelated to the goal, or appears copy-pasted from a recent entry.
-4. Be strict but fair. Effort counts. Perfect execution is not required.
-5. reason must be under 60 characters.
-6. If not verified, guidanceForRetry must be specific.
-7. confidence reflects how certain you are.
-
-OUTPUT FORMAT (strict JSON):
-{
-  "verified": true,
-  "reason": "Clear progress on today's task",
-  "confidence": "high",
-  "guidanceForRetry": null
-}
-`
+  const prompt = `You are the verification system for StrideWithMe.\n\nUSER GOAL: "${goalText}"\nTODAY'S TASK (Day ${dayNumber}/${sprintLength}): "${todayTask}"\nLOG TEXT: ${logDisplay}\n${mediaContext}\n${recentContext}\n${attemptContext}\n\nRULES:\n1. Output ONLY valid JSON. Nothing else.\n2. Verify TRUE if log shows genuine forward movement. Small steps count.\n3. Verify FALSE if: vague text, yesterday's work, unrelated, copy-paste, empty.\n4. If image is provided and plausibly work-related — lean toward TRUE.\n5. reason: under 60 characters.\n6. guidanceForRetry: specific, only when false.\n\nOUTPUT (strict JSON):\n{"verified": true, "reason": "Clear progress", "confidence": "high", "guidanceForRetry": null}`
 
   try {
-    const raw = await callGemini(prompt)
-    return safeParseJSON<VerificationResult>(raw, {
-      verified: false,
-      reason: 'Could not process your log',
-      confidence: 'low',
-      guidanceForRetry: 'Please describe specifically what you did today, how long you spent, and what the output was.'
-    })
+    const raw = await callGemini(prompt, hasImages ? images : undefined)
+    const result = safeParseJSON<VerificationResult>(raw, { verified: false, reason: 'Could not process your log', confidence: 'low', guidanceForRetry: 'Please describe specifically what you did today.' })
+    console.log('AI-2 result:', result)
+    return result
   } catch (err) {
     console.error('AI-2 error:', err)
     return { verified: false, reason: 'Verification service unavailable', confidence: 'low', guidanceForRetry: 'Please try again in a moment.' }
@@ -228,69 +202,29 @@ OUTPUT FORMAT (strict JSON):
 // ── AI-3: POST AUTO-DRAFT ──
 
 export async function generatePostDraft(params: {
-  goalText: string
-  logText: string
-  dayNumber: number
-  sprintLength: number
-  isHonestDay: boolean
-  mediaType?: 'image' | 'link' | null
+  goalText: string; logText: string; dayNumber: number; sprintLength: number; isHonestDay: boolean;
+  mediaType?: 'image' | 'link' | null; linkUrl?: string;
+  images?: Array<{ base64: string; mimeType: string; caption?: string }>
 }): Promise<string> {
-  const { goalText, logText, dayNumber, sprintLength, isHonestDay, mediaType } = params
+  const { goalText, logText, dayNumber, sprintLength, isHonestDay, linkUrl, images = [] } = params
 
-  const verifiedPrompt = `
-You are a post-drafting assistant for StrideWithMe.
-Write a short post that a real person would share about their daily progress.
+  const mediaNote = images.length > 0 ? `User has ${images.length} image(s) as proof.` : linkUrl ? `User shared a link: ${linkUrl}` : ''
 
-GOAL: "${goalText}"
-DAY: ${dayNumber} of ${sprintLength}
-LOG: "${logText}"
-${mediaType ? `User also attached ${mediaType === 'image' ? 'an image' : 'a link'} as proof.` : ''}
+  const verifiedPrompt = `You are a post-drafting assistant for StrideWithMe.\n\nGOAL: "${goalText}"\nDAY: ${dayNumber} of ${sprintLength}\nLOG: "${logText}"\n${mediaNote}\n\nWrite a short post a real person would share.\n\nRULES:\n1. Output ONLY the post text. No quotes. No explanation.\n2. Hard maximum: 200 characters.\n3. Honest, grounded, real. Not performative.\n4. Include "Day ${dayNumber}" naturally.\n5. BANNED: "excited to share", "thrilled", "blessed", "grinding", "hustle".\n6. If log mentions specific output — reference it.\n7. One hashtag optional at end.`
 
-RULES:
-1. Output ONLY the post text. No JSON. No explanation.
-2. Strict maximum: 200 characters including spaces.
-3. Tone: honest, grounded, real. Not performative. Not a LinkedIn brag.
-4. Sound like a real person reporting progress.
-5. Include "Day ${dayNumber}" naturally in the post.
-6. NEVER use: "excited to share", "thrilled", "blessed", "grateful to announce", "on my journey", "grinding".
-7. Optional: add one relevant hashtag at the end.
-8. If the log mentions a specific output — include it.
-`
-
-  const honestPrompt = `
-You are a post-drafting assistant for StrideWithMe.
-Write a short honest check-in post. The user had a hard day.
-
-GOAL: "${goalText}"
-DAY: ${dayNumber} of ${sprintLength}
-WHAT GOT IN THE WAY: "${logText}"
-
-RULES:
-1. Output ONLY the post text. No JSON. No explanation.
-2. Strict maximum: 200 characters including spaces.
-3. Tone: honest, vulnerable, human. Not self-pitying. Not fake positive.
-4. Acknowledge what got in the way briefly.
-5. End with something real.
-6. Include "Day ${dayNumber}" naturally.
-7. NEVER use: "but tomorrow will be better!", "staying positive!", "the grind continues", "back at it tomorrow!"
-`
+  const honestPrompt = `You are a post-drafting assistant for StrideWithMe.\nThe user had a hard day.\n\nGOAL: "${goalText}"\nDAY: ${dayNumber} of ${sprintLength}\nWHAT HAPPENED: "${logText}"\n\nWrite a short honest check-in post.\n\nRULES:\n1. Output ONLY the post text. No quotes. No explanation.\n2. Hard maximum: 200 characters.\n3. Honest, vulnerable, human. Not self-pitying.\n4. Include "Day ${dayNumber}" naturally.\n5. BANNED: "tomorrow will be better!", "staying positive!", "back at it!", "keep pushing".\n6. Reader should think "I've been there".`
 
   try {
-    const raw = await callGemini(isHonestDay ? honestPrompt : verifiedPrompt)
-    const post = raw.trim().replace(/^["']|["']$/g, '')
+    const raw = await callGemini(isHonestDay ? honestPrompt : verifiedPrompt, images.length > 0 ? images : undefined)
+    const post = raw.trim().replace(/^["']|["']$/g, '').replace(/^Here('s| is) (a |the )?post:?\s*/i, '').trim()
     if (post.length <= 200) return post
     const sentences = post.match(/[^.!?]+[.!?]+/g) ?? []
     let result = ''
-    for (const sentence of sentences) {
-      if ((result + sentence).length <= 200) result += sentence
-      else break
-    }
+    for (const s of sentences) { if ((result + s).length <= 200) result += s; else break }
     return result.trim() || post.slice(0, 197) + '...'
   } catch (err) {
     console.error('AI-3 error:', err)
-    return isHonestDay
-      ? `Day ${dayNumber}: Honest day. Life got in the way today. Logging it anyway because showing up means telling the truth too.`
-      : `Day ${dayNumber}: Made progress today. Showing up consistently. #BuildInPublic`
+    return isHonestDay ? `Day ${dayNumber}: Honest day. Life got in the way. Logging it anyway.` : `Day ${dayNumber}: Showed up today. #BuildInPublic`
   }
 }
 
@@ -425,7 +359,7 @@ RULES:
 `
 
   try {
-    const raw = await callGemini(prompt)
+    const raw = await callGemini(prompt, undefined, true)
     const cleaned = raw.trim()
     if (!cleaned) {
       return 'This sprint tells its own story through the logs above. Every day logged — whether verified or honest — is evidence of someone who chose to show up and be accountable to themselves.\n\nThe consistency of logging, even on hard days, reveals a pattern worth building on.'
