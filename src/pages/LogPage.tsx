@@ -5,7 +5,7 @@ import PageWrapper from '../components/PageWrapper'
 import BloomOverlay from '../components/BloomOverlay'
 import { verifyLog, generatePostDraft } from '../lib/gemini'
 import type { VerificationResult } from '../lib/gemini'
-import { createLog, getLogsForSprint, getActiveSprint, getTodayTask, calculateDayNumber } from '../lib/db'
+import { createLog, getLogsForSprint, getActiveSprint, getTodayTask, getTasksForSprint, calculateDayNumber } from '../lib/db'
 import { useAuth } from '../context/AuthContext'
 import type { Sprint, Task } from '../lib/db'
 
@@ -36,6 +36,8 @@ export default function LogPage() {
   const [generatingDraft, setGeneratingDraft] = useState(false)
   const [draftReady, setDraftReady] = useState(false)
   const [linkUrl, setLinkUrlParent] = useState('')
+  const [upcomingTasks, setUpcomingTasks] = useState<Task[]>([])
+  const [sprintLogs, setSprintLogs] = useState<Array<{ day_number: number; log_type: string }>>([])
 
   useEffect(() => {
     if (!user) return
@@ -47,10 +49,15 @@ export default function LogPage() {
       setDayNumber(dn)
       const task = await getTodayTask(activeSprint.id, dn)
       setTodayTaskData(task)
-      const logs = await getLogsForSprint(activeSprint.id)
+      const [logs, allTasks] = await Promise.all([
+        getLogsForSprint(activeSprint.id),
+        getTasksForSprint(activeSprint.id),
+      ])
       const recent = logs.sort((a, b) => b.day_number - a.day_number).slice(0, 3).map(l => l.log_text ?? '').filter(Boolean)
       setRecentLogTexts(recent)
       setVerifiedCountState(logs.filter(l => l.log_type === 'VERIFIED').length)
+      setSprintLogs(logs.map(l => ({ day_number: l.day_number, log_type: l.log_type })))
+      setUpcomingTasks(allTasks.filter(t => t.day_number > dn).slice(0, 5))
     }
     load()
   }, [user])
@@ -133,6 +140,9 @@ export default function LogPage() {
             attemptNumber={attemptNumber}
             onSetLinkUrl={setLinkUrlParent}
             verifiedCount={verifiedCountState}
+            upcomingTasks={upcomingTasks}
+            currentDayNum={dayNumber}
+            sprintLogs={sprintLogs}
           />
         )}
         {phase === 'verifying' && <VerifyingPhase />}
@@ -207,8 +217,8 @@ function VerifyingPhase() {
   )
 }
 
-function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, onHonest, taskText, dayNum, verifying, verificationResult, attemptNumber, onSetLinkUrl, verifiedCount }: {
-  logText: string; setLogText: (v: string) => void; activeTab: string; setActiveTab: (v: string) => void; onVerify: () => void; onHonest: () => void; taskText?: string; dayNum?: number; verifying?: boolean; verificationResult?: VerificationResult | null; attemptNumber?: number; onSetLinkUrl?: (v: string) => void; verifiedCount?: number
+function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, onHonest, taskText, dayNum, verifying, verificationResult, attemptNumber, onSetLinkUrl, verifiedCount, upcomingTasks, currentDayNum: _currentDayNum, sprintLogs }: {
+  logText: string; setLogText: (v: string) => void; activeTab: string; setActiveTab: (v: string) => void; onVerify: () => void; onHonest: () => void; taskText?: string; dayNum?: number; verifying?: boolean; verificationResult?: VerificationResult | null; attemptNumber?: number; onSetLinkUrl?: (v: string) => void; verifiedCount?: number; upcomingTasks?: Task[]; currentDayNum?: number; sprintLogs?: Array<{ day_number: number; log_type: string }>
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
@@ -589,6 +599,32 @@ function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, on
       <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#9BBFB2', textAlign: 'center', marginTop: '8px' }}>
         Honest days count. They're part of your story.
       </p>
+
+      {/* Upcoming Plan */}
+      {upcomingTasks && upcomingTasks.length > 0 && (
+        <div style={{ marginTop: '24px', backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #EDF2EF', padding: '16px' }}>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 600, color: '#1A3028' }}>Coming up next</span>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', margin: '2px 0 12px' }}>Your plan for the days ahead</p>
+          {upcomingTasks.map((task) => {
+            const log = sprintLogs?.find(l => l.day_number === task.day_number)
+            return (
+              <div key={task.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '8px 0', borderBottom: '1px solid #F5F5F5' }}>
+                <div style={{ width: '28px', height: '28px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, backgroundColor: log ? '#3D7A5F' : '#D4EDE3', fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: 600, color: log ? '#FFFFFF' : '#6B9E8A', boxSizing: 'border-box' }}>
+                  {task.day_number}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', color: '#9BBFB2', fontStyle: 'italic', margin: '0 0 2px' }}>
+                    Day {task.day_number}{log ? ' · ✓' : ''}
+                  </p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: log ? '#6B9E8A' : '#1A3028', margin: 0, textDecoration: log ? 'line-through' : 'none' }}>
+                    {task.task_text}
+                  </p>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </>
   )
 }
