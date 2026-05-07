@@ -157,6 +157,8 @@ export interface VerificationResult {
   reason: string
   confidence: 'high' | 'medium' | 'low'
   guidanceForRetry?: string
+  insight?: string
+  insightQuote?: string
 }
 
 export async function verifyLog(params: {
@@ -186,7 +188,7 @@ export async function verifyLog(params: {
 
   const logDisplay = hasText ? `"${logText}"` : hasImages ? '(no text — image provided as sole proof)' : hasLink ? '(no text — link provided as sole proof)' : '(empty)'
 
-  const prompt = `You are the verification system for StrideWithMe.\n\nUSER GOAL: "${goalText}"\nTODAY'S TASK (Day ${dayNumber}/${sprintLength}): "${todayTask}"\nLOG TEXT: ${logDisplay}\n${mediaContext}\n${recentContext}\n${attemptContext}\n\nRULES:\n1. Output ONLY valid JSON. Nothing else.\n2. Verify TRUE if log shows genuine forward movement. Small steps count.\n3. Verify FALSE if: vague text, yesterday's work, unrelated, copy-paste, empty.\n4. If image is provided and plausibly work-related — lean toward TRUE.\n5. reason: under 60 characters.\n6. guidanceForRetry: specific, only when false.\n\nOUTPUT (strict JSON):\n{"verified": true, "reason": "Clear progress", "confidence": "high", "guidanceForRetry": null}`
+  const prompt = `You are the verification system for StrideWithMe.\n\nUSER GOAL: "${goalText}"\nTODAY'S TASK (Day ${dayNumber}/${sprintLength}): "${todayTask}"\nLOG TEXT: ${logDisplay}\n${mediaContext}\n${recentContext}\n${attemptContext}\n\nRULES:\n1. Output ONLY valid JSON. Nothing else.\n2. Verify TRUE if log shows genuine forward movement. Small steps count.\n3. Verify FALSE if: vague text, yesterday's work, unrelated, copy-paste, empty.\n4. If image is provided and plausibly work-related — lean toward TRUE.\n5. reason: under 60 characters.\n6. guidanceForRetry: specific, only when false.\n7. insight: Write 2-3 sentences specifically about THIS user's log entry. Reference what they actually wrote or showed. Never generic statements — be specific to their actual words, images, and goal.\n8. insightQuote: One short punchy sentence under 100 chars that captures something true about what they did today. Should feel like something a mentor would say. Personal and earned, not a motivational poster.\n\nOUTPUT (strict JSON):\n{"verified": true, "reason": "Clear progress", "confidence": "high", "guidanceForRetry": null, "insight": "2-3 sentences about their specific log...", "insightQuote": "One punchy mentor-like sentence."}`
 
   try {
     const raw = await callGemini(prompt, hasImages ? images : undefined)

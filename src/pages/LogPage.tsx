@@ -186,7 +186,7 @@ export default function LogPage() {
           />
         )}
         {phase === 'verifying' && <VerifyingPhase />}
-        {phase === 'verified' && <VerifiedPhase logText={logText} onBack={() => navigate('/dashboard')} onPostToFeed={handlePostToFeed} postDraft={postDraft} setPostDraft={setPostDraft} generatingDraft={generatingDraft} draftReady={draftReady} taskText={todayTaskData?.task_text ?? mockLog.todayTask} dayNum={dayNumber || mockLog.day} verifiedCount={verifiedCountState} daysLeft={sprint ? sprint.sprint_length - dayNumber : 0} currentStreak={currentStreak} />}
+        {phase === 'verified' && <VerifiedPhase logText={logText} onBack={() => navigate('/dashboard')} onPostToFeed={handlePostToFeed} postDraft={postDraft} setPostDraft={setPostDraft} generatingDraft={generatingDraft} draftReady={draftReady} taskText={todayTaskData?.task_text ?? mockLog.todayTask} dayNum={dayNumber || mockLog.day} verifiedCount={verifiedCountState} daysLeft={sprint ? sprint.sprint_length - dayNumber : 0} currentStreak={currentStreak} verificationResult={verificationResult} activeTab={activeTab} imageFiles={imageFiles} linkUrl={linkUrl} />}
         {phase === 'honest' && <HonestPhase onSubmit={async (honestText: string) => {
           if (sprint && user) {
             await createLog({
@@ -276,10 +276,18 @@ function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, on
   const [linkUrl, setLinkUrl] = useState('')
   const [linkAdded, setLinkAdded] = useState(false)
   const [linkError, setLinkError] = useState('')
+  const [imageError, setImageError] = useState('')
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !setImageFiles) return
+
+    const MAX_SIZE_BYTES = 3.5 * 1024 * 1024
+    if (file.size > MAX_SIZE_BYTES) {
+      setImageError(`File too large. Maximum size is 3.5MB. Your file is ${(file.size / 1024 / 1024).toFixed(1)}MB.`)
+      return
+    }
+    setImageError('')
 
     let mimeType = file.type
     if (!mimeType || mimeType === '') {
@@ -453,6 +461,8 @@ function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, on
                 </button>
               </div>
               <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2', textAlign: 'center', marginTop: '8px' }}>Supports: JPG, PNG, WEBP, GIF, HEIC, PDF</p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2', textAlign: 'center', marginTop: '2px' }}>Max size: 3.5MB</p>
+              {imageError && <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#D97706', textAlign: 'center', marginTop: '8px' }}>{imageError}</p>}
             </div>
           ) : (
             <>
@@ -692,7 +702,7 @@ function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, on
   )
 }
 
-function VerifiedPhase({ logText, onBack, onPostToFeed, postDraft, setPostDraft, generatingDraft, draftReady, taskText, dayNum, verifiedCount, daysLeft, currentStreak }: { logText: string; onBack: () => void; onPostToFeed?: () => void; postDraft?: string; setPostDraft?: (v: string) => void; generatingDraft?: boolean; draftReady?: boolean; taskText?: string; dayNum?: number; verifiedCount?: number; daysLeft?: number; currentStreak?: number }) {
+function VerifiedPhase({ logText, onBack, onPostToFeed, postDraft, setPostDraft, generatingDraft, draftReady, taskText, dayNum, verifiedCount, daysLeft, currentStreak, verificationResult, activeTab, imageFiles, linkUrl }: { logText: string; onBack: () => void; onPostToFeed?: () => void; postDraft?: string; setPostDraft?: (v: string) => void; generatingDraft?: boolean; draftReady?: boolean; taskText?: string; dayNum?: number; verifiedCount?: number; daysLeft?: number; currentStreak?: number; verificationResult?: VerificationResult | null; activeTab?: string; imageFiles?: Array<{ file: File; preview: string; base64: string; mimeType: string; caption: string }>; linkUrl?: string }) {
   return (
     <>
       <LogHeader dayNum={dayNum ?? 1} verifiedCount={(verifiedCount ?? 0) + 1} />
@@ -731,21 +741,25 @@ function VerifiedPhase({ logText, onBack, onPostToFeed, postDraft, setPostDraft,
           </div>
           <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', backgroundColor: '#D4EDE3', color: '#3D7A5F', borderRadius: '9999px', padding: '3px 8px' }}>✓ Verified</span>
         </div>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', margin: '0 0 8px' }}>Based on your Day 14 log</p>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', margin: '0 0 8px' }}>Based on your Day {dayNum ?? 1} log</p>
 
-        <div style={{ backgroundColor: '#EAF5F0', borderRadius: '12px', padding: '12px', marginBottom: '8px' }}>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', lineHeight: 1.6, fontStyle: 'italic', color: '#2D4A3E', margin: 0 }}>
-            Your focus today aligns perfectly with Day 14 of your plan. The specificity in your log shows real pattern recognition — you're not just describing what you did, you're understanding why it matters.
+        {verificationResult?.insight && (
+          <div style={{ backgroundColor: '#EAF5F0', borderRadius: '12px', padding: '12px', marginBottom: '8px' }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', lineHeight: 1.6, fontStyle: 'italic', color: '#2D4A3E', margin: 0 }}>
+              {verificationResult.insight}
+            </p>
+          </div>
+        )}
+
+        {verificationResult?.insightQuote && (
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A', margin: '8px 0' }}>
+            "{verificationResult.insightQuote}"
           </p>
-        </div>
-
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A', margin: '8px 0' }}>
-          "What you described today required courage — shipping something unfinished, getting eyes on it. That tolerance for imperfection is the hardest skill to build."
-        </p>
+        )}
 
         <div style={{ backgroundColor: '#F5FAF7', borderRadius: '8px', padding: '8px' }}>
           <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A', margin: 0 }}>
-            {logText.slice(0, 60)}...
+            {activeTab === 'image' ? (imageFiles?.[0]?.caption || 'Image submitted as proof') : activeTab === 'link' ? (linkUrl ? (linkUrl.length > 50 ? linkUrl.slice(0, 50) + '...' : linkUrl) : 'Link submitted') : (logText.length > 80 ? logText.slice(0, 80) + '...' : logText)}
           </p>
         </div>
       </div>
