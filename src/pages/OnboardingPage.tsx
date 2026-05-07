@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Home, Rss, PlusCircle, BookOpen, User, Lock, Users, Globe, Sprout } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -449,6 +449,10 @@ function Step4Preview({ goal, onBegin, submitting, submitError, aiTasks, wasVagu
   const [editText, setEditText] = useState('')
   const [addingTask, setAddingTask] = useState(false)
   const [newTaskText, setNewTaskText] = useState('')
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+  const dragStartY = useRef(0)
+  const dragItemRef = useRef<number | null>(null)
 
   const tasks = aiTasks && aiTasks.length > 0
     ? aiTasks.slice(0, 5)
@@ -494,6 +498,42 @@ function Step4Preview({ goal, onBegin, submitting, submitError, aiTasks, wasVagu
     onUpdateTasks([...aiTasks, newTask])
     setNewTaskText('')
     setAddingTask(false)
+  }
+
+  const handleDragDrop = (fromIndex: number, toIndex: number) => {
+    if (!onUpdateTasks || !aiTasks || fromIndex === toIndex) return
+    const updated = [...aiTasks]
+    const [moved] = updated.splice(fromIndex, 1)
+    updated.splice(toIndex, 0, moved)
+    onUpdateTasks(updated.map((t, i) => ({ ...t, day: i + 1 })))
+  }
+
+  const onTouchStart = (index: number, e: React.TouchEvent) => {
+    if (editingIndex !== null) return
+    dragItemRef.current = index
+    dragStartY.current = e.touches[0].clientY
+    setDragIndex(index)
+  }
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (dragItemRef.current === null) return
+    const y = e.touches[0].clientY
+    const cards = document.querySelectorAll('[data-task-card]')
+    let overIdx = dragItemRef.current
+    cards.forEach((card, i) => {
+      const rect = card.getBoundingClientRect()
+      if (y > rect.top && y < rect.bottom) overIdx = i
+    })
+    setDragOverIndex(overIdx)
+  }
+
+  const onTouchEnd = () => {
+    if (dragItemRef.current !== null && dragOverIndex !== null) {
+      handleDragDrop(dragItemRef.current, dragOverIndex)
+    }
+    dragItemRef.current = null
+    setDragIndex(null)
+    setDragOverIndex(null)
   }
 
   return (
@@ -546,30 +586,45 @@ function Step4Preview({ goal, onBegin, submitting, submitError, aiTasks, wasVagu
           <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#D97706', margin: 0 }}>We made some assumptions about your goal. Edit any task below that doesn't fit your actual plan.</p>
         </div>
       )}
-      <div className="flex flex-col gap-3 mb-4">
+      <div className="flex flex-col gap-3 mb-4" onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
         {tasks.map((task, i) => (
           <div
             key={i}
-            style={{ ...CARD_STYLE, padding: '12px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}
+            data-task-card
+            onTouchStart={(e) => onTouchStart(i, e)}
+            style={{
+              ...CARD_STYLE,
+              padding: '12px',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '10px',
+              opacity: dragIndex === i ? 0.5 : 1,
+              borderColor: dragOverIndex === i && dragIndex !== i ? '#3D7A5F' : undefined,
+              borderWidth: dragOverIndex === i && dragIndex !== i ? '2px' : undefined,
+              transition: 'opacity 0.15s ease, border-color 0.15s ease',
+              touchAction: editingIndex !== null ? 'auto' : 'none',
+            }}
           >
-            {/* Day number */}
-            <div
-              style={{
-                width: '32px',
-                height: '32px',
-                backgroundColor: '#D4EDE3',
-                color: '#3D7A5F',
-                borderRadius: '10px',
-                fontFamily: 'var(--font-body)',
-                fontSize: '13px',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              {i + 1}
+            {/* Drag handle + Day number */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
+              <span style={{ fontSize: '10px', color: '#B8D9CC', lineHeight: 1, cursor: 'grab', userSelect: 'none' }}>⠿</span>
+              <div
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  backgroundColor: '#D4EDE3',
+                  color: '#3D7A5F',
+                  borderRadius: '10px',
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {i + 1}
+              </div>
             </div>
 
             {/* Content */}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bell, Calendar } from 'lucide-react'
 import PageWrapper from '../components/PageWrapper'
@@ -20,6 +20,11 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [upcomingTasks, setUpcomingTasks] = useState<Task[]>([])
   const [showFullPlan, setShowFullPlan] = useState(false)
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
+  const [editTaskText, setEditTaskText] = useState('')
+  const [dragIdx, setDragIdx] = useState<number | null>(null)
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
+  const dragRef = useRef<number | null>(null)
   const [replanNeeded, setReplanNeeded] = useState(false)
   const [replanLoading, setReplanLoading] = useState(false)
   const [replanDone, setReplanDone] = useState(false)
@@ -410,25 +415,103 @@ export default function DashboardPage() {
               {showFullPlan ? 'Show less' : 'View all →'}
             </button>
           </div>
-          {(showFullPlan ? upcomingTasks : upcomingTasks.slice(0, 3)).map((task) => {
+          {showFullPlan && (
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', margin: '0 0 8px' }}>Tap any task to edit · Drag to reorder</p>
+          )}
+          <div
+            onTouchMove={(e) => {
+              if (dragRef.current === null) return
+              const y = e.touches[0].clientY
+              const cards = document.querySelectorAll('[data-plan-card]')
+              let over = dragRef.current
+              cards.forEach((card, idx) => { const r = card.getBoundingClientRect(); if (y > r.top && y < r.bottom) over = idx })
+              setDragOverIdx(over)
+            }}
+            onTouchEnd={() => {
+              if (dragRef.current !== null && dragOverIdx !== null && dragRef.current !== dragOverIdx && sprint) {
+                const displayedTasks = showFullPlan ? upcomingTasks : upcomingTasks.slice(0, 3)
+                const updated = [...displayedTasks]
+                const [moved] = updated.splice(dragRef.current, 1)
+                updated.splice(dragOverIdx, 0, moved)
+                // Save reorder to DB
+                Promise.all(updated.map((t, idx) =>
+                  supabase.from('tasks').update({ day_number: upcomingTasks[0].day_number + idx }).eq('id', t.id)
+                )).then(() => loadDashboard())
+              }
+              dragRef.current = null
+              setDragIdx(null)
+              setDragOverIdx(null)
+            }}
+          >
+          {(showFullPlan ? upcomingTasks : upcomingTasks.slice(0, 3)).map((task, idx) => {
             const isToday = task.day_number === dayNumber
             const log = logs.find(l => l.day_number === task.day_number)
+            const isEditing = editingTaskId === task.id
             return (
-              <div key={task.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '8px 0', borderBottom: '1px solid #F5F5F5' }}>
-                <div style={{ width: '28px', height: '28px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, backgroundColor: log ? '#3D7A5F' : isToday ? '#FFFFFF' : '#D4EDE3', border: isToday && !log ? '2px solid #3D7A5F' : 'none', boxSizing: 'border-box', fontFamily: 'var(--font-body)', fontSize: isToday && !log ? '14px' : '11px', fontWeight: 600, color: log ? '#FFFFFF' : isToday ? '#1A3028' : '#6B9E8A' }}>
-                  {isToday && !log ? '🌱' : task.day_number}
+              <div
+                key={task.id}
+                data-plan-card
+                onTouchStart={() => {
+                  if (editingTaskId || !showFullPlan) return
+                  dragRef.current = idx
+                  setDragIdx(idx)
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '10px',
+                  padding: '8px 0',
+                  borderBottom: '1px solid #F5F5F5',
+                  opacity: dragIdx === idx ? 0.5 : 1,
+                  borderLeft: dragOverIdx === idx && dragIdx !== idx ? '3px solid #3D7A5F' : '3px solid transparent',
+                  transition: 'opacity 0.15s ease',
+                  touchAction: showFullPlan && !editingTaskId ? 'none' : 'auto',
+                }}
+              >
+                {/* Day chip */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
+                  {showFullPlan && !log && <span style={{ fontSize: '8px', color: '#B8D9CC', lineHeight: 1, userSelect: 'none' }}>⠿</span>}
+                  <div style={{ width: '28px', height: '28px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: log ? '#3D7A5F' : isToday ? '#FFFFFF' : '#D4EDE3', border: isToday && !log ? '2px solid #3D7A5F' : 'none', boxSizing: 'border-box', fontFamily: 'var(--font-body)', fontSize: isToday && !log ? '14px' : '11px', fontWeight: 600, color: log ? '#FFFFFF' : isToday ? '#1A3028' : '#6B9E8A' }}>
+                    {isToday && !log ? '🌱' : task.day_number}
+                  </div>
                 </div>
+                {/* Content */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', color: isToday ? '#3D7A5F' : '#9BBFB2', fontStyle: 'italic', margin: '0 0 2px' }}>
                     Day {task.day_number}{isToday ? ' · Today' : ''}{log ? ' · ✓' : ''}
                   </p>
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: log ? '#6B9E8A' : '#1A3028', margin: 0, textDecoration: log ? 'line-through' : 'none' }}>
-                    {task.task_text}
-                  </p>
+                  {isEditing ? (
+                    <div>
+                      <input
+                        value={editTaskText}
+                        onChange={(e) => setEditTaskText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            supabase.from('tasks').update({ task_text: editTaskText.trim() }).eq('id', task.id).then(() => { setEditingTaskId(null); loadDashboard() })
+                          }
+                          if (e.key === 'Escape') setEditingTaskId(null)
+                        }}
+                        autoFocus
+                        style={{ width: '100%', border: '1.5px solid #3D7A5F', borderRadius: '8px', padding: '6px 8px', fontFamily: 'var(--font-body)', fontSize: '13px', color: '#1A3028', outline: 'none', boxSizing: 'border-box' }}
+                      />
+                      <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+                        <button onClick={() => { supabase.from('tasks').update({ task_text: editTaskText.trim() }).eq('id', task.id).then(() => { setEditingTaskId(null); loadDashboard() }) }} style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: 500, color: '#FFFFFF', backgroundColor: '#3D7A5F', border: 'none', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer' }}>Save</button>
+                        <button onClick={() => setEditingTaskId(null)} style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#9BBFB2', background: 'none', border: 'none', cursor: 'pointer' }}>Cancel</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p
+                      onClick={() => { if (showFullPlan && !log) { setEditingTaskId(task.id); setEditTaskText(task.task_text) } }}
+                      style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: log ? '#6B9E8A' : '#1A3028', margin: 0, textDecoration: log ? 'line-through' : 'none', cursor: showFullPlan && !log ? 'pointer' : 'default' }}
+                    >
+                      {task.task_text}
+                    </p>
+                  )}
                 </div>
               </div>
             )
           })}
+          </div>
         </div>
       )}
 
