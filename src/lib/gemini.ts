@@ -1,34 +1,37 @@
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=' + GEMINI_API_KEY
+const CLAUDE_API_KEY = import.meta.env.VITE_CLAUDE_API_KEY
+const CLAUDE_URL = 'https://api.anthropic.com/v1/messages'
 
-console.log('Gemini key loaded:', GEMINI_API_KEY ? 'YES — starts with: ' + GEMINI_API_KEY.slice(0, 8) : 'NO — KEY IS MISSING')
+console.log('Claude key loaded:', CLAUDE_API_KEY ? 'YES — starts with: ' + CLAUDE_API_KEY.slice(0, 10) : 'NO — KEY IS MISSING')
 
 async function callGemini(prompt: string): Promise<string> {
-  console.log('Calling Gemini API...')
+  console.log('Calling Claude API...')
 
-  const response = await fetch(GEMINI_URL, {
+  const response = await fetch(CLAUDE_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': CLAUDE_API_KEY,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 2048,
-      }
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2048,
+      messages: [{ role: 'user', content: prompt }],
     })
   })
 
-  console.log('Gemini response status:', response.status)
+  console.log('Claude response status:', response.status)
 
   if (!response.ok) {
     const errorBody = await response.text()
-    console.error('Gemini error body:', errorBody)
-    throw new Error('Gemini API error: ' + response.status + ' ' + errorBody)
+    console.error('Claude error body:', errorBody)
+    throw new Error('Claude API error: ' + response.status + ' ' + errorBody)
   }
 
   const data = await response.json()
-  console.log('Gemini raw response:', JSON.stringify(data).slice(0, 200))
-  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+  console.log('Claude raw response:', JSON.stringify(data).slice(0, 200))
+  return data.content?.[0]?.text ?? ''
 }
 
 function safeParseJSON<T>(text: string, fallback: T): T {
