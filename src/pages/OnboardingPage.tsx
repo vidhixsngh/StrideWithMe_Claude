@@ -83,12 +83,15 @@ export default function OnboardingPage() {
         return
       }
 
-      const tasksToInsert = aiTasks.length > 0
-        ? aiTasks.map(t => ({ sprint_id: sprint.id, day_number: t.day, task_text: t.task_text, task_type: t.task_type }))
-        : Array.from({ length: sprintLength ?? 30 }, (_, i) => ({ sprint_id: sprint.id, day_number: i + 1, task_text: `Day ${i + 1} task`, task_type: 'build' as const }))
+      const tasksToSave = aiTasks.map((t, index) => ({
+        sprint_id: sprint.id,
+        day_number: index + 1,
+        task_text: t.task_text,
+        task_type: t.task_type ?? 'build',
+      }))
 
-      console.log('[Onboarding] Inserting tasks:', tasksToInsert.length)
-      const tasksOk = await createTasks(tasksToInsert)
+      console.log('[Onboarding] Inserting tasks:', tasksToSave.length)
+      const tasksOk = await createTasks(tasksToSave)
       console.log('[Onboarding] Tasks result:', tasksOk)
       navigate('/dashboard', { replace: true })
     } catch (err) {
