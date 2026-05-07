@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Home, Rss, PlusCircle, BookOpen, User, Lock, Users, Globe, Sprout } from 'lucide-react'
+import PlanGeneratingScreen from '../components/PlanGeneratingScreen'
 import { useAuth } from '../context/AuthContext'
 import { createSprint, createTasks, calculateEndDate } from '../lib/db'
 import { supabase } from '../lib/supabase'
@@ -151,6 +152,10 @@ export default function OnboardingPage() {
         )}
         {step === 4 && <Step4Preview goal={goal} onBegin={handleBeginDay1} submitting={submitting} submitError={submitError} aiTasks={aiTasks} wasVague={wasVague} onRegenerate={handleGoToStep4} generatingPlan={generatingPlan} onUpdateTasks={setAiTasks} />}
       </div>
+
+      {generatingPlan && (
+        <PlanGeneratingScreen sprintLength={sprintLength ?? 30} goalText={goal} />
+      )}
 
       {/* Bottom Nav */}
       <div

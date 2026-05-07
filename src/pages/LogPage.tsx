@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Check, Link2, X } from 'lucide-react'
 import PageWrapper from '../components/PageWrapper'
 import BloomOverlay from '../components/BloomOverlay'
+import VerifyingOverlay from '../components/VerifyingOverlay'
 import { verifyLog, generatePostDraft } from '../lib/gemini'
 import type { VerificationResult } from '../lib/gemini'
 import { createLog, getLogsForSprint, getActiveSprint, getTodayTask, getTasksForSprint, calculateDayNumber, createFeedPost, markLogPostedToFeed } from '../lib/db'
@@ -219,6 +220,7 @@ export default function LogPage() {
           />
         )}
       </div>
+      {verifying && <VerifyingOverlay />}
       {showBloom && (
         <BloomOverlay
           onComplete={() => {
@@ -784,10 +786,14 @@ function VerifiedPhase({ logText, onBack, onPostToFeed, postDraft, setPostDraft,
       <div style={{ marginBottom: '16px' }}>
         <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', letterSpacing: '0.1em', color: '#7AB5A0', textTransform: 'uppercase' }}>YOUR POST DRAFT</span>
         {generatingDraft && (
-          <div style={{ marginTop: '8px' }}>
-            <div style={{ height: '12px', width: '100%', backgroundColor: '#EAF5F0', borderRadius: '4px', marginBottom: '6px' }} />
-            <div style={{ height: '12px', width: '80%', backgroundColor: '#EAF5F0', borderRadius: '4px', marginBottom: '6px' }} />
-            <div style={{ height: '12px', width: '60%', backgroundColor: '#EAF5F0', borderRadius: '4px' }} />
+          <div style={{ padding: '14px 16px', background: 'rgba(234,245,240,0.5)', borderRadius: '12px', border: '1px solid #D4EDE3', marginTop: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+              <span style={{ fontSize: '14px' }}>✍️</span>
+              <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: '#3D7A5F', fontStyle: 'italic', margin: 0, letterSpacing: '0.04em' }}>Drafting your post...</p>
+            </div>
+            {[100, 85, 60].map((width, i) => (
+              <div key={i} style={{ height: '10px', width: `${width}%`, borderRadius: '4px', backgroundColor: '#D4EDE3', marginBottom: i < 2 ? '6px' : 0, animation: `shimmer 1.5s ease-in-out ${i * 0.15}s infinite` }} />
+            ))}
           </div>
         )}
         {draftReady && postDraft && setPostDraft && (
