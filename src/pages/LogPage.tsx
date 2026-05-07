@@ -39,6 +39,7 @@ export default function LogPage() {
   const [generatingDraft, setGeneratingDraft] = useState(false)
   const [draftReady, setDraftReady] = useState(false)
   const [linkUrl, setLinkUrlParent] = useState('')
+  const [linkCaption, setLinkCaptionParent] = useState('')
   const [imageFiles, setImageFiles] = useState<Array<{ file: File; preview: string; base64: string; mimeType: string; caption: string }>>([])
   const [upcomingTasks, setUpcomingTasks] = useState<Task[]>([])
   const [sprintLogs, setSprintLogs] = useState<Array<{ day_number: number; log_type: string }>>([])
@@ -101,6 +102,7 @@ export default function LogPage() {
       attemptNumber,
       mediaType: activeTab === 'image' ? 'image' : activeTab === 'link' ? 'link' : null,
       linkUrl: activeTab === 'link' ? linkUrl : undefined,
+      linkCaption: activeTab === 'link' ? linkCaption : undefined,
       recentLogs: recentLogTexts,
       images: activeTab === 'image' ? imageFiles.map(img => ({ base64: img.base64, mimeType: img.mimeType, caption: img.caption })) : [],
     })
@@ -113,7 +115,7 @@ export default function LogPage() {
         user_id: user.id,
         day_number: dayNumber,
         log_type: 'VERIFIED',
-        log_text: activeTab === 'text' ? logText : imageFiles[0]?.caption || 'Logged via ' + activeTab,
+        log_text: activeTab === 'text' ? logText : activeTab === 'link' ? (linkCaption || linkUrl) : imageFiles[0]?.caption || 'Logged via ' + activeTab,
         media_url: null,
         ai_verification_result: { verified: result.verified, reason: result.reason, confidence: result.confidence },
         ai_draft_post: null,
@@ -177,6 +179,7 @@ export default function LogPage() {
             verificationResult={verificationResult}
             attemptNumber={attemptNumber}
             onSetLinkUrl={setLinkUrlParent}
+            onSetLinkCaption={setLinkCaptionParent}
             verifiedCount={verifiedCountState}
             upcomingTasks={upcomingTasks}
             currentDayNum={dayNumber}
@@ -268,13 +271,14 @@ function VerifyingPhase() {
   )
 }
 
-function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, onHonest, taskText, dayNum, verifying, verificationResult, attemptNumber, onSetLinkUrl, verifiedCount, upcomingTasks, currentDayNum: _currentDayNum, sprintLogs, imageFiles, setImageFiles }: {
-  logText: string; setLogText: (v: string) => void; activeTab: string; setActiveTab: (v: string) => void; onVerify: () => void; onHonest: () => void; taskText?: string; dayNum?: number; verifying?: boolean; verificationResult?: VerificationResult | null; attemptNumber?: number; onSetLinkUrl?: (v: string) => void; verifiedCount?: number; upcomingTasks?: Task[]; currentDayNum?: number; sprintLogs?: Array<{ day_number: number; log_type: string }>; imageFiles?: Array<{ file: File; preview: string; base64: string; mimeType: string; caption: string }>; setImageFiles?: (files: Array<{ file: File; preview: string; base64: string; mimeType: string; caption: string }>) => void
+function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, onHonest, taskText, dayNum, verifying, verificationResult, attemptNumber, onSetLinkUrl, onSetLinkCaption, verifiedCount, upcomingTasks, currentDayNum: _currentDayNum, sprintLogs, imageFiles, setImageFiles }: {
+  logText: string; setLogText: (v: string) => void; activeTab: string; setActiveTab: (v: string) => void; onVerify: () => void; onHonest: () => void; taskText?: string; dayNum?: number; verifying?: boolean; verificationResult?: VerificationResult | null; attemptNumber?: number; onSetLinkUrl?: (v: string) => void; onSetLinkCaption?: (v: string) => void; verifiedCount?: number; upcomingTasks?: Task[]; currentDayNum?: number; sprintLogs?: Array<{ day_number: number; log_type: string }>; imageFiles?: Array<{ file: File; preview: string; base64: string; mimeType: string; caption: string }>; setImageFiles?: (files: Array<{ file: File; preview: string; base64: string; mimeType: string; caption: string }>) => void
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const [linkUrl, setLinkUrl] = useState('')
   const [linkAdded, setLinkAdded] = useState(false)
+  const [linkCaption, setLinkCaption] = useState('')
   const [linkError, setLinkError] = useState('')
   const [imageError, setImageError] = useState('')
 
@@ -596,6 +600,18 @@ function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, on
               <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', marginTop: '8px' }}>
                 Your link will be included with your log for AI verification.
               </p>
+
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 500, color: '#1A3028', marginTop: '14px', marginBottom: '6px' }}>What did you do? (recommended)</p>
+              <textarea
+                value={linkCaption}
+                onChange={(e) => { setLinkCaption(e.target.value); onSetLinkCaption?.(e.target.value) }}
+                placeholder="Describe what this link shows — what you built, researched, or completed today."
+                style={{ width: '100%', minHeight: '100px', backgroundColor: '#FFFFFF', borderRadius: '12px', border: '1.5px solid #D4EDE3', padding: '12px', fontFamily: 'var(--font-body)', fontSize: '13px', color: '#1A3028', fontStyle: 'italic', lineHeight: 1.6, resize: 'none', outline: 'none', boxSizing: 'border-box' }}
+                onFocus={(e) => (e.target.style.borderColor = '#3D7A5F')}
+                onBlur={(e) => (e.target.style.borderColor = '#D4EDE3')}
+              />
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2', marginTop: '6px' }}>Strong links (GitHub, Figma, Notion, Vercel) verify without description.</p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2', marginTop: '2px' }}>All other links need context to verify.</p>
             </>
           )}
         </div>

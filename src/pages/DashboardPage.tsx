@@ -146,13 +146,15 @@ export default function DashboardPage() {
   const heatmapDays = Array.from({ length: totalCells }, (_, i) => {
     const dayNum = i + 1
     if (dayNum > sprint.sprint_length) return { dayNum, type: 'EMPTY' as const }
-    if (dayNum === dayNumber) return { dayNum, type: 'TODAY' as const }
-    if (dayNum > dayNumber) return { dayNum, type: 'UPCOMING' as const }
     const log = logs.find(l => l.day_number === dayNum)
-    if (!log) return { dayNum, type: 'MISSED' as const }
-    if (log.log_type === 'VERIFIED') return { dayNum, type: 'VERIFIED' as const }
-    if (log.log_type === 'HONEST') return { dayNum, type: 'HONEST' as const }
-    return { dayNum, type: 'UPCOMING' as const }
+    const isToday = dayNum === dayNumber
+    const isFuture = dayNum > dayNumber
+    // Log state always wins over today marker
+    if (log?.log_type === 'VERIFIED') return { dayNum, type: 'VERIFIED' as const }
+    if (log?.log_type === 'HONEST') return { dayNum, type: 'HONEST' as const }
+    if (isToday) return { dayNum, type: 'TODAY' as const }
+    if (isFuture) return { dayNum, type: 'UPCOMING' as const }
+    return { dayNum, type: 'MISSED' as const }
   })
 
   // Recent logs
