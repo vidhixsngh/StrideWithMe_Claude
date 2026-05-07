@@ -146,7 +146,7 @@ export default function OnboardingPage() {
         {step === 3 && (
           <Step3Visibility visibility={visibility} setVisibility={setVisibility} onNext={handleGoToStep4} generatingPlan={generatingPlan} />
         )}
-        {step === 4 && <Step4Preview goal={goal} onBegin={handleBeginDay1} submitting={submitting} submitError={submitError} aiTasks={aiTasks} wasVague={wasVague} onRegenerate={handleGoToStep4} generatingPlan={generatingPlan} />}
+        {step === 4 && <Step4Preview goal={goal} onBegin={handleBeginDay1} submitting={submitting} submitError={submitError} aiTasks={aiTasks} wasVague={wasVague} onRegenerate={handleGoToStep4} generatingPlan={generatingPlan} onUpdateTasks={setAiTasks} />}
       </div>
 
       {/* Bottom Nav */}
@@ -441,13 +441,64 @@ function Step3Visibility({
 }
 
 /* ============ STEP 4 ============ */
-function Step4Preview({ goal, onBegin, submitting, submitError, aiTasks, wasVague, onRegenerate, generatingPlan }: { goal: string; onBegin: () => void; submitting?: boolean; submitError?: string; aiTasks?: GeneratedTask[]; wasVague?: boolean; onRegenerate?: () => void; generatingPlan?: boolean }) {
+function Step4Preview({ goal, onBegin, submitting, submitError, aiTasks, wasVague, onRegenerate, generatingPlan, onUpdateTasks }: { goal: string; onBegin: () => void; submitting?: boolean; submitError?: string; aiTasks?: GeneratedTask[]; wasVague?: boolean; onRegenerate?: () => void; generatingPlan?: boolean; onUpdateTasks?: (tasks: GeneratedTask[]) => void }) {
+  const [editingIndex, setEditingIndex] = useState<number | null>(null)
+  const [editText, setEditText] = useState('')
+  const [addingTask, setAddingTask] = useState(false)
+  const [newTaskText, setNewTaskText] = useState('')
+
+  const tasks = aiTasks && aiTasks.length > 0
+    ? aiTasks.slice(0, 5)
+    : PLACEHOLDER_TASKS.map((t, i) => ({ day: i + 1, task_text: t, task_type: 'build' as const }))
+
+  const handleEdit = (index: number) => {
+    setEditingIndex(index)
+    setEditText(tasks[index].task_text)
+  }
+
+  const handleSaveEdit = () => {
+    if (editingIndex === null || !onUpdateTasks || !aiTasks) return
+    const updated = [...aiTasks]
+    updated[editingIndex] = { ...updated[editingIndex], task_text: editText.trim() || updated[editingIndex].task_text }
+    onUpdateTasks(updated)
+    setEditingIndex(null)
+    setEditText('')
+  }
+
+  const handleDelete = (index: number) => {
+    if (!onUpdateTasks || !aiTasks || aiTasks.length <= 1) return
+    const updated = aiTasks.filter((_, i) => i !== index).map((t, i) => ({ ...t, day: i + 1 }))
+    onUpdateTasks(updated)
+  }
+
+  const handleMoveUp = (index: number) => {
+    if (!onUpdateTasks || !aiTasks || index === 0) return
+    const updated = [...aiTasks]
+    ;[updated[index - 1], updated[index]] = [updated[index], updated[index - 1]]
+    onUpdateTasks(updated.map((t, i) => ({ ...t, day: i + 1 })))
+  }
+
+  const handleMoveDown = (index: number) => {
+    if (!onUpdateTasks || !aiTasks || index >= tasks.length - 1) return
+    const updated = [...aiTasks]
+    ;[updated[index], updated[index + 1]] = [updated[index + 1], updated[index]]
+    onUpdateTasks(updated.map((t, i) => ({ ...t, day: i + 1 })))
+  }
+
+  const handleAddTask = () => {
+    if (!onUpdateTasks || !aiTasks || !newTaskText.trim()) return
+    const newTask: GeneratedTask = { day: aiTasks.length + 1, task_text: newTaskText.trim(), task_type: 'build' }
+    onUpdateTasks([...aiTasks, newTask])
+    setNewTaskText('')
+    setAddingTask(false)
+  }
+
   return (
     <div className="flex-1 flex flex-col">
       <StepLabel step={4} label="Your plan" />
       <Heading>Here's your first 5 days</Heading>
       <Subtext>
-        I've mapped this out based on your goal. Think of it as a starting point — we'll adapt as you go.
+        I've mapped this out based on your goal. Tap any task to edit it.
       </Subtext>
 
       {/* Goal card */}
@@ -493,14 +544,13 @@ function Step4Preview({ goal, onBegin, submitting, submitError, aiTasks, wasVagu
         </div>
       )}
       <div className="flex flex-col gap-3 mb-4">
-        {(aiTasks && aiTasks.length > 0 ? aiTasks.slice(0, 5) : PLACEHOLDER_TASKS.map((t, i) => ({ day: i + 1, task_text: t, task_type: 'build' as const }))).map((task, i) => (
+        {tasks.map((task, i) => (
           <div
             key={i}
-            className="flex items-start gap-3 p-3"
-            style={CARD_STYLE}
+            style={{ ...CARD_STYLE, padding: '12px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}
           >
+            {/* Day number */}
             <div
-              className="flex items-center justify-center shrink-0"
               style={{
                 width: '32px',
                 height: '32px',
@@ -510,40 +560,91 @@ function Step4Preview({ goal, onBegin, submitting, submitError, aiTasks, wasVagu
                 fontFamily: 'var(--font-body)',
                 fontSize: '13px',
                 fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
               }}
             >
               {i + 1}
             </div>
-            <div>
-              <p
-                className="uppercase"
-                style={{
-                  fontFamily: 'var(--font-body)',
-                  fontSize: '10px',
-                  letterSpacing: '0.08em',
-                  color: '#7AB5A0',
-                  margin: '0 0 2px 0',
-                }}
-              >
+
+            {/* Content */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', letterSpacing: '0.08em', color: '#7AB5A0', margin: '0 0 2px', textTransform: 'uppercase' }}>
                 Day {i + 1}
               </p>
-              <p style={{
-                fontFamily: 'var(--font-body)',
-                fontSize: '13px',
-                lineHeight: 1.5,
-                color: '#2D4A3E',
-                margin: 0,
-              }}>
-                {typeof task === 'string' ? task : task.task_text}
-              </p>
+
+              {editingIndex === i ? (
+                <div>
+                  <input
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleSaveEdit(); if (e.key === 'Escape') setEditingIndex(null) }}
+                    autoFocus
+                    style={{ width: '100%', border: '1.5px solid #3D7A5F', borderRadius: '8px', padding: '6px 8px', fontFamily: 'var(--font-body)', fontSize: '13px', color: '#1A3028', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                  <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
+                    <button onClick={handleSaveEdit} style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: 500, color: '#FFFFFF', backgroundColor: '#3D7A5F', border: 'none', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer' }}>Save</button>
+                    <button onClick={() => setEditingIndex(null)} style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#9BBFB2', background: 'none', border: 'none', cursor: 'pointer' }}>Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <p
+                  onClick={() => handleEdit(i)}
+                  style={{ fontFamily: 'var(--font-body)', fontSize: '13px', lineHeight: 1.5, color: '#2D4A3E', margin: 0, cursor: 'pointer' }}
+                >
+                  {task.task_text}
+                </p>
+              )}
             </div>
+
+            {/* Actions */}
+            {editingIndex !== i && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flexShrink: 0 }}>
+                {i > 0 && (
+                  <button onClick={() => handleMoveUp(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#9BBFB2', padding: '2px', lineHeight: 1 }}>↑</button>
+                )}
+                {i < tasks.length - 1 && (
+                  <button onClick={() => handleMoveDown(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#9BBFB2', padding: '2px', lineHeight: 1 }}>↓</button>
+                )}
+                {tasks.length > 1 && (
+                  <button onClick={() => handleDelete(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#D97706', padding: '2px', lineHeight: 1 }}>✕</button>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>
 
+      {/* Add task */}
+      {addingTask ? (
+        <div style={{ marginBottom: '12px' }}>
+          <input
+            value={newTaskText}
+            onChange={(e) => setNewTaskText(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleAddTask(); if (e.key === 'Escape') setAddingTask(false) }}
+            placeholder="Write your custom task..."
+            autoFocus
+            style={{ width: '100%', border: '1.5px solid #D4EDE3', borderRadius: '10px', padding: '10px 12px', fontFamily: 'var(--font-body)', fontSize: '13px', color: '#1A3028', outline: 'none', boxSizing: 'border-box' }}
+            onFocus={(e) => (e.target.style.borderColor = '#3D7A5F')}
+            onBlur={(e) => (e.target.style.borderColor = '#D4EDE3')}
+          />
+          <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+            <button onClick={handleAddTask} style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, color: '#FFFFFF', backgroundColor: '#3D7A5F', border: 'none', borderRadius: '9999px', padding: '6px 14px', cursor: 'pointer' }}>Add task</button>
+            <button onClick={() => { setAddingTask(false); setNewTaskText('') }} style={{ fontFamily: 'var(--font-body)', fontSize: '12px', color: '#9BBFB2', background: 'none', border: 'none', cursor: 'pointer' }}>Cancel</button>
+          </div>
+        </div>
+      ) : (
+        <button onClick={() => setAddingTask(true)} style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#3D7A5F', background: 'none', border: '1px dashed #B8D9CC', borderRadius: '10px', padding: '10px', cursor: 'pointer', marginBottom: '12px', width: '100%' }}>
+          + Add a custom task
+        </button>
+      )}
+
+      {/* Regenerate */}
       {onRegenerate && (
         <button onClick={onRegenerate} disabled={generatingPlan} style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#3D7A5F', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0', marginBottom: '12px' }}>
-          {generatingPlan ? '↺ Regenerating...' : '↺ Regenerate plan'}
+          {generatingPlan ? '↺ Regenerating...' : '↺ Regenerate entire plan'}
         </button>
       )}
       {/* Info box */}
