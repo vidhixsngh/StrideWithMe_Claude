@@ -45,6 +45,8 @@ export default function LogPage() {
   const [upcomingTasks, setUpcomingTasks] = useState<Task[]>([])
   const [sprintLogs, setSprintLogs] = useState<Array<{ day_number: number; log_type: string }>>([])
   const [lastLogId, setLastLogId] = useState<string | null>(null)
+  const [draftRestored, setDraftRestored] = useState(false)
+  const DRAFT_KEY = 'stridewithme_draft_log'
 
   useEffect(() => {
     if (!user) return
@@ -87,6 +89,27 @@ export default function LogPage() {
     load()
   }, [user])
 
+  // Save draft as user types
+  useEffect(() => {
+    if (logText.length > 0 && sprint?.id && dayNumber > 0) {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ text: logText, sprintId: sprint.id, dayNumber, savedAt: new Date().toISOString() }))
+    }
+  }, [logText, sprint?.id, dayNumber, DRAFT_KEY])
+
+  // Restore draft on mount
+  useEffect(() => {
+    if (!sprint?.id || dayNumber === 0) return
+    const saved = localStorage.getItem(DRAFT_KEY)
+    if (!saved) return
+    try {
+      const draft = JSON.parse(saved)
+      if (draft.sprintId === sprint.id && draft.dayNumber === dayNumber && draft.text?.length > 0) {
+        setLogText(draft.text)
+        setDraftRestored(true)
+      }
+    } catch { localStorage.removeItem(DRAFT_KEY) }
+  }, [sprint?.id, dayNumber, DRAFT_KEY])
+
   const handleVerify = async () => {
     if (!sprint || !user) return
     const canVerify = (activeTab === 'text' && logText.length >= 20) || (activeTab === 'image' && imageFiles.length > 0) || (activeTab === 'link' && linkUrl.length > 0)
@@ -124,6 +147,7 @@ export default function LogPage() {
         verification_attempts: attemptNumber,
       })
       if (newLog) setLastLogId(newLog.id)
+      localStorage.removeItem(DRAFT_KEY)
       setVerificationResult(result)
       setShowBloom(true)
       generateAndSaveDraft()
@@ -187,6 +211,8 @@ export default function LogPage() {
             sprintLogs={sprintLogs}
             imageFiles={imageFiles}
             setImageFiles={setImageFiles}
+            draftRestored={draftRestored}
+            onDismissDraft={() => setDraftRestored(false)}
           />
         )}
         {phase === 'verifying' && <VerifyingPhase />}
@@ -206,6 +232,7 @@ export default function LogPage() {
               verification_attempts: 0,
             })
           }
+          localStorage.removeItem('stridewithme_draft_log')
           navigate('/dashboard')
         }} />}
         {phase === 'done' && existingLog && (
@@ -273,8 +300,8 @@ function VerifyingPhase() {
   )
 }
 
-function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, onHonest, taskText, dayNum, verifying, verificationResult, attemptNumber, onSetLinkUrl, onSetLinkCaption, verifiedCount, upcomingTasks, currentDayNum: _currentDayNum, sprintLogs, imageFiles, setImageFiles }: {
-  logText: string; setLogText: (v: string) => void; activeTab: string; setActiveTab: (v: string) => void; onVerify: () => void; onHonest: () => void; taskText?: string; dayNum?: number; verifying?: boolean; verificationResult?: VerificationResult | null; attemptNumber?: number; onSetLinkUrl?: (v: string) => void; onSetLinkCaption?: (v: string) => void; verifiedCount?: number; upcomingTasks?: Task[]; currentDayNum?: number; sprintLogs?: Array<{ day_number: number; log_type: string }>; imageFiles?: Array<{ file: File; preview: string; base64: string; mimeType: string; caption: string }>; setImageFiles?: (files: Array<{ file: File; preview: string; base64: string; mimeType: string; caption: string }>) => void
+function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, onHonest, taskText, dayNum, verifying, verificationResult, attemptNumber, onSetLinkUrl, onSetLinkCaption, verifiedCount, upcomingTasks, currentDayNum: _currentDayNum, sprintLogs, imageFiles, setImageFiles, draftRestored, onDismissDraft }: {
+  logText: string; setLogText: (v: string) => void; activeTab: string; setActiveTab: (v: string) => void; onVerify: () => void; onHonest: () => void; taskText?: string; dayNum?: number; verifying?: boolean; verificationResult?: VerificationResult | null; attemptNumber?: number; onSetLinkUrl?: (v: string) => void; onSetLinkCaption?: (v: string) => void; verifiedCount?: number; upcomingTasks?: Task[]; currentDayNum?: number; sprintLogs?: Array<{ day_number: number; log_type: string }>; imageFiles?: Array<{ file: File; preview: string; base64: string; mimeType: string; caption: string }>; setImageFiles?: (files: Array<{ file: File; preview: string; base64: string; mimeType: string; caption: string }>) => void; draftRestored?: boolean; onDismissDraft?: () => void
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
@@ -340,6 +367,14 @@ function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, on
           You've shown up {dayNum ?? 1} days. Today is Day {dayNum ?? 1}. Write what happened — honestly.
         </p>
       </div>
+
+      {draftRestored && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#EAF5F0', borderRadius: '10px', padding: '8px 12px', marginBottom: '8px' }}>
+          <span style={{ fontSize: '12px' }}>&#x1F4DD;</span>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#3D7A5F', margin: 0, flex: 1 }}>Draft restored from your last session</p>
+          <button onClick={onDismissDraft} style={{ background: 'none', border: 'none', color: '#9BBFB2', fontSize: '14px', cursor: 'pointer', padding: 0, lineHeight: 1 }}>&#x2715;</button>
+        </div>
+      )}
 
       {/* Tab row */}
       <div style={{ display: 'flex', backgroundColor: '#EAF5F0', borderRadius: '12px', padding: '4px', marginBottom: '16px' }}>

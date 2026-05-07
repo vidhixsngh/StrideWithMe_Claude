@@ -11,6 +11,8 @@ import SprintFullLogPage from './pages/SprintFullLogPage'
 import ProfilePage from './pages/ProfilePage'
 import AuthPage from './pages/AuthPage'
 import ProtectedRoute from './components/ProtectedRoute'
+import InstallPrompt from './components/InstallPrompt'
+import IOSInstallHint from './components/IOSInstallHint'
 
 function App() {
   return (
@@ -28,6 +30,8 @@ function App() {
         <Route path="/record/:id/full" element={<ProtectedRoute><SprintFullLogPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       </Routes>
+      <InstallPrompt />
+      <IOSInstallHint />
     </BrowserRouter>
   )
 }
