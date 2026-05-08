@@ -222,7 +222,7 @@ function CTAButton({ label, disabled, onClick }: { label: string; disabled?: boo
       disabled={disabled}
       className="w-full py-4 text-white transition-opacity"
       style={{
-        backgroundColor: '#3D7A5F',
+        background: 'linear-gradient(180deg, #76C548 0%, #6BB048 100%)',
         borderRadius: 'var(--radius-btn)',
         opacity: disabled ? 0.5 : 1,
         cursor: disabled ? 'not-allowed' : 'pointer',
@@ -231,7 +231,7 @@ function CTAButton({ label, disabled, onClick }: { label: string; disabled?: boo
         fontWeight: 500,
         letterSpacing: '0.01em',
         border: 'none',
-        boxShadow: '0 4px 20px rgba(61, 122, 95, 0.30)',
+        boxShadow: '0 8px 24px rgba(107,176,72,0.32), 0 4px 12px rgba(107,176,72,0.18)',
       }}
     >
       {label}
@@ -240,6 +240,81 @@ function CTAButton({ label, disabled, onClick }: { label: string; disabled?: boo
 }
 
 /* ============ STEP 1 ============ */
+const GOAL_THEMES: { key: string; label: string; emoji: string; goals: string[] }[] = [
+  {
+    key: 'build', label: 'Build', emoji: '🚀',
+    goals: [
+      'Ship my SaaS landing page and get 10 waitlist signups',
+      'Build and launch a Notion template business',
+      'Create a clickable prototype of my product idea',
+      'Launch my first newsletter with 50 subscribers',
+    ],
+  },
+  {
+    key: 'career', label: 'Career', emoji: '💼',
+    goals: [
+      'Land my first 3 freelance clients with custom outreach',
+      'Build a portfolio that gets me a senior PM role',
+      'Switch from engineering to product management',
+      'Apply to 30 roles with personalised cover letters',
+    ],
+  },
+  {
+    key: 'fitness', label: 'Fitness', emoji: '🏃',
+    goals: [
+      'Run a 5K and build a daily morning workout habit',
+      'Train for and complete a half-marathon',
+      'Hit the gym 4× a week and gain 3kg of muscle',
+      'Yoga every morning and 10K steps every day',
+    ],
+  },
+  {
+    key: 'skills', label: 'Skills', emoji: '📚',
+    goals: [
+      'Finish writing the first draft of my technical e-book',
+      'Build 3 portfolio projects in a new framework',
+      'Read one book a week and write reflections',
+      'Complete a certification course end-to-end',
+    ],
+  },
+  {
+    key: 'mental', label: 'Mental wellness', emoji: '🧘',
+    goals: [
+      'Meditate 10 minutes daily and journal nightly',
+      'Take a screen-free hour every evening',
+      'Write a gratitude entry every single day',
+      'Build a calming evening wind-down ritual',
+    ],
+  },
+  {
+    key: 'money', label: 'Money', emoji: '💰',
+    goals: [
+      'Track every rupee spent and cut my expenses by 20%',
+      'Build a 3-month emergency fund',
+      'Start a monthly index fund SIP and stay consistent',
+      'Earn my first 10K in side income this month',
+    ],
+  },
+  {
+    key: 'content', label: 'Content', emoji: '✍️',
+    goals: [
+      'Post one LinkedIn article every weekday',
+      'Publish 30 days of build-in-public posts on X',
+      'Record and ship my first 5 short-form videos',
+      'Grow my newsletter to 500 engaged subscribers',
+    ],
+  },
+  {
+    key: 'health', label: 'Health', emoji: '❤️',
+    goals: [
+      'Cook every meal at home and improve my energy levels',
+      'Sleep 8 hours daily and build a calm morning routine',
+      'Cut sugar and processed food for 30 days',
+      'Track water intake and hit 3L every day',
+    ],
+  },
+]
+
 function Step1Goal({
   goal,
   setGoal,
@@ -249,6 +324,7 @@ function Step1Goal({
   setGoal: (v: string) => void
   onNext: () => void
 }) {
+  const [activeTheme, setActiveTheme] = useState<string | null>(null)
   return (
     <div className="flex-1 flex flex-col">
       <StepLabel step={1} label="Your commitment" />
@@ -290,7 +366,81 @@ function Step1Goal({
         </span>
       </div>
 
-      <div className="mt-auto" style={{ paddingBottom: '32px' }}>
+      {/* Theme picker */}
+      <div style={{ marginTop: '20px' }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', marginBottom: '10px', letterSpacing: '0.04em' }}>
+          ✨ Need inspiration? Pick a theme
+        </p>
+        <div className="no-scrollbar" style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', margin: '0 -24px', padding: '0 24px 4px', scrollbarWidth: 'none' }}>
+          {GOAL_THEMES.map((t) => {
+            const isActive = activeTheme === t.key
+            return (
+              <button
+                key={t.key}
+                onClick={() => setActiveTheme(isActive ? null : t.key)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 12px',
+                  background: isActive ? 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)' : 'rgba(255,255,255,0.85)',
+                  border: isActive ? 'none' : '1px solid #E8F0EC',
+                  borderRadius: '9999px',
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  color: isActive ? '#FFFFFF' : '#3D5949',
+                  boxShadow: isActive ? '0 4px 12px rgba(107,176,72,0.25)' : 'none',
+                  transition: 'all 0.15s ease',
+                  flexShrink: 0,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <span style={{ fontSize: '13px' }}>{t.emoji}</span>
+                <span>{t.label}</span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Goals for active theme */}
+        {activeTheme && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '12px' }}>
+            {(GOAL_THEMES.find((t) => t.key === activeTheme)?.goals ?? []).map((g, i) => (
+              <button
+                key={i}
+                onClick={() => setGoal(g)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '8px',
+                  padding: '10px 14px',
+                  background: 'rgba(118,197,72,0.06)',
+                  border: '1px solid rgba(107,176,72,0.20)',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  width: '100%',
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '12px',
+                  color: '#3D5949',
+                  fontStyle: 'italic',
+                  lineHeight: 1.45,
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#6BB048'; e.currentTarget.style.background = 'rgba(118,197,72,0.12)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(107,176,72,0.20)'; e.currentTarget.style.background = 'rgba(118,197,72,0.06)' }}
+              >
+                <span style={{ color: '#6BB048', fontSize: '11px', flexShrink: 0, marginTop: '1px' }}>›</span>
+                <span>{g}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="mt-auto" style={{ paddingTop: '24px', paddingBottom: '32px' }}>
         <CTAButton label="This is my goal →" disabled={goal.length < 10} onClick={onNext} />
       </div>
     </div>
@@ -307,7 +457,11 @@ function Step2Sprint({
   setSprintLength: (v: number) => void
   onNext: () => void
 }) {
-  const options = [7, 14, 30]
+  const options = [
+    { days: 7, title: '7 days', subtitle: 'A focused mini-sprint', tagline: 'Best for goals you can wrap up in a week — ship a feature, finish a draft, run a test.', tag: 'Quick wins' },
+    { days: 14, title: '14 days', subtitle: 'Two weeks of momentum', tagline: 'A sweet spot — long enough to build a real habit, short enough to feel close.', tag: 'Most popular' },
+    { days: 30, title: '30 days', subtitle: 'A full transformation arc', tagline: "When you mean it. Big goals — your first client, a launched product, a new role — happen here.", tag: 'Most rewarding' },
+  ]
 
   return (
     <div className="flex-1 flex flex-col">
@@ -318,36 +472,48 @@ function Step2Sprint({
       </Subtext>
 
       <div className="flex flex-col gap-3" style={{ marginTop: '24px' }}>
-        {options.map((days) => (
-          <button
-            key={days}
-            onClick={() => setSprintLength(days)}
-            className="w-full flex items-center justify-center"
-            style={{
-              height: '56px',
-              borderRadius: 'var(--radius-btn)',
-              fontFamily: 'var(--font-body)',
-              fontSize: '16px',
-              fontWeight: 500,
-              cursor: 'pointer',
-              ...(sprintLength === days
-                ? {
-                    backgroundColor: '#3D7A5F',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    boxShadow: '0 4px 12px rgba(61, 122, 95, 0.25)',
-                  }
-                : {
-                    backgroundColor: '#FFFFFF',
-                    color: '#2D4A3E',
-                    border: '1px solid #B8D9CC',
-                    boxShadow: 'none',
-                  }),
-            }}
-          >
-            {days} days
-          </button>
-        ))}
+        {options.map((opt) => {
+          const isSelected = sprintLength === opt.days
+          return (
+            <button
+              key={opt.days}
+              onClick={() => setSprintLength(opt.days)}
+              style={{
+                width: '100%',
+                padding: '16px 18px',
+                borderRadius: '16px',
+                background: isSelected ? 'linear-gradient(135deg, rgba(118,197,72,0.10) 0%, rgba(107,176,72,0.06) 100%)' : '#FFFFFF',
+                border: isSelected ? '1.5px solid #6BB048' : '1px solid #E8F0EC',
+                boxShadow: isSelected ? '0 8px 20px rgba(107,176,72,0.15)' : '0 1px 4px rgba(28,61,48,0.04)',
+                cursor: 'pointer',
+                textAlign: 'left',
+                position: 'relative',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              {/* Tag pill */}
+              <span style={{ position: 'absolute', top: '12px', right: '14px', fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', letterSpacing: '0.06em', textTransform: 'uppercase', color: isSelected ? '#FFFFFF' : '#5A9A3A', backgroundColor: isSelected ? '#6BB048' : 'rgba(107,176,72,0.10)', borderRadius: '9999px', padding: '3px 9px', fontWeight: 600 }}>
+                {opt.tag}
+              </span>
+
+              {/* Title row */}
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '4px' }}>
+                <span style={{ fontFamily: 'var(--font-heading)', fontSize: '22px', fontWeight: 600, color: '#1A3028', letterSpacing: '-0.02em' }}>{opt.title}</span>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: isSelected ? '#5A9A3A' : '#6B9E8A' }}>· {opt.subtitle}</span>
+              </div>
+
+              {/* Tagline */}
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', color: '#6B9E8A', lineHeight: 1.55, margin: '6px 28px 0 0', fontStyle: 'italic' }}>
+                {opt.tagline}
+              </p>
+
+              {/* Selected indicator */}
+              {isSelected && (
+                <div style={{ position: 'absolute', bottom: '14px', right: '14px', width: '20px', height: '20px', borderRadius: '50%', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '11px', fontWeight: 700, boxShadow: '0 2px 6px rgba(107,176,72,0.3)' }}>✓</div>
+              )}
+            </button>
+          )
+        })}
       </div>
 
       <div className="mt-auto" style={{ paddingBottom: '32px' }}>
@@ -369,10 +535,10 @@ function Step3Visibility({
   onNext: () => void
   generatingPlan?: boolean
 }) {
-  const options: { value: Visibility; icon: React.ReactNode; title: string; desc: string }[] = [
-    { value: 'PRIVATE', icon: <Lock size={20} />, title: 'Just me for now', desc: 'Your logs stay completely private' },
-    { value: 'COHORT', icon: <Users size={20} />, title: 'My sprint group', desc: 'A small group building alongside you' },
-    { value: 'PUBLIC', icon: <Globe size={20} />, title: 'Building in public', desc: 'Your journey is visible to anyone' },
+  const options: { value: Visibility; icon: React.ReactNode; title: string; subtitle: string; tagline: string; tag: string }[] = [
+    { value: 'PRIVATE', icon: <Lock size={18} />, title: 'Just me', subtitle: 'A quiet build', tagline: "Your logs stay completely private. Best for personal goals or when you're not ready to share yet.", tag: 'Most chosen' },
+    { value: 'COHORT', icon: <Users size={18} />, title: 'My sprint group', subtitle: 'Build alongside others', tagline: 'A small group going through the same 30 days. You see their logs, they see yours — gentle accountability.', tag: 'Best for momentum' },
+    { value: 'PUBLIC', icon: <Globe size={18} />, title: 'Build in public', subtitle: 'Open to the world', tagline: 'Anyone with the link can see your Sprint Record. Best when your goal benefits from an audience.', tag: 'Highest stakes' },
   ]
 
   return (
@@ -390,29 +556,42 @@ function Step3Visibility({
             <button
               key={opt.value}
               onClick={() => setVisibility(opt.value)}
-              className="w-full flex items-center gap-4 p-4 text-left"
               style={{
-                background: 'rgba(255, 255, 255, 0.8)',
+                width: '100%',
+                padding: '20px',
                 borderRadius: '20px',
-                border: isSelected ? '1.5px solid #3D7A5F' : '1px solid #D4EDE3',
-                boxShadow: isSelected
-                  ? '0 0 0 2px rgba(61, 122, 95, 0.15)'
-                  : '0 2px 12px rgba(45, 90, 71, 0.06)',
+                background: isSelected ? 'linear-gradient(135deg, rgba(118,197,72,0.10) 0%, rgba(107,176,72,0.06) 100%)' : '#FFFFFF',
+                border: isSelected ? '1.5px solid #6BB048' : '1px solid #E8F0EC',
+                boxShadow: isSelected ? '0 8px 20px rgba(107,176,72,0.15)' : '0 1px 4px rgba(28,61,48,0.04)',
                 cursor: 'pointer',
+                textAlign: 'left',
+                position: 'relative',
+                transition: 'all 0.15s ease',
               }}
             >
-              <div style={{ color: isSelected ? '#3D7A5F' : '#9BBFB2' }}>{opt.icon}</div>
-              <div>
-                <p
-                  className="font-semibold"
-                  style={{ fontFamily: 'var(--font-body)', fontSize: '15px', color: '#2D4A3E', margin: 0 }}
-                >
-                  {opt.title}
-                </p>
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: '#6B9E8A', margin: 0 }}>
-                  {opt.desc}
-                </p>
+              {/* Header: icon + title + subtitle, with tag pill on right */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: isSelected ? 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)' : '#F5F8F4', border: isSelected ? 'none' : '1px solid #E8F0EC', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isSelected ? '#FFFFFF' : '#6B9E8A', flexShrink: 0, boxShadow: isSelected ? '0 2px 8px rgba(107,176,72,0.25)' : 'none' }}>
+                  {opt.icon}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontFamily: 'var(--font-heading)', fontSize: '17px', fontWeight: 600, color: '#1A3028', margin: 0, letterSpacing: '-0.01em', lineHeight: 1.2 }}>{opt.title}</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: isSelected ? '#5A9A3A' : '#6B9E8A', margin: '2px 0 0' }}>{opt.subtitle}</p>
+                </div>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', letterSpacing: '0.06em', textTransform: 'uppercase', color: isSelected ? '#FFFFFF' : '#5A9A3A', backgroundColor: isSelected ? '#6BB048' : 'rgba(107,176,72,0.10)', borderRadius: '9999px', padding: '3px 9px', fontWeight: 600, flexShrink: 0, alignSelf: 'flex-start', whiteSpace: 'nowrap' }}>
+                  {opt.tag}
+                </span>
               </div>
+
+              {/* Tagline below */}
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', color: '#6B9E8A', lineHeight: 1.55, margin: '12px 0 0', fontStyle: 'italic', paddingRight: isSelected ? '32px' : '0' }}>
+                {opt.tagline}
+              </p>
+
+              {/* Selected check at bottom-right */}
+              {isSelected && (
+                <div style={{ position: 'absolute', bottom: '14px', right: '14px', width: '22px', height: '22px', borderRadius: '50%', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '12px', fontWeight: 700, boxShadow: '0 2px 6px rgba(107,176,72,0.3)' }}>✓</div>
+              )}
             </button>
           )
         })}

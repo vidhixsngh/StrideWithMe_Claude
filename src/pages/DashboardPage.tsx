@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, Calendar } from 'lucide-react'
+import { Calendar } from 'lucide-react'
 import PageWrapper from '../components/PageWrapper'
 import WelcomeDashboard from '../components/WelcomeDashboard'
 import { useAuth } from '../context/AuthContext'
@@ -173,22 +173,16 @@ export default function DashboardPage() {
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <Bell size={20} color="#6B9E8A" />
-          <div
-            className="flex items-center justify-center"
-            style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '50%',
-              backgroundColor: '#3D7A5F',
-              fontFamily: 'var(--font-body)',
-              fontSize: '12px',
-              fontWeight: 600,
-              color: '#FFFFFF',
-            }}
-          >
-            {(user?.user_metadata?.full_name || user?.email || 'U').slice(0, 2).toUpperCase()}
-          </div>
+          {(() => {
+            const avatarUrl = (user?.user_metadata as Record<string, unknown> | undefined)?.avatar_url as string | undefined
+              ?? (user?.user_metadata as Record<string, unknown> | undefined)?.picture as string | undefined
+            const initials = (user?.user_metadata?.full_name || user?.email || 'U').slice(0, 2).toUpperCase()
+            return (
+              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: avatarUrl ? '#FFFFFF' : 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 600, color: '#FFFFFF', overflow: 'hidden' }}>
+                {avatarUrl ? <img src={avatarUrl} alt="profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} referrerPolicy="no-referrer" /> : initials}
+              </div>
+            )
+          })()}
         </div>
       </div>
 

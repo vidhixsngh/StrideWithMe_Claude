@@ -46,9 +46,15 @@ export default function ProfilePage() {
       <div style={{ padding: '20px 16px' }}>
         {/* Avatar + info */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '24px' }}>
-          <div style={{ width: '72px', height: '72px', borderRadius: '50%', backgroundColor: '#3D7A5F', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontSize: '28px', color: '#FFFFFF' }}>
-            {initials}
-          </div>
+          {(() => {
+            const avatarUrl = (user?.user_metadata as Record<string, unknown> | undefined)?.avatar_url as string | undefined
+              ?? (user?.user_metadata as Record<string, unknown> | undefined)?.picture as string | undefined
+            return (
+              <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: avatarUrl ? '#FFFFFF' : 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontSize: '28px', color: '#FFFFFF', overflow: 'hidden', boxShadow: '0 4px 16px rgba(107,176,72,0.20)' }}>
+                {avatarUrl ? <img src={avatarUrl} alt="profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} referrerPolicy="no-referrer" /> : initials}
+              </div>
+            )
+          })()}
           <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '22px', color: '#1A3028', marginTop: '12px', marginBottom: '4px' }}>{displayName}</h1>
           <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', color: '#6B9E8A', margin: 0 }}>{tagline}</p>
         </div>

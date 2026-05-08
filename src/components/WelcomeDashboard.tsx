@@ -121,9 +121,19 @@ export default function WelcomeDashboard() {
           <img src="/icon-192.png" alt="StrideWithMe" style={{ width: '36px', height: '36px', borderRadius: '10px', flexShrink: 0, boxShadow: '0 4px 12px rgba(107,176,72,0.20)', objectFit: 'cover' }} />
           <span style={{ fontFamily: 'Lora, serif', fontSize: '16px', color: '#1A3028' }}>StrideWithMe</span>
         </div>
-        <button onClick={() => setProfileToast(true)} style={{ width: '34px', height: '34px', borderRadius: '50%', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '13px', fontWeight: 600, boxShadow: '0 2px 8px rgba(107,176,72,0.25)', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
-          {(user?.email?.[0] ?? 'S').toUpperCase()}
-        </button>
+        {(() => {
+          const avatarUrl = (user?.user_metadata as Record<string, unknown> | undefined)?.avatar_url as string | undefined
+            ?? (user?.user_metadata as Record<string, unknown> | undefined)?.picture as string | undefined
+          return (
+            <button onClick={() => setProfileToast(true)} style={{ width: '34px', height: '34px', borderRadius: '50%', background: avatarUrl ? '#FFFFFF' : 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '13px', fontWeight: 600, boxShadow: '0 2px 8px rgba(107,176,72,0.25)', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', overflow: 'hidden' }}>
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} referrerPolicy="no-referrer" />
+              ) : (
+                (user?.email?.[0] ?? 'S').toUpperCase()
+              )}
+            </button>
+          )
+        })()}
       </div>
 
       {/* SECTION 1 — PERSONAL WELCOME */}
