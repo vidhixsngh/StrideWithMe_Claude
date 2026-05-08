@@ -299,7 +299,7 @@ export default function DashboardPage() {
           <p style={{ fontFamily: 'var(--font-heading)', fontSize: '15px', fontWeight: 600, color: '#1A3028', margin: '0 0 4px' }}>🔄 Life happened. Your plan can adapt.</p>
           <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', color: '#6B9E8A', margin: '0 0 12px' }}>You've had {getReplanThreshold(sprint.sprint_length)} consecutive hard days. Want us to rebuild your remaining plan?</p>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <button onClick={handleReplan} disabled={replanLoading} style={{ height: '38px', backgroundColor: '#3D7A5F', color: '#FFFFFF', border: 'none', borderRadius: '9999px', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, cursor: 'pointer', padding: '0 16px', opacity: replanLoading ? 0.6 : 1 }}>
+            <button onClick={handleReplan} disabled={replanLoading} style={{ height: '38px', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', border: 'none', borderRadius: '9999px', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, cursor: 'pointer', padding: '0 16px', opacity: replanLoading ? 0.6 : 1, boxShadow: '0 4px 12px rgba(107,176,72,0.25)' }}>
               {replanLoading ? 'Regenerating...' : 'Regenerate my plan →'}
             </button>
             <button onClick={() => setReplanNeeded(false)} style={{ background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#9BBFB2', cursor: 'pointer' }}>Keep original plan</button>
@@ -371,7 +371,7 @@ export default function DashboardPage() {
           className="w-full flex items-center justify-center"
           style={{
             height: '48px',
-            backgroundColor: '#3D7A5F',
+            background: 'linear-gradient(180deg, #76C548 0%, #6BB048 100%)',
             color: '#FFFFFF',
             borderRadius: '9999px',
             border: 'none',
@@ -379,7 +379,7 @@ export default function DashboardPage() {
             fontSize: '15px',
             fontWeight: 500,
             cursor: 'pointer',
-            boxShadow: '0 4px 16px rgba(61, 122, 95, 0.25)',
+            boxShadow: '0 8px 24px rgba(107,176,72,0.32), 0 4px 12px rgba(107,176,72,0.18)',
           }}
         >
           {todayLogged ? "View today's log →" : "Log today's progress →"}

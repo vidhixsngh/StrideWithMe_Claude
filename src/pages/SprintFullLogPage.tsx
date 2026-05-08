@@ -122,7 +122,7 @@ export default function SprintFullLogPage() {
         <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', color: '#6B9E8A', margin: '0 0 16px', letterSpacing: '0.01em' }}>27 of 30 days logged · 90% completion</p>
         <button
           onClick={() => navigate(-1)}
-          style={{ width: '100%', height: '48px', backgroundColor: '#3D7A5F', color: '#FFFFFF', borderRadius: '9999px', border: 'none', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 500, cursor: 'pointer', letterSpacing: '0.02em' }}
+          style={{ width: '100%', height: '48px', background: 'linear-gradient(180deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', borderRadius: '9999px', border: 'none', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 500, cursor: 'pointer', letterSpacing: '0.02em', boxShadow: '0 8px 24px rgba(107,176,72,0.32), 0 4px 12px rgba(107,176,72,0.18)' }}
         >
           Back to Sprint Record →
         </button>

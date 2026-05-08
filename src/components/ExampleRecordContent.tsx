@@ -132,7 +132,7 @@ export default function ExampleRecordContent({ onCTA, ctaLabel }: Props) {
         {onCTA && (
           <button
             onClick={onCTA}
-            style={{ width: '100%', height: '48px', backgroundColor: '#3D7A5F', color: '#FFFFFF', borderRadius: '9999px', border: 'none', fontFamily: 'var(--font-heading)', fontSize: '14px', fontWeight: 500, cursor: 'pointer', letterSpacing: '0.02em' }}
+            style={{ width: '100%', height: '48px', background: 'linear-gradient(180deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', borderRadius: '9999px', border: 'none', fontFamily: 'var(--font-heading)', fontSize: '14px', fontWeight: 500, cursor: 'pointer', letterSpacing: '0.02em', boxShadow: '0 8px 24px rgba(107,176,72,0.32), 0 4px 12px rgba(107,176,72,0.18)' }}
           >
             {ctaLabel || 'Start your sprint to earn this →'}
           </button>

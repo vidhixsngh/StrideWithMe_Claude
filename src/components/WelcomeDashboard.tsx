@@ -279,7 +279,7 @@ export default function WelcomeDashboard() {
             </div>
             <ExampleRecordContent />
             <div style={{ padding: '16px 20px 0' }}>
-              <button onClick={() => { setPreviewOpen(false); navigate('/onboarding') }} style={{ width: '100%', height: '50px', background: '#3D7A5F', color: 'white', border: 'none', borderRadius: '9999px', fontFamily: 'Lora, serif', fontSize: '15px', cursor: 'pointer', boxShadow: '0 4px 16px rgba(61,122,95,0.25)' }}>
+              <button onClick={() => { setPreviewOpen(false); navigate('/onboarding') }} style={{ width: '100%', height: '50px', background: 'linear-gradient(180deg, #76C548 0%, #6BB048 100%)', color: 'white', border: 'none', borderRadius: '9999px', fontFamily: 'Lora, serif', fontSize: '15px', cursor: 'pointer', boxShadow: '0 8px 24px rgba(107,176,72,0.32), 0 4px 12px rgba(107,176,72,0.18)' }}>
                 Start your sprint to earn this →
               </button>
             </div>

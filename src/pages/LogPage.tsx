@@ -682,7 +682,7 @@ function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, on
         style={{
           width: '100%',
           padding: '16px',
-          backgroundColor: '#3D7A5F',
+          background: 'linear-gradient(180deg, #76C548 0%, #6BB048 100%)',
           color: '#FFFFFF',
           borderRadius: '9999px',
           border: 'none',
@@ -691,7 +691,7 @@ function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, on
           fontWeight: 500,
           cursor: (!canVerify || verifying) ? 'not-allowed' : 'pointer',
           opacity: (!canVerify || verifying) ? 0.4 : 1,
-          boxShadow: '0 4px 16px rgba(61, 122, 95, 0.25)',
+          boxShadow: '0 8px 24px rgba(107,176,72,0.32), 0 4px 12px rgba(107,176,72,0.18)',
         }}
       >
         {verifying ? 'Verifying...' : 'Verify with AI \u2192'}
@@ -841,7 +841,7 @@ function VerifiedPhase({ logText, onBack, onPostToFeed, postDraft, setPostDraft,
             <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: postDraft.length > 200 ? '#D97706' : '#9BBFB2', textAlign: 'right', margin: '4px 0 0' }}>{postDraft.length}/200</p>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
               <button onClick={onBack} style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#9BBFB2', background: 'none', border: 'none', cursor: 'pointer' }}>Skip</button>
-              <button onClick={onPostToFeed ?? onBack} style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, color: '#FFFFFF', backgroundColor: '#3D7A5F', border: 'none', borderRadius: '9999px', padding: '8px 16px', cursor: 'pointer' }}>Post to feed &rarr;</button>
+              <button onClick={onPostToFeed ?? onBack} style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, color: '#FFFFFF', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', border: 'none', borderRadius: '9999px', padding: '8px 16px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(107,176,72,0.25)' }}>Post to feed &rarr;</button>
             </div>
           </>
         )}
@@ -852,7 +852,7 @@ function VerifiedPhase({ logText, onBack, onPostToFeed, postDraft, setPostDraft,
         style={{
           width: '100%',
           padding: '16px',
-          backgroundColor: '#3D7A5F',
+          background: 'linear-gradient(180deg, #76C548 0%, #6BB048 100%)',
           color: '#FFFFFF',
           borderRadius: '9999px',
           border: 'none',
@@ -860,7 +860,7 @@ function VerifiedPhase({ logText, onBack, onPostToFeed, postDraft, setPostDraft,
           fontSize: '15px',
           fontWeight: 500,
           cursor: 'pointer',
-          boxShadow: '0 4px 16px rgba(61, 122, 95, 0.25)',
+          boxShadow: '0 8px 24px rgba(107,176,72,0.32), 0 4px 12px rgba(107,176,72,0.18)',
         }}
       >
         Back to my sprint &rarr;

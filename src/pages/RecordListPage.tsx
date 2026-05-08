@@ -41,7 +41,7 @@ export default function RecordListPage() {
           <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', color: '#6B9E8A', letterSpacing: '0.01em' }}>Complete your first sprint to earn a Sprint Record.</p>
           <button
             onClick={() => navigate('/onboarding')}
-            style={{ width: '100%', maxWidth: '300px', height: '48px', backgroundColor: '#3D7A5F', color: '#FFFFFF', borderRadius: '9999px', border: 'none', fontFamily: 'var(--font-heading)', fontSize: '14px', fontWeight: 500, cursor: 'pointer', marginTop: '20px', letterSpacing: '0.02em' }}
+            style={{ width: '100%', maxWidth: '300px', height: '48px', background: 'linear-gradient(180deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', borderRadius: '9999px', border: 'none', fontFamily: 'var(--font-heading)', fontSize: '14px', fontWeight: 500, cursor: 'pointer', marginTop: '20px', letterSpacing: '0.02em', boxShadow: '0 8px 24px rgba(107,176,72,0.32), 0 4px 12px rgba(107,176,72,0.18)' }}
           >
             Start your first sprint →
           </button>
@@ -107,7 +107,7 @@ export default function RecordListPage() {
 
                 <button
                   onClick={() => setPreviewOpen(true)}
-                  style={{ width: '100%', marginTop: '14px', padding: '10px 16px', textAlign: 'center', color: '#FFFFFF', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, backgroundColor: '#3D7A5F', border: 'none', borderRadius: '9999px', cursor: 'pointer', boxShadow: '0 2px 8px rgba(61,122,95,0.2)' }}
+                  style={{ width: '100%', marginTop: '14px', padding: '10px 16px', textAlign: 'center', color: '#FFFFFF', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', border: 'none', borderRadius: '9999px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(107,176,72,0.25)' }}
                 >
                   See what you're working toward →
                 </button>
@@ -157,7 +157,7 @@ export default function RecordListPage() {
                   </button>
                   <button
                     onClick={() => navigate('/record/' + sprint.id + '?share=true')}
-                    style={{ flex: 1, height: '38px', backgroundColor: '#3D7A5F', color: '#FFFFFF', border: 'none', borderRadius: '9999px', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                    style={{ flex: 1, height: '38px', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', border: 'none', borderRadius: '9999px', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', boxShadow: '0 4px 12px rgba(107,176,72,0.25)' }}
                   >
                     <Share2 size={13} /> Share →
                   </button>

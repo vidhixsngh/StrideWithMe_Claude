@@ -36,7 +36,7 @@ export default function WaitingPage() {
         </div>
 
         {/* CTAs */}
-        <button style={{ width: '100%', padding: '16px', backgroundColor: '#3D7A5F', color: '#FFFFFF', borderRadius: '9999px', border: 'none', fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: 500, cursor: 'pointer', boxShadow: '0 4px 16px rgba(61, 122, 95, 0.25)', marginBottom: '4px' }}>
+        <button style={{ width: '100%', padding: '16px', background: 'linear-gradient(180deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', borderRadius: '9999px', border: 'none', fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: 500, cursor: 'pointer', boxShadow: '0 8px 24px rgba(107,176,72,0.32), 0 4px 12px rgba(107,176,72,0.18)', marginBottom: '4px' }}>
           Start solo now →
         </button>
         <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#7AB5A0', margin: '0 0 12px' }}>You'll merge into a cohort when one opens</p>

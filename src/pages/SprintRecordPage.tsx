@@ -131,7 +131,7 @@ export default function SprintRecordPage() {
         <span style={{ fontSize: '40px' }}>🔒</span>
         <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '22px', color: '#1A3028', marginTop: '16px' }}>This record is private</h2>
         <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', color: '#6B9E8A', marginTop: '8px' }}>The owner hasn't made this record public.</p>
-        <button onClick={() => navigate('/')} style={{ marginTop: '24px', height: '48px', padding: '0 24px', backgroundColor: '#3D7A5F', color: '#FFFFFF', borderRadius: '9999px', border: 'none', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}>Back to home →</button>
+        <button onClick={() => navigate('/')} style={{ marginTop: '24px', height: '48px', padding: '0 24px', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', borderRadius: '9999px', border: 'none', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 500, cursor: 'pointer', boxShadow: '0 4px 12px rgba(107,176,72,0.25)' }}>Back to home →</button>
       </div>
     )
   }
@@ -247,7 +247,7 @@ export default function SprintRecordPage() {
         <div style={{ backgroundColor: '#FEF3E8', borderRadius: '16px', padding: '20px', margin: '20px', textAlign: 'center' }}>
           <p style={{ fontFamily: 'var(--font-heading)', fontSize: '16px', color: '#1A3028', marginBottom: '8px' }}>This sprint ended without any logs.</p>
           <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', color: '#6B9E8A', marginBottom: '16px' }}>That's okay. Every unfinished sprint is still a decision you made. Start a new one when you're ready.</p>
-          <button onClick={() => navigate('/onboarding')} style={{ height: '44px', padding: '0 20px', backgroundColor: '#3D7A5F', color: '#FFFFFF', borderRadius: '9999px', border: 'none', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}>Start a new sprint →</button>
+          <button onClick={() => navigate('/onboarding')} style={{ height: '44px', padding: '0 20px', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', borderRadius: '9999px', border: 'none', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 500, cursor: 'pointer', boxShadow: '0 4px 12px rgba(107,176,72,0.25)' }}>Start a new sprint →</button>
         </div>
       ) : (
         <>
@@ -312,7 +312,7 @@ export default function SprintRecordPage() {
               View full sprint →
             </button>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={() => setShowShareSheet(true)} style={{ flex: 1, height: '44px', backgroundColor: '#3D7A5F', color: '#FFFFFF', border: 'none', borderRadius: '9999px', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', letterSpacing: '0.02em' }}>
+              <button onClick={() => setShowShareSheet(true)} style={{ flex: 1, height: '44px', background: 'linear-gradient(180deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', border: 'none', borderRadius: '9999px', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', letterSpacing: '0.02em', boxShadow: '0 8px 24px rgba(107,176,72,0.32), 0 4px 12px rgba(107,176,72,0.18)' }}>
                 <Share2 size={14} /> Share
               </button>
               <button onClick={handleDownloadPDF} style={{ flex: 1, height: '44px', backgroundColor: '#EAF5F0', color: '#2D5A47', border: '1.5px solid #B8D9CC', borderRadius: '9999px', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', letterSpacing: '0.02em' }}>
