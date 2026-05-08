@@ -41,7 +41,7 @@ export default function InstallPrompt() {
   if (!installable || dismissed || installed) return null
 
   return (
-    <div style={{ position: 'fixed', bottom: '80px', left: '50%', transform: 'translateX(-50%)', width: 'calc(100% - 32px)', maxWidth: '398px', zIndex: 9000, background: '#1C3D30', borderRadius: '20px', padding: '16px 18px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', gap: '14px', border: '1px solid rgba(255,255,255,0.1)' }}>
+    <div style={{ position: 'fixed', bottom: '16px', left: '50%', transform: 'translateX(-50%)', width: 'calc(100% - 40px)', maxWidth: '398px', zIndex: 9000, background: '#1C3D30', borderRadius: '20px', padding: '16px 18px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', gap: '14px', border: '1px solid rgba(255,255,255,0.1)' }}>
       <img src="/icon-192.png" alt="StrideWithMe" style={{ width: '44px', height: '44px', borderRadius: '10px', flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ fontFamily: 'Lora, serif', fontSize: '14px', color: 'white', fontWeight: '600', margin: '0 0 2px 0' }}>Add to home screen</p>

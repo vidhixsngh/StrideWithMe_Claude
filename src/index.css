@@ -46,3 +46,13 @@ body {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 0.9; }
 }
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(4px); }
+}
+
+@keyframes pillPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}

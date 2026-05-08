@@ -16,7 +16,7 @@ export default function IOSInstallHint() {
   if (!show) return null
 
   return (
-    <div style={{ position: 'fixed', bottom: '80px', left: '50%', transform: 'translateX(-50%)', width: 'calc(100% - 32px)', maxWidth: '398px', zIndex: 9000, background: '#1C3D30', borderRadius: '20px', padding: '16px 18px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)' }}>
+    <div style={{ position: 'fixed', bottom: '16px', left: '50%', transform: 'translateX(-50%)', width: 'calc(100% - 32px)', maxWidth: '398px', zIndex: 9000, background: '#1C3D30', borderRadius: '20px', padding: '16px 18px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
         <p style={{ fontFamily: 'Lora, serif', fontSize: '14px', color: 'white', fontWeight: '600', margin: 0 }}>Add to your home screen</p>
         <button onClick={() => { setShow(false); localStorage.setItem('ios_hint_dismissed', 'true') }} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '18px', cursor: 'pointer', padding: '0', lineHeight: 1 }}>&#x2715;</button>
