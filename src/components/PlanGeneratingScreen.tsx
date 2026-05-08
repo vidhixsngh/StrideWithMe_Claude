@@ -46,7 +46,7 @@ export default function PlanGeneratingScreen({ sprintLength, goalText }: PlanGen
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'linear-gradient(180deg, #1C3D30 0%, #2D5A47 60%, #1C3D30 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 28px', maxWidth: '430px', margin: '0 auto', left: 0, right: 0 }}>
-      <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Lora, serif', color: 'white', fontSize: '22px', marginBottom: '32px', border: '1px solid rgba(255,255,255,0.15)' }}>S</div>
+      <img src="/icon-192.png" alt="StrideWithMe" style={{ width: '56px', height: '56px', borderRadius: '14px', marginBottom: '32px', objectFit: 'cover', border: '1px solid rgba(255,255,255,0.15)', boxShadow: '0 4px 16px rgba(0,0,0,0.18)' }} />
       <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: '#7AB5A0', letterSpacing: '0.12em', textTransform: 'uppercase', fontStyle: 'italic', marginBottom: '8px' }}>Building your {sprintLength}-day plan</p>
       <p style={{ fontFamily: 'Lora, serif', fontSize: '16px', color: 'rgba(255,255,255,0.7)', fontStyle: 'italic', textAlign: 'center', lineHeight: '1.5', marginBottom: '32px', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>"{goalText}"</p>
       <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(sprintLength, 10)}, 1fr)`, gap: '4px', marginBottom: '28px', width: '100%', maxWidth: '280px' }}>

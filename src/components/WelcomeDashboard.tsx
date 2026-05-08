@@ -110,15 +110,12 @@ export default function WelcomeDashboard() {
 
       {/* TOP NAV */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#3D7A5F', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Lora, serif', color: 'white', fontSize: '18px' }}>S</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <img src="/icon-192.png" alt="StrideWithMe" style={{ width: '36px', height: '36px', borderRadius: '10px', flexShrink: 0, boxShadow: '0 4px 12px rgba(107,176,72,0.20)', objectFit: 'cover' }} />
           <span style={{ fontFamily: 'Lora, serif', fontSize: '16px', color: '#1A3028' }}>StrideWithMe</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '20px', color: '#6B9E8A', cursor: 'pointer' }}>🔔</span>
-          <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: '#3D7A5F', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '13px', fontWeight: '600' }}>
-            {(user?.email?.[0] ?? 'S').toUpperCase()}
-          </div>
+        <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '13px', fontWeight: 600, boxShadow: '0 2px 8px rgba(107,176,72,0.25)' }}>
+          {(user?.email?.[0] ?? 'S').toUpperCase()}
         </div>
       </div>
 
@@ -152,7 +149,7 @@ export default function WelcomeDashboard() {
           <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: '#9BBFB2', fontStyle: 'italic', margin: '10px 0 0 0', textAlign: 'right' }}>This could be your next 30 days →</p>
         </div>
 
-        <button onClick={() => navigate('/onboarding')} style={{ width: '100%', height: '54px', background: '#3D7A5F', color: 'white', border: 'none', borderRadius: '9999px', fontFamily: 'Lora, serif', fontSize: '16px', fontWeight: '500', cursor: 'pointer', marginTop: '20px', boxShadow: '0 6px 24px rgba(61,122,95,0.28)', letterSpacing: '0.01em' }}>
+        <button onClick={() => navigate('/onboarding')} style={{ width: '100%', height: '54px', background: 'linear-gradient(180deg, #76C548 0%, #6BB048 100%)', color: 'white', border: 'none', borderRadius: '9999px', fontFamily: 'Lora, serif', fontSize: '16px', fontWeight: 500, cursor: 'pointer', marginTop: '20px', boxShadow: '0 8px 24px rgba(107,176,72,0.32), 0 4px 12px rgba(107,176,72,0.18)', letterSpacing: '0.01em' }}>
           I'm ready. Let's go →
         </button>
         <p style={{ textAlign: 'center', fontFamily: 'Inter, sans-serif', fontSize: '11px', color: '#9BBFB2', fontStyle: 'italic', marginTop: '8px' }}>Set your goal in 2 minutes · Free</p>

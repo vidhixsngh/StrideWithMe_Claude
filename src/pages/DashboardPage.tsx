@@ -169,21 +169,7 @@ export default function DashboardPage() {
       {/* Top Nav */}
       <div className="flex items-center justify-between" style={{ height: '56px', padding: '0 20px' }}>
         <div className="flex items-center gap-2">
-          <div
-            className="flex items-center justify-center"
-            style={{
-              width: '28px',
-              height: '28px',
-              backgroundColor: '#3D7A5F',
-              borderRadius: '8px',
-              fontFamily: 'var(--font-heading)',
-              fontSize: '16px',
-              color: '#FFFFFF',
-              fontWeight: 700,
-            }}
-          >
-            S
-          </div>
+          <img src="/icon-192.png" alt="StrideWithMe" style={{ width: '28px', height: '28px', borderRadius: '8px', flexShrink: 0, objectFit: 'cover' }} />
           <span style={{ fontFamily: 'var(--font-heading)', fontSize: '16px', color: '#1A3028' }}>
             StrideWithMe
           </span>

@@ -5,9 +5,7 @@ export default function WaitingPage() {
     <PageWrapper showNav={false}>
       <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', minHeight: '100vh', justifyContent: 'center' }}>
         {/* Logo */}
-        <div style={{ width: '40px', height: '40px', backgroundColor: '#3D7A5F', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontSize: '22px', color: '#FFFFFF', fontWeight: 700, marginBottom: '32px' }}>
-          S
-        </div>
+        <img src="/icon-192.png" alt="StrideWithMe" style={{ width: '48px', height: '48px', borderRadius: '12px', marginBottom: '32px', objectFit: 'cover', boxShadow: '0 4px 16px rgba(107,176,72,0.20)' }} />
 
         {/* Countdown */}
         <span style={{ fontFamily: 'var(--font-heading)', fontSize: '72px', color: '#3D7A5F' }}>5</span>
