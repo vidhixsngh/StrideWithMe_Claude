@@ -91,8 +91,8 @@ export default function AuthPage() {
     <PageWrapper showNav={false}>
       <div style={{ padding: '48px 24px 32px', maxWidth: '430px', margin: '0 auto' }}>
         {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '40px' }}>
-          <div style={{ width: '36px', height: '36px', backgroundColor: '#3D7A5F', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontSize: '18px', color: '#FFFFFF', fontWeight: 700 }}>S</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '40px' }}>
+          <img src="/icon-192.png" alt="StrideWithMe" style={{ width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0, boxShadow: '0 4px 16px rgba(107,176,72,0.20)', objectFit: 'cover' }} />
           <span style={{ fontFamily: 'var(--font-heading)', fontSize: '18px', color: '#1A3028' }}>StrideWithMe</span>
         </div>
 
@@ -168,7 +168,7 @@ export default function AuthPage() {
           style={{
             width: '100%',
             height: '52px',
-            backgroundColor: '#3D7A5F',
+            background: 'linear-gradient(180deg, #76C548 0%, #6BB048 100%)',
             color: '#FFFFFF',
             borderRadius: '9999px',
             border: 'none',
@@ -177,7 +177,7 @@ export default function AuthPage() {
             fontWeight: 500,
             cursor: loading ? 'not-allowed' : 'pointer',
             opacity: loading ? 0.6 : 1,
-            boxShadow: '0 4px 16px rgba(61, 122, 95, 0.25)',
+            boxShadow: '0 8px 24px rgba(107,176,72,0.32), 0 4px 12px rgba(107,176,72,0.18)',
             marginTop: '20px',
             letterSpacing: '0.02em',
           }}
