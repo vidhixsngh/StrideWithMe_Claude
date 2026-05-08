@@ -178,9 +178,9 @@ export default function DashboardPage() {
               ?? (user?.user_metadata as Record<string, unknown> | undefined)?.picture as string | undefined
             const initials = (user?.user_metadata?.full_name || user?.email || 'U').slice(0, 2).toUpperCase()
             return (
-              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: avatarUrl ? '#FFFFFF' : 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 600, color: '#FFFFFF', overflow: 'hidden' }}>
+              <button onClick={() => navigate('/profile')} style={{ width: '32px', height: '32px', borderRadius: '50%', background: avatarUrl ? '#FFFFFF' : 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 600, color: '#FFFFFF', overflow: 'hidden', border: 'none', cursor: 'pointer', padding: 0, boxShadow: '0 2px 8px rgba(107,176,72,0.20)' }}>
                 {avatarUrl ? <img src={avatarUrl} alt="profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} referrerPolicy="no-referrer" /> : initials}
-              </div>
+              </button>
             )
           })()}
         </div>
