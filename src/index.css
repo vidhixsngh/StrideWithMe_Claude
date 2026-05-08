@@ -61,3 +61,11 @@ body {
   0%, 100% { transform: translateY(0) rotate(-2deg); }
   50% { transform: translateY(-6px) rotate(2deg); }
 }
+
+@keyframes swimmer {
+  0%   { transform: translateX(-8px) rotate(-3deg); }
+  25%  { transform: translateX(0) rotate(2deg); }
+  50%  { transform: translateX(8px) rotate(-3deg); }
+  75%  { transform: translateX(0) rotate(2deg); }
+  100% { transform: translateX(-8px) rotate(-3deg); }
+}

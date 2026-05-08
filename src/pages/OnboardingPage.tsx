@@ -608,8 +608,6 @@ function Step3Visibility({
 function Step4Preview({ goal, onBegin, submitting, submitError, aiTasks, wasVague, onRegenerate, generatingPlan, onUpdateTasks }: { goal: string; onBegin: () => void; submitting?: boolean; submitError?: string; aiTasks?: GeneratedTask[]; wasVague?: boolean; onRegenerate?: () => void; generatingPlan?: boolean; onUpdateTasks?: (tasks: GeneratedTask[]) => void }) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [editText, setEditText] = useState('')
-  const [addingTask, setAddingTask] = useState(false)
-  const [newTaskText, setNewTaskText] = useState('')
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const dragStartY = useRef(0)
@@ -639,27 +637,8 @@ function Step4Preview({ goal, onBegin, submitting, submitError, aiTasks, wasVagu
     onUpdateTasks(updated)
   }
 
-  const handleMoveUp = (index: number) => {
-    if (!onUpdateTasks || !aiTasks || index === 0) return
-    const updated = [...aiTasks]
-    ;[updated[index - 1], updated[index]] = [updated[index], updated[index - 1]]
-    onUpdateTasks(updated.map((t, i) => ({ ...t, day: i + 1 })))
-  }
 
-  const handleMoveDown = (index: number) => {
-    if (!onUpdateTasks || !aiTasks || index >= tasks.length - 1) return
-    const updated = [...aiTasks]
-    ;[updated[index], updated[index + 1]] = [updated[index + 1], updated[index]]
-    onUpdateTasks(updated.map((t, i) => ({ ...t, day: i + 1 })))
-  }
 
-  const handleAddTask = () => {
-    if (!onUpdateTasks || !aiTasks || !newTaskText.trim()) return
-    const newTask: GeneratedTask = { day: aiTasks.length + 1, task_text: newTaskText.trim(), task_type: 'build' }
-    onUpdateTasks([...aiTasks, newTask])
-    setNewTaskText('')
-    setAddingTask(false)
-  }
 
   const handleDragDrop = (fromIndex: number, toIndex: number) => {
     if (!onUpdateTasks || !aiTasks || fromIndex === toIndex) return
@@ -705,185 +684,112 @@ function Step4Preview({ goal, onBegin, submitting, submitError, aiTasks, wasVagu
         I've mapped this out based on your goal. Tap any task to edit it.
       </Subtext>
 
-      {/* Goal card */}
-      <div
-        className="p-4"
-        style={{
-          background: '#B8D9CC',
-          border: '1.5px solid #7AB5A0',
-          borderRadius: '20px',
-          marginTop: '24px',
-          marginBottom: '16px',
-        }}
-      >
-        <p
-          className="uppercase"
-          style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: '10px',
-            letterSpacing: '0.1em',
-            color: '#3D7A5F',
-            margin: '0 0 4px 0',
-          }}
-        >
-          Your 30-Day Commitment
-        </p>
-        <p
-          style={{
-            fontFamily: 'var(--font-heading)',
-            fontSize: '16px',
-            fontStyle: 'italic',
-            color: '#1A3028',
-            margin: 0,
-          }}
-        >
+      {/* Goal card — sprout green theme */}
+      <div style={{ background: 'linear-gradient(135deg, rgba(118,197,72,0.10) 0%, rgba(107,176,72,0.06) 100%)', border: '1.5px solid rgba(107,176,72,0.35)', borderRadius: '20px', padding: '14px 16px', marginTop: '24px', marginBottom: '16px', position: 'relative' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+          <span style={{ fontSize: '12px' }}>🌱</span>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', letterSpacing: '0.1em', color: '#5A9A3A', margin: 0, textTransform: 'uppercase', fontWeight: 600 }}>
+            Your commitment
+          </p>
+        </div>
+        <p style={{ fontFamily: 'var(--font-heading)', fontSize: '15px', fontStyle: 'italic', color: '#1A3028', margin: 0, lineHeight: 1.4 }}>
           {goal}
         </p>
       </div>
 
-      {/* Day cards */}
-      {wasVague && (
-        <div style={{ backgroundColor: '#FEF3E8', border: '1px solid #F5D5A8', borderRadius: '12px', padding: '12px 14px', marginBottom: '12px' }}>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#D97706', margin: 0 }}>We made some assumptions about your goal. Edit any task below that doesn't fit your actual plan.</p>
-        </div>
-      )}
-      <div className="flex flex-col gap-3 mb-4" onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
-        {tasks.map((task, i) => (
-          <div
-            key={i}
-            data-task-card
-            onTouchStart={(e) => onTouchStart(i, e)}
-            style={{
-              ...CARD_STYLE,
-              padding: '12px',
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '10px',
-              opacity: dragIndex === i ? 0.5 : 1,
-              borderColor: dragOverIndex === i && dragIndex !== i ? '#3D7A5F' : undefined,
-              borderWidth: dragOverIndex === i && dragIndex !== i ? '2px' : undefined,
-              transition: 'opacity 0.15s ease, border-color 0.15s ease',
-              touchAction: editingIndex !== null ? 'auto' : 'none',
-            }}
-          >
-            {/* Drag handle + Day number */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
-              <span style={{ fontSize: '10px', color: '#B8D9CC', lineHeight: 1, cursor: 'grab', userSelect: 'none' }}>⠿</span>
-              <div
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  backgroundColor: '#D4EDE3',
-                  color: '#3D7A5F',
-                  borderRadius: '10px',
-                  fontFamily: 'var(--font-body)',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
+      {/* Editable hint (always shown) */}
+      <div style={{ backgroundColor: '#FEF3E8', border: '1px solid #F5D5A8', borderRadius: '12px', padding: '10px 14px', marginBottom: '12px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+        <span style={{ fontSize: '12px', flexShrink: 0, marginTop: '1px' }}>💡</span>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#D97706', margin: 0, lineHeight: 1.5 }}>
+          {wasVague ? "We made some assumptions. Edit any task below to match your actual plan." : 'Tasks are fully editable. Tap any one to refine it before you begin.'}
+        </p>
+      </div>
+
+      {/* Section label with hint */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', letterSpacing: '0.1em', color: '#5A9A3A', margin: 0, textTransform: 'uppercase', fontWeight: 600 }}>
+          Your first 5 days
+        </p>
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2' }}>Tap to edit · drag to reorder</span>
+      </div>
+
+      {/* Day cards — minimal, sprout green */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+        {tasks.map((task, i) => {
+          const isEditing = editingIndex === i
+          const isDragOver = dragOverIndex === i && dragIndex !== i
+          return (
+            <div
+              key={i}
+              data-task-card
+              onTouchStart={(e) => onTouchStart(i, e)}
+              style={{
+                background: isDragOver ? 'rgba(118,197,72,0.10)' : 'rgba(255,255,255,0.85)',
+                border: isDragOver ? '1.5px solid #6BB048' : '1px solid #E8F0EC',
+                borderRadius: '14px',
+                padding: '10px 12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                opacity: dragIndex === i ? 0.5 : 1,
+                transition: 'all 0.15s ease',
+                touchAction: editingIndex !== null ? 'auto' : 'none',
+                boxShadow: '0 1px 3px rgba(28,61,48,0.04)',
+              }}
+            >
+              {/* Day badge */}
+              <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', fontFamily: 'var(--font-heading)', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 6px rgba(107,176,72,0.25)' }}>
                 {i + 1}
               </div>
-            </div>
 
-            {/* Content */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', letterSpacing: '0.08em', color: '#7AB5A0', margin: '0 0 2px', textTransform: 'uppercase' }}>
-                Day {i + 1}
-              </p>
-
-              {editingIndex === i ? (
-                <div>
+              {/* Content */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {isEditing ? (
                   <input
                     value={editText}
                     onChange={(e) => setEditText(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') handleSaveEdit(); if (e.key === 'Escape') setEditingIndex(null) }}
                     autoFocus
-                    style={{ width: '100%', border: '1.5px solid #3D7A5F', borderRadius: '8px', padding: '6px 8px', fontFamily: 'var(--font-body)', fontSize: '13px', color: '#1A3028', outline: 'none', boxSizing: 'border-box' }}
+                    style={{ width: '100%', border: '1.5px solid #6BB048', borderRadius: '8px', padding: '5px 8px', fontFamily: 'var(--font-body)', fontSize: '13px', color: '#1A3028', outline: 'none', boxSizing: 'border-box', background: '#FFFFFF' }}
                   />
-                  <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
-                    <button onClick={handleSaveEdit} style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: 500, color: '#FFFFFF', backgroundColor: '#3D7A5F', border: 'none', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer' }}>Save</button>
-                    <button onClick={() => setEditingIndex(null)} style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#9BBFB2', background: 'none', border: 'none', cursor: 'pointer' }}>Cancel</button>
-                  </div>
-                </div>
-              ) : (
-                <p
-                  onClick={() => handleEdit(i)}
-                  style={{ fontFamily: 'var(--font-body)', fontSize: '13px', lineHeight: 1.5, color: '#2D4A3E', margin: 0, cursor: 'pointer' }}
-                >
-                  {task.task_text}
-                </p>
-              )}
-            </div>
-
-            {/* Actions */}
-            {editingIndex !== i && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flexShrink: 0 }}>
-                {i > 0 && (
-                  <button onClick={() => handleMoveUp(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#9BBFB2', padding: '2px', lineHeight: 1 }}>↑</button>
-                )}
-                {i < tasks.length - 1 && (
-                  <button onClick={() => handleMoveDown(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#9BBFB2', padding: '2px', lineHeight: 1 }}>↓</button>
-                )}
-                {tasks.length > 1 && (
-                  <button onClick={() => handleDelete(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#D97706', padding: '2px', lineHeight: 1 }}>✕</button>
+                ) : (
+                  <p onClick={() => handleEdit(i)} style={{ fontFamily: 'var(--font-body)', fontSize: '13px', lineHeight: 1.45, color: '#2D4A3E', margin: 0, cursor: 'pointer' }}>
+                    {task.task_text}
+                  </p>
                 )}
               </div>
-            )}
-          </div>
-        ))}
-      </div>
 
-      {/* Add task */}
-      {addingTask ? (
-        <div style={{ marginBottom: '12px' }}>
-          <input
-            value={newTaskText}
-            onChange={(e) => setNewTaskText(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleAddTask(); if (e.key === 'Escape') setAddingTask(false) }}
-            placeholder="Write your custom task..."
-            autoFocus
-            style={{ width: '100%', border: '1.5px solid #D4EDE3', borderRadius: '10px', padding: '10px 12px', fontFamily: 'var(--font-body)', fontSize: '13px', color: '#1A3028', outline: 'none', boxSizing: 'border-box' }}
-            onFocus={(e) => (e.target.style.borderColor = '#3D7A5F')}
-            onBlur={(e) => (e.target.style.borderColor = '#D4EDE3')}
-          />
-          <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-            <button onClick={handleAddTask} style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, color: '#FFFFFF', backgroundColor: '#3D7A5F', border: 'none', borderRadius: '9999px', padding: '6px 14px', cursor: 'pointer' }}>Add task</button>
-            <button onClick={() => { setAddingTask(false); setNewTaskText('') }} style={{ fontFamily: 'var(--font-body)', fontSize: '12px', color: '#9BBFB2', background: 'none', border: 'none', cursor: 'pointer' }}>Cancel</button>
-          </div>
-        </div>
-      ) : (
-        <button onClick={() => setAddingTask(true)} style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#3D7A5F', background: 'none', border: '1px dashed #B8D9CC', borderRadius: '10px', padding: '10px', cursor: 'pointer', marginBottom: '12px', width: '100%' }}>
-          + Add a custom task
-        </button>
-      )}
+              {/* Actions */}
+              {isEditing ? (
+                <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                  <button onClick={handleSaveEdit} style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: 600, color: '#FFFFFF', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', border: 'none', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer' }}>Save</button>
+                  <button onClick={() => setEditingIndex(null)} style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#9BBFB2', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px' }}>✕</button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
+                  <span style={{ fontSize: '11px', color: '#B8D9CC', cursor: 'grab', userSelect: 'none', padding: '0 4px' }}>⠿</span>
+                  {tasks.length > 1 && (
+                    <button onClick={() => handleDelete(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#C8DDD5', padding: '4px 6px', lineHeight: 1 }}>✕</button>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
 
       {/* Regenerate */}
       {onRegenerate && (
-        <button onClick={onRegenerate} disabled={generatingPlan} style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#3D7A5F', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0', marginBottom: '12px' }}>
-          {generatingPlan ? '↺ Regenerating...' : '↺ Regenerate entire plan'}
+        <button onClick={onRegenerate} disabled={generatingPlan} style={{ width: '100%', fontFamily: 'var(--font-body)', fontSize: '12px', color: '#5A9A3A', background: 'rgba(118,197,72,0.06)', border: '1px dashed rgba(107,176,72,0.45)', borderRadius: '12px', padding: '10px', cursor: generatingPlan ? 'wait' : 'pointer', opacity: generatingPlan ? 0.6 : 1, fontWeight: 500, marginBottom: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+          <span style={{ fontSize: '13px' }}>{generatingPlan ? '⏳' : '✨'}</span>
+          <span>{generatingPlan ? 'Regenerating plan...' : 'Regenerate plan'}</span>
         </button>
       )}
-      {/* Info box */}
-      <div
-        className="flex items-start gap-3 p-4 mb-6"
-        style={{
-          backgroundColor: '#E4F5ED',
-          border: 'none',
-          borderLeft: '3px solid #7AB5A0',
-          borderRadius: '12px',
-        }}
-      >
-        <Sprout size={20} style={{ color: '#3D7A5F', flexShrink: 0, marginTop: '2px' }} />
-        <p style={{
-          fontFamily: 'var(--font-body)',
-          fontSize: '14px',
-          fontStyle: 'italic',
-          color: '#3D7A5F',
-          margin: 0,
-        }}>
+
+      {/* Info note — minimal sprout green */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', marginBottom: '20px', borderRadius: '12px', background: 'rgba(118,197,72,0.06)', border: '1px solid rgba(107,176,72,0.20)' }}>
+        <Sprout size={14} style={{ color: '#5A9A3A', flexShrink: 0 }} />
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#5A9A3A', margin: 0, lineHeight: 1.5 }}>
           The rest unfolds as you show up. No pressure to be perfect — just consistent.
         </p>
       </div>
