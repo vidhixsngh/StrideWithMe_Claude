@@ -180,7 +180,7 @@ export default function SprintRecordPage() {
   const hasNoLogs = logs.length === 0
 
   return (
-    <div ref={recordRef} style={{ backgroundColor: '#FFFFFF', minHeight: '100vh', maxWidth: '430px', margin: '0 auto', borderTop: '3px solid #3D7A5F' }}>
+    <div ref={recordRef} style={{ backgroundColor: '#FFFFFF', minHeight: '100vh', maxWidth: '430px', margin: '0 auto', borderTop: '3px solid #3D7A5F', paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
       {/* Back button */}
       <button onClick={() => navigate(-1)} style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '16px 20px', background: 'none', border: 'none', cursor: 'pointer', color: '#6B9E8A', fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', letterSpacing: '0.01em' }}>
         <ChevronLeft size={16} /> Back

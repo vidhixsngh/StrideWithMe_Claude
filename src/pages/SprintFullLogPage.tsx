@@ -38,7 +38,7 @@ export default function SprintFullLogPage() {
   const navigate = useNavigate()
 
   return (
-    <div style={{ backgroundColor: '#FAFAFA', minHeight: '100vh', maxWidth: '430px', margin: '0 auto' }}>
+    <div style={{ backgroundColor: '#FAFAFA', minHeight: '100vh', maxWidth: '430px', margin: '0 auto', paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
       {/* Back button */}
       <button
         onClick={() => navigate(-1)}

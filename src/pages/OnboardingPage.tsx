@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Home, Rss, PlusCircle, BookOpen, User, Lock, Users, Globe, Sprout } from 'lucide-react'
+import { Lock, Users, Globe, Sprout } from 'lucide-react'
 import PlanGeneratingScreen from '../components/PlanGeneratingScreen'
 import { useAuth } from '../context/AuthContext'
 import { createSprint, createTasks, calculateEndDate } from '../lib/db'
@@ -124,6 +124,8 @@ export default function OnboardingPage() {
       style={{
         background: 'linear-gradient(180deg, #EAF5F0 0%, #F0F7F4 35%, #F5F0E8 100%)',
         minHeight: '100vh',
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
       }}
     >
       {/* Progress Bar */}
@@ -156,31 +158,6 @@ export default function OnboardingPage() {
       {generatingPlan && (
         <PlanGeneratingScreen sprintLength={sprintLength ?? 30} goalText={goal} />
       )}
-
-      {/* Bottom Nav */}
-      <div
-        className="w-full max-w-[430px] px-6 pb-4 pt-2 flex items-center justify-between"
-        style={{ borderTop: '1px solid var(--color-primary-200)' }}
-      >
-        <NavIcon icon={<Home size={20} />} />
-        <NavIcon icon={<Rss size={20} />} />
-        <div
-          className="w-12 h-12 rounded-full flex items-center justify-center"
-          style={{ backgroundColor: '#3D7A5F' }}
-        >
-          <PlusCircle size={24} color="white" />
-        </div>
-        <NavIcon icon={<BookOpen size={20} />} />
-        <NavIcon icon={<User size={20} />} />
-      </div>
-    </div>
-  )
-}
-
-function NavIcon({ icon }: { icon: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-center w-10 h-10" style={{ color: 'var(--color-text-secondary)' }}>
-      {icon}
     </div>
   )
 }

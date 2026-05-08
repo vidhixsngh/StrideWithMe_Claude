@@ -106,7 +106,7 @@ export default function WelcomeDashboard() {
   const heatmapDays = Array.from({ length: 30 }, (_, i) => i + 1)
 
   return (
-    <div style={{ background: 'linear-gradient(180deg, #EAF5F0 0%, #F0F7F4 35%, #F5F0E8 100%)', minHeight: '100vh', maxWidth: '430px', margin: '0 auto', paddingBottom: '80px' }}>
+    <div style={{ background: 'linear-gradient(180deg, #EAF5F0 0%, #F0F7F4 35%, #F5F0E8 100%)', minHeight: '100vh', maxWidth: '430px', margin: '0 auto', paddingTop: 'env(safe-area-inset-top)', paddingBottom: `calc(80px + env(safe-area-inset-bottom))` }}>
 
       {/* TOP NAV */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px' }}>
