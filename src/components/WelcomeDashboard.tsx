@@ -34,6 +34,7 @@ export default function WelcomeDashboard() {
   const [quoteVisible, setQuoteVisible] = useState(true)
   const [heatmapFilled, setHeatmapFilled] = useState(0)
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [profileToast, setProfileToast] = useState(false)
   const [, setSelectedRecord] = useState(0)
   const tickerRef = useRef<HTMLDivElement>(null)
 
@@ -103,6 +104,12 @@ export default function WelcomeDashboard() {
     return () => clearInterval(id)
   }, [])
 
+  useEffect(() => {
+    if (!profileToast) return
+    const t = setTimeout(() => setProfileToast(false), 2500)
+    return () => clearTimeout(t)
+  }, [profileToast])
+
   const heatmapDays = Array.from({ length: 30 }, (_, i) => i + 1)
 
   return (
@@ -114,9 +121,9 @@ export default function WelcomeDashboard() {
           <img src="/icon-192.png" alt="StrideWithMe" style={{ width: '36px', height: '36px', borderRadius: '10px', flexShrink: 0, boxShadow: '0 4px 12px rgba(107,176,72,0.20)', objectFit: 'cover' }} />
           <span style={{ fontFamily: 'Lora, serif', fontSize: '16px', color: '#1A3028' }}>StrideWithMe</span>
         </div>
-        <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '13px', fontWeight: 600, boxShadow: '0 2px 8px rgba(107,176,72,0.25)' }}>
+        <button onClick={() => setProfileToast(true)} style={{ width: '34px', height: '34px', borderRadius: '50%', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '13px', fontWeight: 600, boxShadow: '0 2px 8px rgba(107,176,72,0.25)', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
           {(user?.email?.[0] ?? 'S').toUpperCase()}
-        </div>
+        </button>
       </div>
 
       {/* SECTION 1 — PERSONAL WELCOME */}
@@ -182,7 +189,7 @@ export default function WelcomeDashboard() {
       </div>
 
       {/* SECTION 3 — PROOF CARDS */}
-      <div style={{ padding: '28px 0 0' }}>
+      <div style={{ padding: '56px 0 0' }}>
         <div style={{ padding: '0 20px 12px' }}>
           <p style={{ fontFamily: 'Lora, serif', fontSize: '18px', color: '#1A3028', margin: '0 0 4px 0' }}>What people have built</p>
           <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: '#6B9E8A', fontStyle: 'italic', margin: 0 }}>Real Sprint Records. Earned in 30 days.</p>
@@ -230,10 +237,19 @@ export default function WelcomeDashboard() {
           ))}
         </div>
 
-        <div style={{ textAlign: 'center', padding: '16px 20px 0' }}>
-          <span style={{ fontFamily: 'Lora, serif', fontSize: '15px', color: '#1A3028', fontStyle: 'italic' }}>You're next. →</span>
+        <div style={{ textAlign: 'center', padding: '40px 20px 32px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '16px' }}>🏃</span>
+          <span style={{ fontFamily: 'Lora, serif', fontSize: '15px', fontWeight: 500, fontStyle: 'italic', color: '#1A3028' }}>You're next. →</span>
         </div>
       </div>
+
+      {/* PROFILE LOCKED TOAST */}
+      {profileToast && (
+        <div style={{ position: 'fixed', top: 'calc(72px + env(safe-area-inset-top))', left: '50%', transform: 'translateX(-50%)', zIndex: 9999, background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', color: 'white', borderRadius: '12px', padding: '12px 18px', boxShadow: '0 8px 24px rgba(107,176,72,0.32)', display: 'flex', alignItems: 'center', gap: '8px', maxWidth: 'calc(100% - 40px)', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: '16px' }}>🔒</span>
+          <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 500 }}>Start a sprint to access profile</span>
+        </div>
+      )}
 
       {/* PREVIEW BOTTOM SHEET */}
       {previewOpen && (

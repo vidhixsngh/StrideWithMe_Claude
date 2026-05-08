@@ -11,16 +11,11 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(180deg, #EAF5F0 0%, #F0F7F4 35%, #F5F0E8 100%)',
+        background: 'linear-gradient(180deg, #FBFAF6 0%, #F8F6F1 50%, #F5F2EC 100%)',
+        maxWidth: '430px',
+        margin: '0 auto',
       }}>
-        <div style={{
-          width: '32px',
-          height: '32px',
-          border: '3px solid #D4EDE3',
-          borderTopColor: '#3D7A5F',
-          borderRadius: '50%',
-          animation: 'spin 0.8s linear infinite',
-        }} />
+        <span style={{ fontSize: '56px', display: 'inline-block', animation: 'runner 1s ease-in-out infinite' }}>🏃</span>
       </div>
     )
   }

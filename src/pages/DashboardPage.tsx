@@ -98,11 +98,9 @@ export default function DashboardPage() {
   // Loading state
   if (loading) {
     return (
-      <PageWrapper>
-        <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ width: '32px', height: '32px', border: '3px solid #D4EDE3', borderTopColor: '#3D7A5F', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-        </div>
-      </PageWrapper>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(180deg, #FBFAF6 0%, #F8F6F1 50%, #F5F2EC 100%)', maxWidth: '430px', margin: '0 auto' }}>
+        <span style={{ fontSize: '56px', display: 'inline-block', animation: 'runner 1s ease-in-out infinite' }}>🏃</span>
+      </div>
     )
   }
 
