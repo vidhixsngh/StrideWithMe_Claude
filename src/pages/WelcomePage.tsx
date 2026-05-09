@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import PageWrapper from '../components/PageWrapper'
 import ExampleRecordContent from '../components/ExampleRecordContent'
+import { track, Events } from '../lib/analytics'
 
 const goals = [
   "actually finish what you started.",
@@ -417,7 +418,7 @@ export default function WelcomePage() {
 
         {/* Primary CTA — at the edge of the first fold */}
         <div style={{ padding: '20px 24px 0', position: 'relative', zIndex: 2 }}>
-          <button onClick={() => navigate('/auth')} style={{ width: '100%', height: '54px', background: 'linear-gradient(180deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', borderRadius: '9999px', border: 'none', fontFamily: 'var(--font-heading)', fontSize: '16px', fontWeight: 500, cursor: 'pointer', boxShadow: '0 8px 24px rgba(107,176,72,0.32), 0 4px 12px rgba(107,176,72,0.18)', letterSpacing: '0.015em' }}>
+          <button onClick={() => { track(Events.WelcomeCtaClicked, { location: 'hero' }); navigate('/auth') }} style={{ width: '100%', height: '54px', background: 'linear-gradient(180deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', borderRadius: '9999px', border: 'none', fontFamily: 'var(--font-heading)', fontSize: '16px', fontWeight: 500, cursor: 'pointer', boxShadow: '0 8px 24px rgba(107,176,72,0.32), 0 4px 12px rgba(107,176,72,0.18)', letterSpacing: '0.015em' }}>
             Begin your journey today →
           </button>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '14px' }}>
@@ -567,7 +568,7 @@ export default function WelcomePage() {
             <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', color: 'rgba(255,255,255,0.85)', lineHeight: 1.6, marginBottom: '28px' }}>
               30 days. One goal. Daily verification. A Sprint Record that proves you showed up.
             </p>
-            <button onClick={() => navigate('/auth')} style={{ backgroundColor: '#FFFFFF', color: '#3D7A5F', fontFamily: 'var(--font-heading)', fontSize: '15px', fontWeight: 600, borderRadius: '9999px', border: 'none', height: '50px', width: '100%', maxWidth: '300px', margin: '0 auto', display: 'block', cursor: 'pointer', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}>
+            <button onClick={() => { track(Events.WelcomeCtaClicked, { location: 'closing' }); navigate('/auth') }} style={{ backgroundColor: '#FFFFFF', color: '#3D7A5F', fontFamily: 'var(--font-heading)', fontSize: '15px', fontWeight: 600, borderRadius: '9999px', border: 'none', height: '50px', width: '100%', maxWidth: '300px', margin: '0 auto', display: 'block', cursor: 'pointer', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}>
               Start my 30-day sprint →
             </button>
             <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '20px' }}>

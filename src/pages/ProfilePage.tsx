@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { getProfile, getAllSprints, calculateDayNumber, isSprintLocked, updateSprintVisibility, updateReminderSettings } from '../lib/db'
 import type { Sprint, Profile } from '../lib/db'
 import { enablePush, disablePush, isPushSupported, isStandaloneInstalled, isIOS } from '../lib/push'
+import { track, Events, setPeople } from '../lib/analytics'
 
 type Visibility = 'PRIVATE' | 'COHORT' | 'PUBLIC'
 const VISIBILITY_OPTIONS: { value: Visibility; emoji: string; title: string; subtitle: string }[] = [
@@ -389,6 +390,8 @@ export default function ProfilePage() {
                     setSavingReminder(false)
                     if (ok) {
                       setProfile({ ...(profile ?? {} as Profile), reminder_enabled: false })
+                      track(Events.ReminderDisabled)
+                      setPeople({ reminder_enabled: false })
                       setReminderEditor(false)
                     }
                   }}
@@ -415,9 +418,12 @@ export default function ProfilePage() {
                   // 2. Try to subscribe to push (best-effort, email is the fallback)
                   let pushOk = false
                   if (isPushSupported()) {
+                    track(Events.PushPermissionRequested)
                     const result = await enablePush(user.id)
                     pushOk = result.ok
-                    if (!result.ok && result.reason === 'denied') {
+                    if (result.ok) track(Events.PushPermissionGranted)
+                    else if (result.reason === 'denied') {
+                      track(Events.PushPermissionDenied)
                       setReminderError("Notification permission was blocked — we'll email instead.")
                     }
                   }
@@ -432,8 +438,12 @@ export default function ProfilePage() {
                     reminder_enabled: true,
                   })
 
+                  track(Events.ReminderEnabled, { time: reminderDraft, timezone: tz, push_subscribed: pushOk })
+                  setPeople({ reminder_time: reminderDraft, reminder_timezone: tz, reminder_enabled: true, push_subscribed: pushOk })
+
                   // 3. iOS nudge — push only works after Add to Home Screen
                   if (isIOS() && !isStandaloneInstalled()) {
+                    track(Events.IosInstallNudgeShown)
                     setShowInstallNudge(true)
                     return // keep the sheet conceptually closed, but nudge shows
                   }

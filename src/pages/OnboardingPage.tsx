@@ -7,6 +7,7 @@ import { createSprint, createTasks, calculateEndDate } from '../lib/db'
 import { supabase } from '../lib/supabase'
 import { generateSprintPlan } from '../lib/gemini'
 import type { GeneratedTask } from '../lib/gemini'
+import { track, Events, setPeople, incrementPeople } from '../lib/analytics'
 
 type Visibility = 'PRIVATE' | 'COHORT' | 'PUBLIC'
 
@@ -47,6 +48,7 @@ export default function OnboardingPage() {
   const goToStep = (next: number) => {
     setDirection('out')
     setAnimating(true)
+    track(Events.OnboardingStepCompleted, { from: step, to: next })
     setTimeout(() => {
       setStep(next)
       setDirection('in')
@@ -97,6 +99,17 @@ export default function OnboardingPage() {
       console.log('[Onboarding] Inserting tasks:', tasksToSave.length)
       const tasksOk = await createTasks(tasksToSave)
       console.log('[Onboarding] Tasks result:', tasksOk)
+
+      track(Events.SprintStarted, {
+        sprint_id: sprint.id,
+        sprint_length: sprintLength,
+        visibility,
+        had_past_reflection: !!pastReflection?.trim(),
+        had_extra_context: !!extraContext?.trim(),
+      })
+      setPeople({ has_active_sprint: true, last_sprint_started_at: new Date().toISOString() })
+      incrementPeople('total_sprints_started', 1)
+
       navigate('/dashboard', { replace: true })
     } catch (err) {
       console.error('Sprint creation error:', err)
@@ -107,11 +120,19 @@ export default function OnboardingPage() {
 
   const handleGoToStep4 = async () => {
     setGeneratingPlan(true)
+    track(Events.PlanGenerated, {
+      sprint_length: sprintLength,
+      visibility,
+      goal_length: goal.length,
+      has_past_reflection: !!pastReflection?.trim(),
+      has_extra_context: !!extraContext?.trim(),
+    })
     const result = await generateSprintPlan(goal, sprintLength ?? 30, 'general', pastReflection, extraContext)
     setAiTasks(result.tasks)
     setWasVague(result.wasVague)
     setPlanGenerated(true)
     setGeneratingPlan(false)
+    if (pastReflection?.trim()) track(Events.PastReflectionAdded, { length: pastReflection.length })
     goToStep(4)
   }
 
@@ -119,6 +140,8 @@ export default function OnboardingPage() {
     setExtraContext(text)
     setHasUsedExtraContext(true)
     setGeneratingPlan(true)
+    track(Events.PlanRegenerated, { length: text.length })
+    track(Events.ExtraContextUsed, { length: text.length })
     const result = await generateSprintPlan(goal, sprintLength ?? 30, 'general', pastReflection, text)
     setAiTasks(result.tasks)
     setWasVague(result.wasVague)

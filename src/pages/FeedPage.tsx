@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import { getFeedPosts } from '../lib/db'
 import type { FeedPost } from '../lib/db'
 import PageWrapper from '../components/PageWrapper'
+import { track, Events } from '../lib/analytics'
 
 function getTimeAgo(dateStr: string): string {
   const now = new Date()
@@ -73,9 +74,11 @@ export default function FeedPage() {
 
   const handleScopeChange = (s: FeedScope) => {
     if (s === 'cohort' && !hasCohortAccess) {
+      track(Events.CohortLockShown)
       setShowCohortLock(true)
       return
     }
+    track(Events.FeedScopeChanged, { scope: s })
     setScope(s)
   }
 

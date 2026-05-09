@@ -9,6 +9,7 @@ import type { VerificationResult } from '../lib/gemini'
 import { createLog, getLogsForSprint, getAllActiveSprints, getTodayTask, getTasksForSprint, calculateDayNumber, createFeedPost, markLogPostedToFeed, updateLogDraft } from '../lib/db'
 import { useAuth } from '../context/AuthContext'
 import type { Sprint, Task, DailyLog } from '../lib/db'
+import { track, Events, incrementPeople, setPeople } from '../lib/analytics'
 
 const mockLog = {
   day: 14,
@@ -146,6 +147,7 @@ export default function LogPage() {
     if (!canVerify) return
     setVerifying(true)
     setVerificationResult(null)
+    track(Events.LogVerifyAttempted, { tab: activeTab, day_number: dayNumber, attempt: attemptNumber })
 
     const result = await verifyLog({
       goalText: sprint.goal_text,
@@ -180,10 +182,14 @@ export default function LogPage() {
       localStorage.removeItem(DRAFT_KEY)
       setVerificationResult(result)
       setShowBloom(true)
+      track(Events.LogVerified, { tab: activeTab, day_number: dayNumber, attempt: attemptNumber, sprint_id: sprint.id, confidence: result.confidence })
+      incrementPeople('total_verified_logs', 1)
+      setPeople({ last_log_at: new Date().toISOString() })
       generateAndSaveDraft(newLog?.id)
     } else {
       setAttemptNumber(prev => prev + 1)
       setVerificationResult(result)
+      track(Events.LogVerificationFailed, { tab: activeTab, day_number: dayNumber, attempt: attemptNumber, reason_excerpt: result.reason?.slice(0, 80) })
       if (attemptNumber >= 3) setPhase('honest')
     }
   }
@@ -197,6 +203,8 @@ export default function LogPage() {
       post_text: postDraft,
     })
     await markLogPostedToFeed(lastLogId)
+    track(Events.FeedPostCreated, { sprint_id: sprint.id, length: postDraft.length, visibility: sprint.visibility })
+    incrementPeople('total_feed_posts', 1)
     navigate('/dashboard')
   }
 
@@ -323,6 +331,9 @@ export default function LogPage() {
             verification_attempts: 0,
           })
           localStorage.removeItem('stridewithme_draft_log')
+          track(Events.LogHonestSubmitted, { day_number: dayNumber, sprint_id: sprint.id, length: honestText.length })
+          incrementPeople('total_honest_logs', 1)
+          setPeople({ last_log_at: new Date().toISOString() })
           if (newLog) {
             setLastLogId(newLog.id)
             setLogText(honestText)
