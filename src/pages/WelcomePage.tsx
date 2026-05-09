@@ -44,7 +44,6 @@ export default function WelcomePage() {
   const [goalIndex, setGoalIndex] = useState(0)
   const [visible, setVisible] = useState(true)
   const [previewOpen, setPreviewOpen] = useState(false)
-  const [filledDays, setFilledDays] = useState(0)
   const tickerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -56,14 +55,6 @@ export default function WelcomePage() {
       }, 300)
     }, 2500)
     return () => clearInterval(interval)
-  }, [])
-
-  // 30-day heatmap fill animation
-  useEffect(() => {
-    const id = setInterval(() => {
-      setFilledDays((prev) => (prev >= 32 ? 0 : prev + 1))
-    }, 180)
-    return () => clearInterval(id)
   }, [])
 
   useEffect(() => {
@@ -104,72 +95,96 @@ export default function WelcomePage() {
           </div>
         </div>
 
-        {/* Hero text — fixed height, won't shift CTA */}
-        <div style={{ padding: '24px 24px 0' }}>
-          {/* Problem-naming tag */}
-          <span style={{ display: 'inline-block', fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', letterSpacing: '0.12em', color: '#5A9A3A', textTransform: 'uppercase', fontWeight: 600, marginBottom: '14px' }}>
-            For everyone tired of starting over
-          </span>
-          <span style={{ fontFamily: 'var(--font-heading)', fontSize: '34px', color: '#1A3028', fontWeight: 400, display: 'block', lineHeight: 1.15, letterSpacing: '-0.015em' }}>30 days to</span>
-          <div style={{ height: '46px', display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
-            <span style={{ fontFamily: 'var(--font-heading)', fontSize: '34px', fontStyle: 'italic', color: '#3D7A5F', fontWeight: 700, display: 'block', lineHeight: 1.15, letterSpacing: '-0.015em', opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(6px)', transition: 'opacity 0.3s ease, transform 0.3s ease', whiteSpace: 'nowrap' }}>{goals[goalIndex]}</span>
+        {/* HERO — sun + seedling animation behind the headline */}
+        <div style={{ position: 'relative', padding: '32px 24px 0', minHeight: '380px', overflow: 'hidden' }}>
+
+          {/* Sun (top-right) — rotating rays + soft glow */}
+          <div style={{ position: 'absolute', top: '8px', right: '-10px', width: '140px', height: '140px', pointerEvents: 'none', opacity: 0.85, animation: 'sunGlow 4s ease-in-out infinite' }}>
+            <svg viewBox="0 0 140 140" style={{ width: '100%', height: '100%' }}>
+              <g style={{ transformOrigin: '70px 70px', animation: 'spin 40s linear infinite' }}>
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <line key={i} x1="70" y1="14" x2="70" y2="28" stroke="#F5B447" strokeWidth="2.5" strokeLinecap="round" opacity="0.55" transform={`rotate(${i * 30} 70 70)`} />
+                ))}
+              </g>
+              <circle cx="70" cy="70" r="22" fill="#F5D547" opacity="0.25" />
+              <circle cx="70" cy="70" r="16" fill="#F5C547" />
+              <circle cx="66" cy="66" r="6" fill="#F8DD66" opacity="0.7" />
+            </svg>
           </div>
-          <span style={{ fontFamily: 'var(--font-heading)', fontSize: '34px', color: '#1A3028', fontWeight: 400, display: 'block', lineHeight: 1.15, letterSpacing: '-0.015em' }}>Start today.</span>
-        </div>
 
-        {/* Animated 30-day heatmap — the visual centerpiece */}
-        <div style={{ padding: '22px 24px 0' }}>
-          <div style={{ position: 'relative', padding: '18px 18px 16px', background: 'linear-gradient(135deg, rgba(255,255,255,0.85) 0%, rgba(234,245,240,0.65) 100%)', borderRadius: '20px', border: '1px solid rgba(184,217,204,0.5)', boxShadow: '0 6px 24px rgba(28,61,48,0.08)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', overflow: 'hidden' }}>
-            {/* Inner glow */}
-            <div style={{ position: 'absolute', top: '-30px', right: '-30px', width: '120px', height: '120px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(118,197,72,0.18) 0%, rgba(118,197,72,0) 70%)', pointerEvents: 'none' }} />
+          {/* Soft sun rays gradient wash on background */}
+          <div style={{ position: 'absolute', top: '40px', right: '20px', width: '260px', height: '260px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,213,71,0.18) 0%, rgba(245,213,71,0) 60%)', pointerEvents: 'none' }} />
 
-            <div style={{ position: 'relative', zIndex: 1 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '10px' }}>
-                <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', letterSpacing: '0.14em', color: '#7AB5A0', textTransform: 'uppercase', fontWeight: 600 }}>Sprint heatmap</span>
-                <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#3D7A5F', fontWeight: 600 }}>
-                  {Math.min(filledDays, 30)} <span style={{ color: '#9BBFB2', fontWeight: 400, fontStyle: 'italic' }}>/ 30 verified</span>
-                </span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(15, 1fr)', gap: '4px' }}>
-                {Array.from({ length: 30 }, (_, d) => {
-                  const fill = Math.min(filledDays, 30)
-                  const isFilled = d < fill
-                  const isHonest = isFilled && (d === 7 || d === 16 || d === 22)
-                  const isCurrent = d === fill - 1
-                  return (
-                    <div
-                      key={d}
-                      style={{
-                        height: '14px',
-                        borderRadius: '3px',
-                        background: isHonest
-                          ? 'linear-gradient(135deg, #F59E4A 0%, #D97706 100%)'
-                          : isFilled
-                          ? 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)'
-                          : '#E8F0EC',
-                        boxShadow: isCurrent ? '0 0 14px rgba(118,197,72,0.7), 0 0 4px rgba(118,197,72,0.4)' : 'none',
-                        transform: isCurrent ? 'scale(1.18)' : 'scale(1)',
-                        transition: 'background 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease',
-                      }}
-                    />
-                  )
-                })}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
-                <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', color: '#9BBFB2' }}>Day 1</span>
-                <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#5A9A3A', fontWeight: 500 }}>
-                  AI verifies every day. The work has to be real.
-                </span>
-                <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', color: '#9BBFB2' }}>Day 30</span>
-              </div>
+          {/* Seedling (bottom-left) */}
+          <div style={{ position: 'absolute', bottom: '-10px', left: '8px', width: '120px', height: '180px', pointerEvents: 'none', transformOrigin: 'bottom center', animation: 'sway 5s ease-in-out infinite' }}>
+            <svg viewBox="0 0 120 180" style={{ width: '100%', height: '100%' }}>
+              {/* Soil mound */}
+              <ellipse cx="60" cy="172" rx="42" ry="8" fill="#5A4A3A" opacity="0.18" />
+              {/* Stem — drawn over time */}
+              <path d="M60,172 Q58,140 60,108 Q62,78 60,52" stroke="#6BB048" strokeWidth="3" fill="none" strokeLinecap="round" strokeDasharray="120" style={{ animation: 'seedlingDraw 4s ease-out infinite', animationDelay: '0s' }} />
+              {/* Lower-left leaf */}
+              <g style={{ transformOrigin: '60px 130px', animation: 'leafBloom 4s ease-out infinite', animationDelay: '0s' }}>
+                <ellipse cx="38" cy="128" rx="20" ry="10" fill="#76C548" transform="rotate(-30 38 128)" />
+                <path d="M58,130 Q40,128 22,124" stroke="#5A9A3A" strokeWidth="1.2" fill="none" />
+              </g>
+              {/* Upper-right leaf */}
+              <g style={{ transformOrigin: '60px 90px', animation: 'leafBloom 4s ease-out infinite', animationDelay: '0.3s' }}>
+                <ellipse cx="84" cy="84" rx="22" ry="10" fill="#7CCB52" transform="rotate(28 84 84)" />
+                <path d="M62,90 Q80,86 100,80" stroke="#5A9A3A" strokeWidth="1.2" fill="none" />
+              </g>
+              {/* Top sprout — small bud */}
+              <g style={{ transformOrigin: '60px 50px', animation: 'leafBloom 4s ease-out infinite', animationDelay: '0.6s' }}>
+                <path d="M60,52 Q52,46 56,38 Q60,42 60,50 Z" fill="#7CCB52" />
+                <path d="M60,52 Q68,46 64,38 Q60,42 60,50 Z" fill="#76C548" />
+              </g>
+            </svg>
+          </div>
+
+          {/* Floating water-droplet / leaf particles */}
+          {[
+            { left: '32%', size: 6, color: '#76C548', delay: '0s', duration: '6s' },
+            { left: '54%', size: 4, color: '#7AB5A0', delay: '1.4s', duration: '7s' },
+            { left: '70%', size: 5, color: '#F5C547', delay: '2.2s', duration: '5.5s' },
+            { left: '20%', size: 4, color: '#76C548', delay: '3s', duration: '6.5s' },
+            { left: '82%', size: 5, color: '#76C548', delay: '4.2s', duration: '6s' },
+          ].map((p, i) => (
+            <div key={i} style={{
+              position: 'absolute',
+              bottom: '40px',
+              left: p.left,
+              width: `${p.size}px`,
+              height: `${p.size}px`,
+              borderRadius: '50%',
+              background: p.color,
+              opacity: 0.5,
+              animation: `floatUp ${p.duration} ease-in-out infinite`,
+              animationDelay: p.delay,
+              pointerEvents: 'none',
+            }} />
+          ))}
+
+          {/* Headline — overlay on the animation */}
+          <div style={{ position: 'relative', zIndex: 2, paddingTop: '28px' }}>
+            <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '42px', fontWeight: 700, color: '#1A3028', margin: 0, lineHeight: 1.08, letterSpacing: '-0.025em', maxWidth: '320px' }}>
+              For everyone <span style={{ fontStyle: 'italic', color: '#3D7A5F' }}>tired of starting over.</span>
+            </h1>
+
+            {/* Smaller rotating subhead */}
+            <div style={{ marginTop: '24px' }}>
+              <span style={{ fontFamily: 'var(--font-heading)', fontSize: '20px', color: '#3D5949', fontWeight: 400, lineHeight: 1.3, letterSpacing: '-0.01em' }}>
+                30 days to{' '}
+              </span>
+              <span style={{ fontFamily: 'var(--font-heading)', fontSize: '20px', fontStyle: 'italic', color: '#3D7A5F', fontWeight: 600, opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(4px)', transition: 'opacity 0.3s ease, transform 0.3s ease', display: 'inline-block', whiteSpace: 'nowrap' }}>
+                {goals[goalIndex]}
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Primary CTA */}
-        <div style={{ padding: '28px 24px 0' }}>
+        {/* Primary CTA — at the edge of the first fold */}
+        <div style={{ padding: '20px 24px 0', position: 'relative', zIndex: 2 }}>
           <button onClick={() => navigate('/auth')} style={{ width: '100%', height: '54px', background: 'linear-gradient(180deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', borderRadius: '9999px', border: 'none', fontFamily: 'var(--font-heading)', fontSize: '16px', fontWeight: 500, cursor: 'pointer', boxShadow: '0 8px 24px rgba(107,176,72,0.32), 0 4px 12px rgba(107,176,72,0.18)', letterSpacing: '0.015em' }}>
-            Begin your sprint →
+            Begin your journey today →
           </button>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '14px' }}>
             {['Free to start', 'Private by default', '2 minutes'].map((t) => (

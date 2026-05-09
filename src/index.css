@@ -69,3 +69,32 @@ body {
   75%  { transform: translateX(0) rotate(2deg); }
   100% { transform: translateX(-8px) rotate(-3deg); }
 }
+
+@keyframes seedlingDraw {
+  0%   { stroke-dashoffset: 100; }
+  60%  { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes leafBloom {
+  0%   { transform: scale(0); opacity: 0; }
+  60%  { transform: scale(0); opacity: 0; }
+  80%  { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes floatUp {
+  0%   { transform: translateY(0) translateX(0); opacity: 0; }
+  15%  { opacity: 0.7; }
+  100% { transform: translateY(-120px) translateX(8px); opacity: 0; }
+}
+
+@keyframes sunGlow {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(245,180,71,0.35)); }
+  50%      { filter: drop-shadow(0 0 18px rgba(245,180,71,0.65)); }
+}
+
+@keyframes sway {
+  0%, 100% { transform: rotate(-2deg); }
+  50%      { transform: rotate(2deg); }
+}
