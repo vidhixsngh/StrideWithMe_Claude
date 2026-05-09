@@ -372,83 +372,85 @@ function Step1Goal({
         </span>
       </div>
 
-      {/* Theme picker */}
-      <div style={{ marginTop: '20px' }}>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', marginBottom: '10px', letterSpacing: '0.04em' }}>
-          ✨ Need inspiration? Pick a theme
-        </p>
-        <div className="no-scrollbar" style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', margin: '0 -24px', padding: '0 24px 4px', scrollbarWidth: 'none' }}>
-          {GOAL_THEMES.map((t) => {
-            const isActive = activeTheme === t.key
-            return (
-              <button
-                key={t.key}
-                onClick={() => setActiveTheme(isActive ? null : t.key)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '7px 12px',
-                  background: isActive ? 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)' : 'rgba(255,255,255,0.85)',
-                  border: isActive ? 'none' : '1px solid #E8F0EC',
-                  borderRadius: '9999px',
-                  cursor: 'pointer',
-                  fontFamily: 'var(--font-body)',
-                  fontSize: '12px',
-                  fontWeight: 500,
-                  color: isActive ? '#FFFFFF' : '#3D5949',
-                  boxShadow: isActive ? '0 4px 12px rgba(107,176,72,0.25)' : 'none',
-                  transition: 'all 0.15s ease',
-                  flexShrink: 0,
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                <span style={{ fontSize: '13px' }}>{t.emoji}</span>
-                <span>{t.label}</span>
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Goals for active theme */}
-        {activeTheme && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '12px' }}>
-            {(GOAL_THEMES.find((t) => t.key === activeTheme)?.goals ?? []).map((g, i) => (
-              <button
-                key={i}
-                onClick={() => setGoal(g)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '8px',
-                  padding: '10px 14px',
-                  background: 'rgba(118,197,72,0.06)',
-                  border: '1px solid rgba(107,176,72,0.20)',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  width: '100%',
-                  fontFamily: 'var(--font-body)',
-                  fontSize: '12px',
-                  color: '#3D5949',
-                  fontStyle: 'italic',
-                  lineHeight: 1.45,
-                  transition: 'all 0.15s ease',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#6BB048'; e.currentTarget.style.background = 'rgba(118,197,72,0.12)' }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(107,176,72,0.20)'; e.currentTarget.style.background = 'rgba(118,197,72,0.06)' }}
-              >
-                <span style={{ color: '#6BB048', fontSize: '11px', flexShrink: 0, marginTop: '1px' }}>›</span>
-                <span>{g}</span>
-              </button>
-            ))}
+      {/* Theme picker — only when no goal is committed yet */}
+      {!goalCommitted && (
+        <div style={{ marginTop: '20px' }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', marginBottom: '10px', letterSpacing: '0.04em' }}>
+            ✨ Need inspiration? Pick a theme
+          </p>
+          <div className="no-scrollbar" style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', margin: '0 -24px', padding: '0 24px 4px', scrollbarWidth: 'none' }}>
+            {GOAL_THEMES.map((t) => {
+              const isActive = activeTheme === t.key
+              return (
+                <button
+                  key={t.key}
+                  onClick={() => setActiveTheme(isActive ? null : t.key)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '7px 12px',
+                    background: isActive ? 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)' : 'rgba(255,255,255,0.85)',
+                    border: isActive ? 'none' : '1px solid #E8F0EC',
+                    borderRadius: '9999px',
+                    cursor: 'pointer',
+                    fontFamily: 'var(--font-body)',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    color: isActive ? '#FFFFFF' : '#3D5949',
+                    boxShadow: isActive ? '0 4px 12px rgba(107,176,72,0.25)' : 'none',
+                    transition: 'all 0.15s ease',
+                    flexShrink: 0,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <span style={{ fontSize: '13px' }}>{t.emoji}</span>
+                  <span>{t.label}</span>
+                </button>
+              )
+            })}
           </div>
-        )}
-      </div>
 
-      {/* Optional reflection — appears once a goal is committed */}
+          {/* Goals for active theme */}
+          {activeTheme && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '12px' }}>
+              {(GOAL_THEMES.find((t) => t.key === activeTheme)?.goals ?? []).map((g, i) => (
+                <button
+                  key={i}
+                  onClick={() => setGoal(g)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '8px',
+                    padding: '10px 14px',
+                    background: 'rgba(118,197,72,0.06)',
+                    border: '1px solid rgba(107,176,72,0.20)',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    width: '100%',
+                    fontFamily: 'var(--font-body)',
+                    fontSize: '12px',
+                    color: '#3D5949',
+                    fontStyle: 'italic',
+                    lineHeight: 1.45,
+                    transition: 'all 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#6BB048'; e.currentTarget.style.background = 'rgba(118,197,72,0.12)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(107,176,72,0.20)'; e.currentTarget.style.background = 'rgba(118,197,72,0.06)' }}
+                >
+                  <span style={{ color: '#6BB048', fontSize: '11px', flexShrink: 0, marginTop: '1px' }}>›</span>
+                  <span>{g}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Optional reflection — takes the same slot once a goal is committed */}
       {goalCommitted && (
-        <div style={{ marginTop: '24px', padding: '14px 16px', background: 'linear-gradient(135deg, rgba(245,213,71,0.06) 0%, rgba(118,197,72,0.06) 100%)', borderRadius: '14px', border: '1px solid rgba(184,217,204,0.5)' }}>
+        <div style={{ marginTop: '20px', padding: '14px 16px', background: 'linear-gradient(135deg, rgba(245,213,71,0.06) 0%, rgba(118,197,72,0.06) 100%)', borderRadius: '14px', border: '1px solid rgba(184,217,204,0.5)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
             <span style={{ fontSize: '13px' }}>🪞</span>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', letterSpacing: '0.08em', color: '#5A9A3A', textTransform: 'uppercase', fontWeight: 600, margin: 0 }}>
