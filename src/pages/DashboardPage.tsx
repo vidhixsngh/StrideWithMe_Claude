@@ -4,7 +4,7 @@ import { Calendar } from 'lucide-react'
 import PageWrapper from '../components/PageWrapper'
 import WelcomeDashboard from '../components/WelcomeDashboard'
 import { useAuth } from '../context/AuthContext'
-import { getActiveSprint, getLogsForSprint, getTodayTask, getTodayLog, calculateDayNumber } from '../lib/db'
+import { getAllActiveSprints, getLogsForSprint, getTodayTask, getTodayLog, calculateDayNumber } from '../lib/db'
 import type { Sprint, Task, DailyLog } from '../lib/db'
 import { shouldTriggerReplan, generateReplan, getReplanThreshold } from '../lib/gemini'
 import { createTasks, getTasksForSprint } from '../lib/db'
@@ -13,18 +13,31 @@ import { supabase } from '../lib/supabase'
 export default function DashboardPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [sprint, setSprint] = useState<Sprint | null>(null)
-  const [logs, setLogs] = useState<DailyLog[]>([])
-  const [todayTask, setTodayTask] = useState<Task | null>(null)
-  const [todayLog, setTodayLog] = useState<DailyLog | null>(null)
+  type SprintData = {
+    sprint: Sprint
+    logs: DailyLog[]
+    todayTask: Task | null
+    todayLog: DailyLog | null
+    upcomingTasks: Task[]
+  }
+
+  const [sprintsData, setSprintsData] = useState<SprintData[]>([])
+  const [selectedIdx, setSelectedIdx] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [upcomingTasks, setUpcomingTasks] = useState<Task[]>([])
+
+  const sprint = sprintsData[selectedIdx]?.sprint ?? null
+  const logs = sprintsData[selectedIdx]?.logs ?? []
+  const todayTask = sprintsData[selectedIdx]?.todayTask ?? null
+  const todayLog = sprintsData[selectedIdx]?.todayLog ?? null
+  const upcomingTasks = sprintsData[selectedIdx]?.upcomingTasks ?? []
+
   const [showFullPlan, setShowFullPlan] = useState(false)
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
   const [editTaskText, setEditTaskText] = useState('')
   const [dragIdx, setDragIdx] = useState<number | null>(null)
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
   const dragRef = useRef<number | null>(null)
+  const swipeStartX = useRef<number | null>(null)
   const [replanNeeded, setReplanNeeded] = useState(false)
   const [replanLoading, setReplanLoading] = useState(false)
   const [replanDone, setReplanDone] = useState(false)
@@ -36,31 +49,43 @@ export default function DashboardPage() {
 
   async function loadDashboard() {
     setLoading(true)
-    const activeSprint = await getActiveSprint(user!.id)
+    const activeSprints = await getAllActiveSprints(user!.id)
 
-    if (!activeSprint) {
+    if (activeSprints.length === 0) {
+      setSprintsData([])
       setLoading(false)
       return
     }
 
-    setSprint(activeSprint)
+    // Load logs/tasks for each sprint in parallel
+    const allData: SprintData[] = await Promise.all(
+      activeSprints.map(async (s) => {
+        const dn = calculateDayNumber(s.start_date)
+        const [sprintLogs, todayT, todayL, allTasks] = await Promise.all([
+          getLogsForSprint(s.id),
+          getTodayTask(s.id, dn),
+          getTodayLog(s.id, dn),
+          getTasksForSprint(s.id),
+        ])
+        return {
+          sprint: s,
+          logs: sprintLogs,
+          todayTask: todayT,
+          todayLog: todayL,
+          upcomingTasks: allTasks.filter(t => t.day_number >= dn).slice(0, 5),
+        }
+      })
+    )
 
-    const dayNumber = calculateDayNumber(activeSprint.start_date)
+    setSprintsData(allData)
 
-    const [sprintLogs, todayT, todayL, allTasks] = await Promise.all([
-      getLogsForSprint(activeSprint.id),
-      getTodayTask(activeSprint.id, dayNumber),
-      getTodayLog(activeSprint.id, dayNumber),
-      getTasksForSprint(activeSprint.id),
-    ])
-
-    setLogs(sprintLogs)
-    setTodayTask(todayT)
-    setTodayLog(todayL)
-    setUpcomingTasks(allTasks.filter(t => t.day_number >= dayNumber).slice(0, 5))
-
-    const shouldReplan = shouldTriggerReplan(sprintLogs, dayNumber, activeSprint.sprint_length)
-    if (shouldReplan) setReplanNeeded(true)
+    // Check replan for currently-selected sprint
+    const currentSprint = allData[selectedIdx] ?? allData[0]
+    if (currentSprint) {
+      const dn = calculateDayNumber(currentSprint.sprint.start_date)
+      const shouldReplan = shouldTriggerReplan(currentSprint.logs, dn, currentSprint.sprint.sprint_length)
+      if (shouldReplan) setReplanNeeded(true)
+    }
 
     setLoading(false)
   }
@@ -105,6 +130,10 @@ export default function DashboardPage() {
   }
 
   // No sprint state
+  if (sprintsData.length === 0) {
+    return <WelcomeDashboard />
+  }
+
   if (!sprint) {
     return <WelcomeDashboard />
   }
@@ -164,6 +193,22 @@ export default function DashboardPage() {
 
   return (
     <PageWrapper>
+      <div
+        onTouchStart={(e) => { swipeStartX.current = e.touches[0].clientX }}
+        onTouchEnd={(e) => {
+          if (swipeStartX.current === null || sprintsData.length <= 1) return
+          const endX = e.changedTouches[0].clientX
+          const diff = swipeStartX.current - endX
+          if (Math.abs(diff) > 60) {
+            if (diff > 0 && selectedIdx < sprintsData.length - 1) {
+              setSelectedIdx(selectedIdx + 1)
+            } else if (diff < 0 && selectedIdx > 0) {
+              setSelectedIdx(selectedIdx - 1)
+            }
+          }
+          swipeStartX.current = null
+        }}
+      >
       {/* Top Nav */}
       <div className="flex items-center justify-between" style={{ height: '56px', padding: '0 20px' }}>
         <div className="flex items-center gap-2">
@@ -185,6 +230,44 @@ export default function DashboardPage() {
           })()}
         </div>
       </div>
+
+      {/* Sprint switcher pills */}
+      {sprintsData.length > 1 && (
+        <div className="no-scrollbar" style={{ display: 'flex', gap: '8px', overflowX: 'auto', padding: '4px 20px 12px', scrollbarWidth: 'none' }}>
+          {sprintsData.map((sd, i) => {
+            const isActive = i === selectedIdx
+            const dn = calculateDayNumber(sd.sprint.start_date)
+            const shortGoal = sd.sprint.goal_text.split(' ').slice(0, 3).join(' ')
+            return (
+              <button
+                key={sd.sprint.id}
+                onClick={() => setSelectedIdx(i)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 12px',
+                  background: isActive ? 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)' : 'rgba(255,255,255,0.85)',
+                  border: isActive ? 'none' : '1px solid #E8F0EC',
+                  borderRadius: '9999px',
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  color: isActive ? '#FFFFFF' : '#3D5949',
+                  boxShadow: isActive ? '0 4px 12px rgba(107,176,72,0.25)' : 'none',
+                  flexShrink: 0,
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '120px' }}>{shortGoal}</span>
+                <span style={{ fontSize: '10px', opacity: 0.85 }}>· D{dn}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {/* Sprint Hero Card */}
       <div
@@ -292,6 +375,15 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Page indicator dots */}
+      {sprintsData.length > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', margin: '0 16px 12px' }}>
+          {sprintsData.map((_, i) => (
+            <div key={i} style={{ width: i === selectedIdx ? '20px' : '6px', height: '6px', borderRadius: '9999px', backgroundColor: i === selectedIdx ? '#3D7A5F' : '#D4EDE3', transition: 'width 0.2s ease' }} />
+          ))}
+        </div>
+      )}
 
       {/* Replan Banner */}
       {replanNeeded && !replanDone && (
@@ -713,6 +805,7 @@ export default function DashboardPage() {
             </div>
           ))
         )}
+      </div>
       </div>
     </PageWrapper>
   )

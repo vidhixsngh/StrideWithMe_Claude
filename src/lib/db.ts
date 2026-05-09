@@ -110,6 +110,18 @@ export async function getActiveSprint(userId: string): Promise<Sprint | null> {
   return data
 }
 
+export async function getAllActiveSprints(userId: string): Promise<Sprint[]> {
+  const today = new Date().toISOString().split('T')[0]
+  const { data, error } = await supabase
+    .from('sprints')
+    .select('*')
+    .eq('user_id', userId)
+    .gte('end_date', today)
+    .order('created_at', { ascending: false })
+  if (error) { console.error('getAllActiveSprints:', error); return [] }
+  return data || []
+}
+
 export async function getAllSprints(userId: string): Promise<Sprint[]> {
   const { data, error } = await supabase
     .from('sprints')
