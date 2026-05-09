@@ -18,26 +18,29 @@ function getTimeAgo(dateStr: string): string {
   return `${diffDays}d`
 }
 
+type FeedScope = 'global' | 'cohort'
+
 const MOCK_POOL = [
-  { id: 1, initials: 'MI', name: 'Meera Iyer', day: 27, hoursAgo: '2h', type: 'PROGRESS' as const, goal: 'Build and launch a Notion template business', text: 'Published template #4 today — a project tracker for freelancers. Got 3 organic downloads within the first hour. The SEO work from Day 20 is paying off. Feeling the compound effect.', witnessed: 3, facingThis: 0 },
-  { id: 2, initials: 'KN', name: 'Kavya Nair', day: 18, hoursAgo: '4h', type: 'HONEST' as const, goal: 'Write and publish my first technical e-book', text: "Took an honest day today. I've been stuck on Chapter 3 for 4 days now. The structure isn't working and I keep rewriting the same section. Chose to step back instead of forcing bad words.", witnessed: 1, facingThis: 2 },
-  { id: 3, initials: 'PS', name: 'Priya Sharma', day: 22, hoursAgo: '6h', type: 'PROGRESS' as const, goal: 'Get my first 10 freelance design clients', text: 'Sent 5 cold proposals today with custom portfolio links for each prospect. Spent 2 hours researching each company before writing. Quality over quantity. One already replied.', witnessed: 4, facingThis: 0 },
-  { id: 4, initials: 'RV', name: 'Rohan Verma', day: 14, hoursAgo: '8h', type: 'PROGRESS' as const, goal: 'Transition from engineer to PM with a portfolio', text: 'Completed a full PRD for an imaginary feature — a smart notification system for a fintech app. Wrote user stories, acceptance criteria, and a prioritisation matrix. Feels real.', witnessed: 2, facingThis: 0 },
-  { id: 5, initials: 'RV', name: 'Rohan Verma', day: 11, hoursAgo: '1d', type: 'HONEST' as const, goal: 'Transition from engineer to PM with a portfolio', text: "Yesterday was a hard day. Got pulled into a production incident at work and couldn't focus on the sprint at all. Chose to log honestly rather than write something hollow.", witnessed: 2, facingThis: 3 },
-  { id: 6, initials: 'AS', name: 'Aarav Shah', day: 9, hoursAgo: '3h', type: 'PROGRESS' as const, goal: 'Run a half-marathon in under 2 hours', text: 'Ran 12K this morning at 5:42 pace. Felt strong through the first 8, then the heat caught up. Pushed through the last 4 even when my legs wanted to quit. Small wins compound.', witnessed: 5, facingThis: 0 },
-  { id: 7, initials: 'NP', name: 'Nisha Patel', day: 24, hoursAgo: '5h', type: 'PROGRESS' as const, goal: 'Ship a SaaS side project to first paying customer', text: 'First Stripe payment. ₹499. From a stranger on the internet. Spent 22 days building this. Tonight I am going to sit with this feeling for a minute before I start fixing the next bug.', witnessed: 8, facingThis: 0 },
-  { id: 8, initials: 'TG', name: 'Tarun Gupta', day: 6, hoursAgo: '7h', type: 'HONEST' as const, goal: 'Practice Hindustani classical for 30 mins daily', text: "Skipped riyaaz today. Family emergency, and by the time I sat down it was midnight. Logging this honestly because I don't want to fake a day on the record.", witnessed: 2, facingThis: 4 },
-  { id: 9, initials: 'SR', name: 'Sara Reddy', day: 30, hoursAgo: '10h', type: 'PROGRESS' as const, goal: 'Read 30 books in 30 days', text: 'Final day. Finished book 30 — Atomic Habits. Re-read because I wanted to end with something I love. The compound effect is real and I just lived it.', witnessed: 12, facingThis: 0 },
-  { id: 10, initials: 'VK', name: 'Vikram Krishnan', day: 16, hoursAgo: '12h', type: 'PROGRESS' as const, goal: 'Launch a YouTube channel about Indian history', text: 'Edited and uploaded video 4. The B-roll took 5 hours alone. 47 subscribers now from 0 two weeks ago. Slow burn but real.', witnessed: 3, facingThis: 0 },
-  { id: 11, initials: 'AM', name: 'Ananya Mehta', day: 13, hoursAgo: '14h', type: 'HONEST' as const, goal: 'Build a daily meditation practice', text: 'Meditated for 4 minutes instead of 20. Brain was loud, kept thinking about a deadline. But I sat. Counts.', witnessed: 4, facingThis: 1 },
-  { id: 12, initials: 'JS', name: 'Jaya Singh', day: 21, hoursAgo: '16h', type: 'PROGRESS' as const, goal: 'Learn enough Spanish for basic conversation', text: 'Had my first 10-minute conversation in Spanish with a tutor today. Made dozens of mistakes but understood every question. Three weeks ago I knew zero words.', witnessed: 6, facingThis: 0 },
-  { id: 13, initials: 'OD', name: 'Omkar Deshmukh', day: 8, hoursAgo: '18h', type: 'PROGRESS' as const, goal: 'Lose 5kg in a healthy way', text: 'Down 1.2kg already. The meal-prepping system is working. Sunday batch cook saved me from ordering Swiggy three times this week.', witnessed: 4, facingThis: 0 },
-  { id: 14, initials: 'IK', name: 'Ishani Kapoor', day: 19, hoursAgo: '20h', type: 'HONEST' as const, goal: 'Write 1000 words a day for my novel', text: "Wrote 240 words today. Wanted to write zero. The plot has a hole I cannot fix and I'm angry at myself. But 240 > 0 and that's what I have to remember.", witnessed: 5, facingThis: 6 },
-  { id: 15, initials: 'DM', name: 'Devansh Mishra', day: 25, hoursAgo: '22h', type: 'PROGRESS' as const, goal: 'Crack into a top product company', text: 'System design round done. Designed a rate limiter end-to-end. Interviewer said "this is the cleanest version I have seen this week." Final round next week.', witnessed: 9, facingThis: 0 },
+  { id: 1, initials: 'MI', name: 'Meera Iyer', day: 27, hoursAgo: '2h', type: 'PROGRESS' as const, scope: 'global' as FeedScope, goal: 'Build and launch a Notion template business', text: 'Published template #4 today — a project tracker for freelancers. Got 3 organic downloads within the first hour. The SEO work from Day 20 is paying off. Feeling the compound effect.', witnessed: 3, facingThis: 0 },
+  { id: 2, initials: 'KN', name: 'Kavya Nair', day: 18, hoursAgo: '4h', type: 'HONEST' as const, scope: 'cohort' as FeedScope, goal: 'Write and publish my first technical e-book', text: "Took an honest day today. I've been stuck on Chapter 3 for 4 days now. The structure isn't working and I keep rewriting the same section. Chose to step back instead of forcing bad words.", witnessed: 1, facingThis: 2 },
+  { id: 3, initials: 'PS', name: 'Priya Sharma', day: 22, hoursAgo: '6h', type: 'PROGRESS' as const, scope: 'cohort' as FeedScope, goal: 'Get my first 10 freelance design clients', text: 'Sent 5 cold proposals today with custom portfolio links for each prospect. Spent 2 hours researching each company before writing. Quality over quantity. One already replied.', witnessed: 4, facingThis: 0 },
+  { id: 4, initials: 'RV', name: 'Rohan Verma', day: 14, hoursAgo: '8h', type: 'PROGRESS' as const, scope: 'cohort' as FeedScope, goal: 'Transition from engineer to PM with a portfolio', text: 'Completed a full PRD for an imaginary feature — a smart notification system for a fintech app. Wrote user stories, acceptance criteria, and a prioritisation matrix. Feels real.', witnessed: 2, facingThis: 0 },
+  { id: 5, initials: 'RV', name: 'Rohan Verma', day: 11, hoursAgo: '1d', type: 'HONEST' as const, scope: 'cohort' as FeedScope, goal: 'Transition from engineer to PM with a portfolio', text: "Yesterday was a hard day. Got pulled into a production incident at work and couldn't focus on the sprint at all. Chose to log honestly rather than write something hollow.", witnessed: 2, facingThis: 3 },
+  { id: 6, initials: 'AS', name: 'Aarav Shah', day: 9, hoursAgo: '3h', type: 'PROGRESS' as const, scope: 'global' as FeedScope, goal: 'Run a half-marathon in under 2 hours', text: 'Ran 12K this morning at 5:42 pace. Felt strong through the first 8, then the heat caught up. Pushed through the last 4 even when my legs wanted to quit. Small wins compound.', witnessed: 5, facingThis: 0 },
+  { id: 7, initials: 'NP', name: 'Nisha Patel', day: 24, hoursAgo: '5h', type: 'PROGRESS' as const, scope: 'global' as FeedScope, goal: 'Ship a SaaS side project to first paying customer', text: 'First Stripe payment. ₹499. From a stranger on the internet. Spent 22 days building this. Tonight I am going to sit with this feeling for a minute before I start fixing the next bug.', witnessed: 8, facingThis: 0 },
+  { id: 8, initials: 'TG', name: 'Tarun Gupta', day: 6, hoursAgo: '7h', type: 'HONEST' as const, scope: 'global' as FeedScope, goal: 'Practice Hindustani classical for 30 mins daily', text: "Skipped riyaaz today. Family emergency, and by the time I sat down it was midnight. Logging this honestly because I don't want to fake a day on the record.", witnessed: 2, facingThis: 4 },
+  { id: 9, initials: 'SR', name: 'Sara Reddy', day: 30, hoursAgo: '10h', type: 'PROGRESS' as const, scope: 'global' as FeedScope, goal: 'Read 30 books in 30 days', text: 'Final day. Finished book 30 — Atomic Habits. Re-read because I wanted to end with something I love. The compound effect is real and I just lived it.', witnessed: 12, facingThis: 0 },
+  { id: 10, initials: 'VK', name: 'Vikram Krishnan', day: 16, hoursAgo: '12h', type: 'PROGRESS' as const, scope: 'global' as FeedScope, goal: 'Launch a YouTube channel about Indian history', text: 'Edited and uploaded video 4. The B-roll took 5 hours alone. 47 subscribers now from 0 two weeks ago. Slow burn but real.', witnessed: 3, facingThis: 0 },
+  { id: 11, initials: 'AM', name: 'Ananya Mehta', day: 13, hoursAgo: '14h', type: 'HONEST' as const, scope: 'cohort' as FeedScope, goal: 'Build a daily meditation practice', text: 'Meditated for 4 minutes instead of 20. Brain was loud, kept thinking about a deadline. But I sat. Counts.', witnessed: 4, facingThis: 1 },
+  { id: 12, initials: 'JS', name: 'Jaya Singh', day: 21, hoursAgo: '16h', type: 'PROGRESS' as const, scope: 'global' as FeedScope, goal: 'Learn enough Spanish for basic conversation', text: 'Had my first 10-minute conversation in Spanish with a tutor today. Made dozens of mistakes but understood every question. Three weeks ago I knew zero words.', witnessed: 6, facingThis: 0 },
+  { id: 13, initials: 'OD', name: 'Omkar Deshmukh', day: 8, hoursAgo: '18h', type: 'PROGRESS' as const, scope: 'global' as FeedScope, goal: 'Lose 5kg in a healthy way', text: 'Down 1.2kg already. The meal-prepping system is working. Sunday batch cook saved me from ordering Swiggy three times this week.', witnessed: 4, facingThis: 0 },
+  { id: 14, initials: 'IK', name: 'Ishani Kapoor', day: 19, hoursAgo: '20h', type: 'HONEST' as const, scope: 'cohort' as FeedScope, goal: 'Write 1000 words a day for my novel', text: "Wrote 240 words today. Wanted to write zero. The plot has a hole I cannot fix and I'm angry at myself. But 240 > 0 and that's what I have to remember.", witnessed: 5, facingThis: 6 },
+  { id: 15, initials: 'DM', name: 'Devansh Mishra', day: 25, hoursAgo: '22h', type: 'PROGRESS' as const, scope: 'cohort' as FeedScope, goal: 'Crack into a top product company', text: 'System design round done. Designed a rate limiter end-to-end. Interviewer said "this is the cleanest version I have seen this week." Final round next week.', witnessed: 9, facingThis: 0 },
 ]
 
-function pickMocks(count = 5) {
-  return [...MOCK_POOL].sort(() => Math.random() - 0.5).slice(0, count)
+function pickMocks(scope: FeedScope, count = 5) {
+  const filtered = MOCK_POOL.filter(m => m.scope === scope)
+  return [...filtered].sort(() => Math.random() - 0.5).slice(0, count)
 }
 
 export default function FeedPage() {
@@ -47,10 +50,21 @@ export default function FeedPage() {
   const [expanded, setExpanded] = useState<Record<number, boolean>>({})
   const [realPosts, setRealPosts] = useState<FeedPost[]>([])
   const [, setLoadingPosts] = useState(true)
-  const [displayedMocks, setDisplayedMocks] = useState(() => pickMocks())
+  const [scope, setScope] = useState<FeedScope>('global')
+  const [displayedMocks, setDisplayedMocks] = useState(() => pickMocks('global'))
   const [pullY, setPullY] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const startYRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    setDisplayedMocks(pickMocks(scope))
+  }, [scope])
+
+  const visibleRealPosts = realPosts.filter((p) => {
+    const v = p.sprints?.visibility
+    if (scope === 'global') return v === 'PUBLIC'
+    return v === 'COHORT'
+  })
 
   const onTouchStart = (e: React.TouchEvent) => {
     if (window.scrollY > 0) { startYRef.current = null; return }
@@ -67,7 +81,7 @@ export default function FeedPage() {
       setRefreshing(true)
       setPullY(60)
       setTimeout(() => {
-        setDisplayedMocks(pickMocks())
+        setDisplayedMocks(pickMocks(scope))
         setRefreshing(false)
         setPullY(0)
       }, 600)
@@ -95,7 +109,7 @@ export default function FeedPage() {
     loadFeed()
   }, [user])
 
-  const hasRealPosts = realPosts.length > 0
+  const hasRealPosts = visibleRealPosts.length > 0
 
   const toggleReaction = (key: string) => {
     setReactions((prev) => ({ ...prev, [key]: !prev[key] }))
@@ -202,6 +216,40 @@ export default function FeedPage() {
           </div>
         </div>
 
+      {/* Scope pills */}
+      <div style={{ display: 'flex', gap: '8px', padding: '14px 16px 0', justifyContent: 'center' }}>
+        {(['global', 'cohort'] as FeedScope[]).map((s) => {
+          const isActive = scope === s
+          const label = s === 'global' ? 'Global feed' : 'My cohort'
+          const emoji = s === 'global' ? '🌍' : '👥'
+          return (
+            <button
+              key={s}
+              onClick={() => setScope(s)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 16px',
+                background: isActive ? 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)' : 'rgba(255,255,255,0.85)',
+                border: isActive ? 'none' : '1px solid #E8F0EC',
+                borderRadius: '9999px',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-body)',
+                fontSize: '12px',
+                fontWeight: 500,
+                color: isActive ? '#FFFFFF' : '#3D5949',
+                boxShadow: isActive ? '0 4px 12px rgba(107,176,72,0.25)' : 'none',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <span style={{ fontSize: '12px' }}>{emoji}</span>
+              {label}
+            </button>
+          )
+        })}
+      </div>
+
       <div style={{ padding: '20px 16px 0', WebkitOverflowScrolling: 'touch' }}>
         {/* Disclaimer */}
         {!hasRealPosts && (
@@ -217,7 +265,7 @@ export default function FeedPage() {
         {/* Posts */}
         <div style={{ marginTop: '16px' }}>
           {/* Real posts */}
-          {hasRealPosts && realPosts.map((post) => {
+          {hasRealPosts && visibleRealPosts.map((post) => {
             const displayName = (post.profiles as any)?.display_name ?? 'Anonymous'
             const initials = displayName.slice(0, 2).toUpperCase()
             const dayNumber = (post.daily_logs as any)?.day_number ?? 0

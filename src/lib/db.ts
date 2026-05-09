@@ -246,7 +246,7 @@ export interface FeedPost {
   // joined fields
   profiles?: { display_name: string | null }
   daily_logs?: { day_number: number; log_type: string }
-  sprints?: { goal_text: string }
+  sprints?: { goal_text: string; visibility: 'PRIVATE' | 'COHORT' | 'PUBLIC' }
 }
 
 export async function createFeedPost(post: {
@@ -271,7 +271,7 @@ export async function getFeedPosts(): Promise<FeedPost[]> {
       *,
       profiles:user_id(display_name),
       daily_logs:log_id(day_number, log_type),
-      sprints:sprint_id(goal_text)
+      sprints:sprint_id(goal_text, visibility)
     `)
     .order('created_at', { ascending: false })
     .limit(20)
