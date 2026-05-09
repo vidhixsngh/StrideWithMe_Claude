@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Check, Link2, X } from 'lucide-react'
 import PageWrapper from '../components/PageWrapper'
 import BloomOverlay from '../components/BloomOverlay'
 import VerifyingOverlay from '../components/VerifyingOverlay'
 import { verifyLog, generatePostDraft } from '../lib/gemini'
 import type { VerificationResult } from '../lib/gemini'
-import { createLog, getLogsForSprint, getActiveSprint, getTodayTask, getTasksForSprint, calculateDayNumber, createFeedPost, markLogPostedToFeed } from '../lib/db'
+import { createLog, getLogsForSprint, getAllActiveSprints, getTodayTask, getTasksForSprint, calculateDayNumber, createFeedPost, markLogPostedToFeed } from '../lib/db'
 import { useAuth } from '../context/AuthContext'
 import type { Sprint, Task, DailyLog } from '../lib/db'
 
@@ -20,12 +20,15 @@ const mockLog = {
 
 export default function LogPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useAuth()
+  const [sprints, setSprints] = useState<Sprint[]>([])
+  const [selectedIdx, setSelectedIdx] = useState(0)
+  const sprint = sprints[selectedIdx] ?? null
   const [logText, setLogText] = useState('')
   const [activeTab, setActiveTab] = useState('text')
   const [phase, setPhase] = useState<'input' | 'verifying' | 'verified' | 'honest' | 'done'>('input')
   const [showBloom, setShowBloom] = useState(false)
-  const [sprint, setSprint] = useState<Sprint | null>(null)
   const [todayTaskData, setTodayTaskData] = useState<Task | null>(null)
   const [dayNumber, setDayNumber] = useState(0)
   const [verifying, setVerifying] = useState(false)
@@ -48,25 +51,53 @@ export default function LogPage() {
   const [draftRestored, setDraftRestored] = useState(false)
   const DRAFT_KEY = 'stridewithme_draft_log'
 
+  // Load all active sprints once
   useEffect(() => {
     if (!user) return
+    getAllActiveSprints(user.id).then((list) => {
+      setSprints(list)
+      const incomingId = (location.state as { sprintId?: string } | null)?.sprintId
+      if (incomingId) {
+        const idx = list.findIndex((s) => s.id === incomingId)
+        if (idx >= 0) setSelectedIdx(idx)
+      }
+    })
+  }, [user, location.state])
+
+  // Load per-sprint data whenever selected sprint changes
+  useEffect(() => {
+    if (!sprint) return
+    // Reset per-sprint UI state
+    setPhase('input')
+    setLogText('')
+    setActiveTab('text')
+    setVerificationResult(null)
+    setAttemptNumber(1)
+    setImageFiles([])
+    setLinkUrlParent('')
+    setLinkCaptionParent('')
+    setExistingLog(null)
+    setAlreadyLogged(false)
+    setPostDraft('')
+    setDraftReady(false)
+    setGeneratingDraft(false)
+    setLastLogId(null)
+    setDraftRestored(false)
+
     async function load() {
-      const activeSprint = await getActiveSprint(user!.id)
-      if (!activeSprint) return
-      setSprint(activeSprint)
-      const dn = calculateDayNumber(activeSprint.start_date)
+      if (!sprint) return
+      const dn = calculateDayNumber(sprint.start_date)
       setDayNumber(dn)
-      const task = await getTodayTask(activeSprint.id, dn)
+      const task = await getTodayTask(sprint.id, dn)
       setTodayTaskData(task)
       const [logs, allTasks] = await Promise.all([
-        getLogsForSprint(activeSprint.id),
-        getTasksForSprint(activeSprint.id),
+        getLogsForSprint(sprint.id),
+        getTasksForSprint(sprint.id),
       ])
       const recent = logs.sort((a, b) => b.day_number - a.day_number).slice(0, 3).map(l => l.log_text ?? '').filter(Boolean)
       setRecentLogTexts(recent)
       setVerifiedCountState(logs.filter(l => l.log_type === 'VERIFIED').length)
 
-      // Calculate streak
       let streak = 0
       for (let d = dn; d >= 1; d--) {
         const dayLog = logs.find(l => l.day_number === d)
@@ -75,7 +106,6 @@ export default function LogPage() {
       }
       setCurrentStreak(streak)
 
-      // Check if already logged today
       const todayLogData = logs.find(l => l.day_number === dn)
       if (todayLogData) {
         setAlreadyLogged(true)
@@ -87,7 +117,7 @@ export default function LogPage() {
       setUpcomingTasks(allTasks.filter(t => t.day_number > dn).slice(0, 5))
     }
     load()
-  }, [user])
+  }, [sprint?.id])
 
   // Save draft as user types
   useEffect(() => {
@@ -189,6 +219,48 @@ export default function LogPage() {
 
   return (
     <PageWrapper>
+      {/* Sprint switcher pills (multi-sprint) */}
+      {sprints.length > 1 && (
+        <div className="no-scrollbar" style={{ display: 'flex', gap: '8px', overflowX: 'auto', padding: '12px 16px 0', scrollbarWidth: 'none' }}>
+          {sprints.map((s, i) => {
+            const isActive = i === selectedIdx
+            const dn = calculateDayNumber(s.start_date)
+            const shortGoal = s.goal_text.split(' ').slice(0, 3).join(' ')
+            return (
+              <button
+                key={s.id}
+                onClick={() => setSelectedIdx(i)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 12px',
+                  background: isActive ? 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)' : 'rgba(255,255,255,0.85)',
+                  border: isActive ? 'none' : '1px solid #E8F0EC',
+                  borderRadius: '9999px',
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  color: isActive ? '#FFFFFF' : '#3D5949',
+                  boxShadow: isActive ? '0 4px 12px rgba(107,176,72,0.25)' : 'none',
+                  flexShrink: 0,
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '120px' }}>{shortGoal}</span>
+                <span style={{ fontSize: '10px', opacity: 0.85 }}>· D{dn}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+      {sprints.length > 1 && (
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2', textAlign: 'center', margin: '6px 16px 0' }}>
+          Logging to: <span style={{ color: '#3D7A5F', fontWeight: 600 }}>{sprint?.goal_text}</span>
+        </p>
+      )}
       <div style={{ padding: '20px 16px' }}>
         {phase === 'input' && (
           <InputPhase

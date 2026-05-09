@@ -459,7 +459,7 @@ export default function DashboardPage() {
         </p>
 
         <button
-          onClick={() => navigate('/log')}
+          onClick={() => navigate('/log', { state: { sprintId: sprint?.id } })}
           className="w-full flex items-center justify-center"
           style={{
             height: '48px',
@@ -713,7 +713,7 @@ export default function DashboardPage() {
               Feed →
             </button>
             <button
-              onClick={() => navigate('/log')}
+              onClick={() => navigate('/log', { state: { sprintId: sprint?.id } })}
               style={{
                 fontFamily: 'var(--font-body)',
                 fontSize: '12px',
