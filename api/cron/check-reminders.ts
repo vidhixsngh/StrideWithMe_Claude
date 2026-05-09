@@ -1,9 +1,17 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
+import webpush from 'web-push'
 
 const APP_URL = process.env.APP_URL ?? 'https://stridewithme.app'
 const SENDER_EMAIL = process.env.BREVO_SENDER_EMAIL ?? 'reminders@stridewithme.app'
 const SENDER_NAME = process.env.BREVO_SENDER_NAME ?? 'StrideWithMe'
+const VAPID_PUBLIC = process.env.VITE_VAPID_PUBLIC_KEY ?? process.env.VAPID_PUBLIC_KEY
+const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT ?? 'mailto:reminders@stridewithme.app'
+
+if (VAPID_PUBLIC && VAPID_PRIVATE) {
+  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE)
+}
 
 function getLocalDateAndTime(timezone: string): { date: string; minutes: number } {
   const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -46,7 +54,6 @@ async function sendBrevoEmail(apiKey: string, to: string, subject: string, html:
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Cron auth — Vercel sets `Authorization: Bearer <CRON_SECRET>` automatically
   if (process.env.CRON_SECRET && req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
@@ -58,13 +65,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!supabaseUrl || !serviceKey) {
     return res.status(500).json({ error: 'Supabase env not configured' })
   }
-  if (!brevoKey) {
-    return res.status(500).json({ error: 'Brevo env not configured' })
+  if (!VAPID_PUBLIC || !VAPID_PRIVATE) {
+    console.warn('[reminder] VAPID keys missing — push will be skipped, only email path will run')
   }
 
   const supabase = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
 
-  // Pull users who opted in
   const { data: profiles, error: profErr } = await supabase
     .from('profiles')
     .select('id, display_name, reminder_time, reminder_timezone')
@@ -72,11 +78,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .not('reminder_time', 'is', null)
 
   if (profErr) return res.status(500).json({ error: profErr.message })
-  if (!profiles || profiles.length === 0) return res.status(200).json({ checked: 0, sent: 0 })
+  if (!profiles || profiles.length === 0) return res.status(200).json({ checked: 0, push: 0, email: 0 })
 
-  // Window of acceptance (mins) — generous so a daily cron still catches users
   const WINDOW_MIN = 32
-  let sent = 0
+  let pushSent = 0
+  let emailSent = 0
   const skipped: string[] = []
 
   for (const p of profiles) {
@@ -89,7 +95,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const wrappedDiff = Math.min(diff, 1440 - diff)
     if (wrappedDiff > WINDOW_MIN) { skipped.push(`${p.id}:out-of-window`); continue }
 
-    // Active sprint?
     const { data: sprints } = await supabase
       .from('sprints')
       .select('id, goal_text, start_date, sprint_length')
@@ -102,13 +107,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const sprint = sprints?.[0]
     if (!sprint) { skipped.push(`${p.id}:no-sprint`); continue }
 
-    // Day number relative to local date
     const start = new Date(sprint.start_date + 'T00:00:00Z')
     const today = new Date(localDate + 'T00:00:00Z')
     const dayNum = Math.floor((today.getTime() - start.getTime()) / 86_400_000) + 1
     if (dayNum < 1 || dayNum > sprint.sprint_length) { skipped.push(`${p.id}:out-of-range`); continue }
 
-    // Has logged today (any log_type)?
     const { data: existingLog } = await supabase
       .from('daily_logs')
       .select('id')
@@ -119,14 +122,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (existingLog) { skipped.push(`${p.id}:already-logged`); continue }
 
-    // Email lookup via auth admin
+    const name = p.display_name ?? 'Strider'
+    const goal = sprint.goal_text
+    const title = `Day ${dayNum} of your sprint`
+    const body = `${name}, "${goal.length > 70 ? goal.slice(0, 67) + '…' : goal}" — log it before today ends 🌱`
+
+    // Try push first
+    let pushDelivered = false
+    if (VAPID_PUBLIC && VAPID_PRIVATE) {
+      const { data: subs } = await supabase
+        .from('push_subscriptions')
+        .select('id, endpoint, p256dh, auth')
+        .eq('user_id', p.id)
+
+      if (subs && subs.length > 0) {
+        for (const s of subs) {
+          try {
+            await webpush.sendNotification(
+              { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+              JSON.stringify({ title, body, url: `${APP_URL}/log` })
+            )
+            pushDelivered = true
+          } catch (e) {
+            const err = e as { statusCode?: number; body?: string }
+            console.error('[reminder] push failed', p.id, err.statusCode, err.body)
+            // 404/410 = subscription gone, clean it up
+            if (err.statusCode === 404 || err.statusCode === 410) {
+              await supabase.from('push_subscriptions').delete().eq('id', s.id)
+            }
+          }
+        }
+      }
+    }
+
+    if (pushDelivered) { pushSent++; continue }
+
+    // Fallback: email via Brevo (if configured)
+    if (!brevoKey) { skipped.push(`${p.id}:no-push-no-email`); continue }
+
     const { data: userResult } = await supabase.auth.admin.getUserById(p.id)
     const email = userResult?.user?.email
     if (!email) { skipped.push(`${p.id}:no-email`); continue }
 
-    const name = p.display_name ?? 'Strider'
-    const goal = sprint.goal_text
-    const subject = `Day ${dayNum} of your sprint — log it before today ends`
+    const subject = `${title} — log it before today ends`
     const html = `<!doctype html><html><body style="margin:0;padding:0;background:#F5F0E8;font-family:Inter,system-ui,sans-serif;">
 <div style="max-width:480px;margin:0 auto;padding:32px 24px;background:#FFFFFF;border-radius:20px;">
   <div style="text-align:center;margin-bottom:20px;"><span style="font-size:32px;">🌱</span></div>
@@ -139,17 +177,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   <div style="text-align:center;">
     <a href="${APP_URL}/log" style="display:inline-block;background:linear-gradient(180deg,#76C548,#6BB048);color:#FFFFFF;padding:14px 32px;border-radius:9999px;text-decoration:none;font-weight:500;font-size:14px;letter-spacing:0.02em;">Log Day ${dayNum} →</a>
   </div>
-  <p style="color:#9BBFB2;font-size:11px;font-style:italic;text-align:center;margin:28px 0 0;">— StrideWithMe · Update reminder time in your profile</p>
+  <p style="color:#9BBFB2;font-size:11px;font-style:italic;text-align:center;margin:28px 0 0;">— StrideWithMe · Add the app to your home screen for instant push reminders</p>
 </div></body></html>`
 
     try {
       await sendBrevoEmail(brevoKey, email, subject, html)
-      sent++
+      emailSent++
     } catch (e) {
-      console.error('[reminder] send failed', p.id, e)
-      skipped.push(`${p.id}:send-failed`)
+      console.error('[reminder] email failed', p.id, e)
+      skipped.push(`${p.id}:email-failed`)
     }
   }
 
-  return res.status(200).json({ checked: profiles.length, sent, skipped })
+  return res.status(200).json({ checked: profiles.length, push: pushSent, email: emailSent, skipped })
 }

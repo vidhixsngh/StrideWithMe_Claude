@@ -4,6 +4,7 @@ import PageWrapper from '../components/PageWrapper'
 import { useAuth } from '../context/AuthContext'
 import { getProfile, getAllSprints, calculateDayNumber, isSprintLocked, updateSprintVisibility, updateReminderSettings } from '../lib/db'
 import type { Sprint, Profile } from '../lib/db'
+import { enablePush, disablePush, isPushSupported, isStandaloneInstalled, isIOS } from '../lib/push'
 
 type Visibility = 'PRIVATE' | 'COHORT' | 'PUBLIC'
 const VISIBILITY_OPTIONS: { value: Visibility; emoji: string; title: string; subtitle: string }[] = [
@@ -23,6 +24,8 @@ export default function ProfilePage() {
   const [reminderEditor, setReminderEditor] = useState(false)
   const [reminderDraft, setReminderDraft] = useState('20:00')
   const [savingReminder, setSavingReminder] = useState(false)
+  const [reminderError, setReminderError] = useState('')
+  const [showInstallNudge, setShowInstallNudge] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -246,6 +249,50 @@ export default function ProfilePage() {
         </div>
       </div>
 
+      {/* iOS install nudge — shown after enabling reminder if not standalone */}
+      {showInstallNudge && (
+        <>
+          <div onClick={() => { setShowInstallNudge(false); setReminderEditor(false) }} style={{ position: 'fixed', inset: 0, zIndex: 9998, backgroundColor: 'rgba(0,0,0,0.55)' }} />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 'calc(100% - 40px)', maxWidth: '360px', zIndex: 9999, background: '#FFFFFF', borderRadius: '24px', padding: '24px', boxShadow: '0 24px 64px rgba(28,61,48,0.22)', textAlign: 'center' }}>
+            <div style={{ width: '56px', height: '56px', margin: '0 auto 14px', borderRadius: '50%', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 20px rgba(107,176,72,0.30)', fontSize: '28px' }}>🏠</div>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', letterSpacing: '0.12em', color: '#5A9A3A', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 600 }}>One more step on iOS</p>
+            <p style={{ fontFamily: 'var(--font-heading)', fontSize: '20px', fontWeight: 600, color: '#1A3028', margin: '0 0 8px', letterSpacing: '-0.01em' }}>
+              Add StrideWithMe to your home screen
+            </p>
+            <p style={{ fontFamily: 'var(--font-heading)', fontSize: '13px', fontStyle: 'italic', color: '#6B9E8A', margin: '0 0 16px', lineHeight: 1.5 }}>
+              iOS only delivers push notifications when the app lives on your home screen.
+            </p>
+
+            <div style={{ background: 'rgba(118,197,72,0.08)', borderRadius: '12px', padding: '12px 14px', textAlign: 'left', marginBottom: '16px' }}>
+              {[
+                { n: '1', t: 'Tap the Share icon', sub: 'In the Safari toolbar — usually bottom-center.' },
+                { n: '2', t: 'Tap "Add to Home Screen"', sub: 'Scroll down in the share sheet if needed.' },
+                { n: '3', t: 'Open StrideWithMe from there', sub: 'Reminders start arriving from the home-screen icon.' },
+              ].map((s) => (
+                <div key={s.n} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '8px' }}>
+                  <div style={{ width: '22px', height: '22px', flexShrink: 0, borderRadius: '50%', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: 700 }}>{s.n}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 600, color: '#1A3028', margin: 0 }}>{s.t}</p>
+                    <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', margin: '2px 0 0', lineHeight: 1.4 }}>{s.sub}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', margin: '0 0 14px', lineHeight: 1.5 }}>
+              Until you do, we'll email you at your reminder time as a fallback.
+            </p>
+
+            <button
+              onClick={() => { setShowInstallNudge(false); setReminderEditor(false) }}
+              style={{ width: '100%', height: '44px', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', border: 'none', borderRadius: '9999px', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 500, cursor: 'pointer', boxShadow: '0 4px 12px rgba(107,176,72,0.25)' }}
+            >
+              Got it →
+            </button>
+          </div>
+        </>
+      )}
+
       {/* Reminder editor bottom sheet */}
       {reminderEditor && (
         <>
@@ -312,9 +359,23 @@ export default function ProfilePage() {
               })}
             </div>
 
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', textAlign: 'center', margin: '0 0 16px' }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', textAlign: 'center', margin: '0 0 12px' }}>
               Detected timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}
             </p>
+
+            {/* Reminder delivery hint — push primary, email fallback */}
+            <div style={{ background: 'rgba(118,197,72,0.06)', border: '1px solid rgba(107,176,72,0.20)', borderRadius: '10px', padding: '8px 12px', marginBottom: '14px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+              <span style={{ fontSize: '13px', flexShrink: 0, marginTop: '1px' }}>🔔</span>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#5A9A3A', margin: 0, lineHeight: 1.5 }}>
+                We'll send a push notification first. Email is the backup if push isn't allowed.
+              </p>
+            </div>
+
+            {reminderError && (
+              <div style={{ background: '#FEF3E8', border: '1px solid #F5D5A8', borderRadius: '10px', padding: '8px 12px', marginBottom: '12px' }}>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#D97706', margin: 0, lineHeight: 1.5 }}>{reminderError}</p>
+              </div>
+            )}
 
             <div style={{ display: 'flex', gap: '8px' }}>
               {profile?.reminder_enabled && (
@@ -324,6 +385,7 @@ export default function ProfilePage() {
                     if (!user) return
                     setSavingReminder(true)
                     const ok = await updateReminderSettings(user.id, { reminder_enabled: false })
+                    await disablePush(user.id).catch(() => {})
                     setSavingReminder(false)
                     if (ok) {
                       setProfile({ ...(profile ?? {} as Profile), reminder_enabled: false })
@@ -340,21 +402,46 @@ export default function ProfilePage() {
                 onClick={async () => {
                   if (!user) return
                   setSavingReminder(true)
+                  setReminderError('')
                   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+
+                  // 1. Persist time/timezone/enabled
                   const ok = await updateReminderSettings(user.id, {
                     reminder_time: `${reminderDraft}:00`,
                     reminder_timezone: tz,
                     reminder_enabled: true,
                   })
+
+                  // 2. Try to subscribe to push (best-effort, email is the fallback)
+                  let pushOk = false
+                  if (isPushSupported()) {
+                    const result = await enablePush(user.id)
+                    pushOk = result.ok
+                    if (!result.ok && result.reason === 'denied') {
+                      setReminderError("Notification permission was blocked — we'll email instead.")
+                    }
+                  }
+
                   setSavingReminder(false)
-                  if (ok) {
-                    setProfile({
-                      ...(profile ?? {} as Profile),
-                      reminder_time: `${reminderDraft}:00`,
-                      reminder_timezone: tz,
-                      reminder_enabled: true,
-                    })
-                    setReminderEditor(false)
+                  if (!ok) { setReminderError('Could not save settings. Try again.'); return }
+
+                  setProfile({
+                    ...(profile ?? {} as Profile),
+                    reminder_time: `${reminderDraft}:00`,
+                    reminder_timezone: tz,
+                    reminder_enabled: true,
+                  })
+
+                  // 3. iOS nudge — push only works after Add to Home Screen
+                  if (isIOS() && !isStandaloneInstalled()) {
+                    setShowInstallNudge(true)
+                    return // keep the sheet conceptually closed, but nudge shows
+                  }
+
+                  setReminderEditor(false)
+                  // Quietly: if we couldn't subscribe to push but saved time, the email cron will catch them
+                  if (!pushOk && !isPushSupported()) {
+                    // browser doesn't support push at all — email fallback path
                   }
                 }}
                 style={{ flex: 2, height: '44px', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', border: 'none', borderRadius: '9999px', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 500, cursor: 'pointer', opacity: savingReminder ? 0.6 : 1, boxShadow: '0 4px 12px rgba(107,176,72,0.25)' }}

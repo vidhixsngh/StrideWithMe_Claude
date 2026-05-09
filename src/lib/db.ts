@@ -65,6 +65,35 @@ export async function updateReminderSettings(
   return true
 }
 
+export async function savePushSubscription(
+  userId: string,
+  sub: PushSubscription
+): Promise<boolean> {
+  const json = sub.toJSON()
+  const endpoint = json.endpoint ?? sub.endpoint
+  const keys = json.keys ?? {}
+  if (!endpoint || !keys.p256dh || !keys.auth) return false
+  const { error } = await supabase.from('push_subscriptions').upsert({
+    user_id: userId,
+    endpoint,
+    p256dh: keys.p256dh,
+    auth: keys.auth,
+    user_agent: typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 200) : null,
+  }, { onConflict: 'user_id,endpoint' })
+  if (error) { console.error('savePushSubscription:', error); return false }
+  return true
+}
+
+export async function deletePushSubscription(userId: string, endpoint: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('push_subscriptions')
+    .delete()
+    .eq('user_id', userId)
+    .eq('endpoint', endpoint)
+  if (error) { console.error('deletePushSubscription:', error); return false }
+  return true
+}
+
 // ── PROFILE OPERATIONS ──
 
 export async function getProfile(userId: string): Promise<Profile | null> {
