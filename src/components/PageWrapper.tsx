@@ -23,7 +23,7 @@ export default function PageWrapper({ children, showNav = true }: Props) {
         style={{
           maxWidth: '430px',
           margin: '0 auto',
-          paddingBottom: shouldShowNav ? `calc(80px + env(safe-area-inset-bottom))` : 'env(safe-area-inset-bottom)',
+          paddingBottom: shouldShowNav ? `calc(86px + env(safe-area-inset-bottom))` : 'env(safe-area-inset-bottom)',
         }}
       >
         {children}
