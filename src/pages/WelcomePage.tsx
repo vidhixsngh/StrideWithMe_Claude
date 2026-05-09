@@ -4,11 +4,12 @@ import PageWrapper from '../components/PageWrapper'
 import ExampleRecordContent from '../components/ExampleRecordContent'
 
 const goals = [
-  "get your first client.",
-  "ship your side project.",
-  "land your next role.",
-  "build in public.",
-  "finish what you started.",
+  "actually finish what you started.",
+  "AI-verified daily progress.",
+  "no more starting over.",
+  "a Sprint Record you earned.",
+  "proof you did the work.",
+  "becoming someone who ships.",
 ]
 
 const mockActivity = [
@@ -97,8 +98,8 @@ export default function WelcomePage() {
 
         {/* Hero text + big prominent sun behind */}
         <div style={{ padding: '20px 24px 0', position: 'relative' }}>
-          {/* BIG SUN — restored to its earlier prominent placement, behind the text */}
-          <div style={{ position: 'absolute', top: '-10px', right: '-30px', width: '160px', height: '160px', pointerEvents: 'none', opacity: 0.85, zIndex: 1, animation: 'sunGlow 4s ease-in-out infinite' }}>
+          {/* BIG SUN — moved above the headline line, slightly right of center */}
+          <div style={{ position: 'absolute', top: '-58px', right: '20px', width: '130px', height: '130px', pointerEvents: 'none', opacity: 0.9, zIndex: 1, animation: 'sunGlow 4s ease-in-out infinite' }}>
             <svg viewBox="0 0 160 160" style={{ width: '100%', height: '100%' }}>
               <g style={{ transformOrigin: '80px 80px', animation: 'spin 40s linear infinite' }}>
                 {Array.from({ length: 12 }).map((_, i) => (
@@ -111,8 +112,8 @@ export default function WelcomePage() {
             </svg>
           </div>
 
-          {/* Soft sun glow wash */}
-          <div style={{ position: 'absolute', top: '20px', right: '0px', width: '260px', height: '260px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,213,71,0.16) 0%, rgba(245,213,71,0) 65%)', pointerEvents: 'none', zIndex: 1 }} />
+          {/* Soft sun glow wash above the headline */}
+          <div style={{ position: 'absolute', top: '-30px', right: '0px', width: '260px', height: '200px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,213,71,0.18) 0%, rgba(245,213,71,0) 65%)', pointerEvents: 'none', zIndex: 1 }} />
 
           <div style={{ position: 'relative', zIndex: 2 }}>
             {/* Substantial pill for the problem line */}
@@ -252,14 +253,14 @@ export default function WelcomePage() {
                 <path d="M230,92 Q212,84 208,72 Q220,80 230,90 Z" fill="url(#leafGradLight)" />
                 <line x1="230" y1="92" x2="212" y2="76" stroke="#5A9A3A" strokeWidth="0.5" opacity="0.7" />
               </g>
-              {/* Half-open bud with hint of petals */}
-              <g style={{ transformOrigin: '230px 68px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '2.7s' }}>
+              {/* Half-open bud — petals evenly around the bud */}
+              <g style={{ transformBox: 'fill-box', transformOrigin: 'center', animation: 'leafBloom 6s ease-out infinite', animationDelay: '2.7s' }}>
                 <ellipse cx="230" cy="60" rx="8" ry="12" fill="url(#leafGrad)" />
-                {/* Hint of petals starting to emerge */}
-                {[0, 45, 90, 135].map((a, k) => (
-                  <ellipse key={k} cx="230" cy="54" rx="2.5" ry="6" fill="#F5C547" opacity="0.7" transform={`rotate(${a} 230 60)`} />
+                {/* Emerging petals — full ring of 8 */}
+                {[0, 45, 90, 135, 180, 225, 270, 315].map((a, k) => (
+                  <ellipse key={k} cx="230" cy="54" rx="2.5" ry="6" fill="#F5C547" opacity="0.75" transform={`rotate(${a} 230 60)`} />
                 ))}
-                <circle cx="230" cy="60" r="3" fill="#A66A2A" opacity="0.5" />
+                <circle cx="230" cy="60" r="3" fill="#A66A2A" opacity="0.55" />
               </g>
             </g>
 
@@ -275,51 +276,113 @@ export default function WelcomePage() {
                 <path d="M310,110 Q334,102 342,90 Q326,100 310,108 Z" fill="#7CCB52" />
                 <line x1="310" y1="110" x2="338" y2="94" stroke="#5A9A3A" strokeWidth="0.7" opacity="0.7" />
               </g>
-              {/* Sunflower head — petals + seed center */}
-              <g style={{ transformOrigin: '310px 80px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '3.0s' }}>
-                {/* Outer petals */}
-                {Array.from({ length: 14 }).map((_, i) => (
-                  <ellipse key={i} cx="310" cy="64" rx="4" ry="11" fill="#F5C547" transform={`rotate(${i * (360/14)} 310 80)`} stroke="#D9A22F" strokeWidth="0.4" />
+              {/* Sunflower head — three petal layers + spiraled seed center + soft glow */}
+              <g style={{ transformBox: 'fill-box', transformOrigin: 'center', animation: 'leafBloom 6s ease-out infinite', animationDelay: '3.0s' }}>
+                {/* Soft glow ring around the flower */}
+                <circle cx="310" cy="80" r="24" fill="#F5D547" opacity="0.18" />
+
+                {/* Outer petals — 16, longest, golden-amber with subtle stroke */}
+                {Array.from({ length: 16 }).map((_, i) => (
+                  <ellipse
+                    key={`outer-${i}`}
+                    cx="310"
+                    cy="62"
+                    rx="3.6"
+                    ry="13"
+                    fill="#F5B447"
+                    transform={`rotate(${i * (360/16)} 310 80)`}
+                    stroke="#D99A22"
+                    strokeWidth="0.4"
+                  />
                 ))}
-                {/* Inner petal layer */}
-                {Array.from({ length: 14 }).map((_, i) => (
-                  <ellipse key={`inner-${i}`} cx="310" cy="69" rx="2.5" ry="6" fill="#F8DD66" transform={`rotate(${i * (360/14) + 13} 310 80)`} opacity="0.85" />
+
+                {/* Middle petals — 12, shorter, warmer yellow, offset to fill gaps */}
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <ellipse
+                    key={`mid-${i}`}
+                    cx="310"
+                    cy="68"
+                    rx="3"
+                    ry="9"
+                    fill="#F5C547"
+                    transform={`rotate(${i * (360/12) + 11} 310 80)`}
+                    opacity="0.95"
+                  />
                 ))}
-                {/* Seed center */}
-                <circle cx="310" cy="80" r="8" fill="url(#flowerCenter)" />
-                {/* Seed dots pattern */}
-                {Array.from({ length: 7 }).map((_, i) => {
-                  const angle = i * (360/7) * Math.PI / 180
-                  const x = 310 + Math.cos(angle) * 4
-                  const y = 80 + Math.sin(angle) * 4
-                  return <circle key={`seed-${i}`} cx={x} cy={y} r="0.7" fill="#3A2A0A" opacity="0.8" />
+
+                {/* Inner petals — 8, cream-yellow highlights near the center */}
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <ellipse
+                    key={`inner-${i}`}
+                    cx="310"
+                    cy="72"
+                    rx="2.2"
+                    ry="6"
+                    fill="#F8DD66"
+                    transform={`rotate(${i * (360/8) + 22} 310 80)`}
+                    opacity="0.85"
+                  />
+                ))}
+
+                {/* Seed center base — brown radial */}
+                <circle cx="310" cy="80" r="9" fill="url(#flowerCenter)" />
+                {/* Seeds in fibonacci-style spiral (approximated) */}
+                {Array.from({ length: 21 }).map((_, i) => {
+                  const golden = 137.508 * Math.PI / 180
+                  const r = 1.3 * Math.sqrt(i + 0.5)
+                  const a = i * golden
+                  const x = 310 + Math.cos(a) * r
+                  const y = 80 + Math.sin(a) * r
+                  return <circle key={`seed-${i}`} cx={x} cy={y} r={i < 6 ? 0.55 : 0.7} fill="#3A2A0A" opacity={0.7 + (i % 3) * 0.1} />
                 })}
-                <circle cx="310" cy="80" r="0.8" fill="#3A2A0A" opacity="0.8" />
+                {/* Top-left highlight on the head */}
+                <ellipse cx="305" cy="73" rx="2.5" ry="1.5" fill="#FFFFFF" opacity="0.18" />
               </g>
             </g>
           </svg>
 
-          {/* Butterfly fluttering across the scene */}
-          <div style={{ position: 'absolute', top: '30px', left: '20px', width: '20px', height: '14px', animation: 'flutter 14s ease-in-out infinite', pointerEvents: 'none' }}>
-            <svg viewBox="0 0 20 14" style={{ width: '100%', height: '100%' }}>
-              {/* Body */}
-              <ellipse cx="10" cy="7" rx="0.8" ry="4" fill="#3D2A1A" />
-              {/* Left wings */}
-              <g style={{ transformOrigin: '10px 7px', animation: 'wingFlap 0.4s ease-in-out infinite' }}>
-                <ellipse cx="5" cy="5" rx="4.5" ry="3" fill="#F5C547" opacity="0.9" />
-                <ellipse cx="6" cy="9" rx="3.5" ry="2.4" fill="#F5B447" opacity="0.85" />
-                <circle cx="4" cy="5" r="0.6" fill="#3D2A1A" opacity="0.7" />
-              </g>
-              {/* Right wings */}
-              <g style={{ transformOrigin: '10px 7px', animation: 'wingFlap 0.4s ease-in-out infinite reverse' }}>
-                <ellipse cx="15" cy="5" rx="4.5" ry="3" fill="#F5C547" opacity="0.9" />
-                <ellipse cx="14" cy="9" rx="3.5" ry="2.4" fill="#F5B447" opacity="0.85" />
-                <circle cx="16" cy="5" r="0.6" fill="#3D2A1A" opacity="0.7" />
-              </g>
-              {/* Antennae */}
-              <path d="M10,3 L8,1" stroke="#3D2A1A" strokeWidth="0.4" />
-              <path d="M10,3 L12,1" stroke="#3D2A1A" strokeWidth="0.4" />
-            </svg>
+          {/* BUTTERFLY 1 — yellow, slow drift right + gentle bob (decoupled = organic) */}
+          <div style={{ position: 'absolute', top: '40px', left: '14px', width: '22px', height: '16px', animation: 'driftRight 26s ease-in-out infinite', pointerEvents: 'none' }}>
+            <div style={{ animation: 'bobAndTilt 3.2s ease-in-out infinite' }}>
+              <svg viewBox="0 0 22 16" style={{ width: '22px', height: '16px', display: 'block' }}>
+                <ellipse cx="11" cy="8" rx="0.9" ry="4.5" fill="#3D2A1A" />
+                <g style={{ transformBox: 'fill-box', transformOrigin: 'right center', animation: 'wingFlap 0.34s ease-in-out infinite' }}>
+                  <ellipse cx="5" cy="5.5" rx="5" ry="3.3" fill="#F5C547" opacity="0.92" />
+                  <ellipse cx="6" cy="10" rx="4" ry="2.6" fill="#F5B447" opacity="0.85" />
+                  <circle cx="4" cy="5" r="0.7" fill="#3D2A1A" opacity="0.7" />
+                  <circle cx="6" cy="10" r="0.5" fill="#3D2A1A" opacity="0.5" />
+                </g>
+                <g style={{ transformBox: 'fill-box', transformOrigin: 'left center', animation: 'wingFlap 0.34s ease-in-out infinite' }}>
+                  <ellipse cx="17" cy="5.5" rx="5" ry="3.3" fill="#F5C547" opacity="0.92" />
+                  <ellipse cx="16" cy="10" rx="4" ry="2.6" fill="#F5B447" opacity="0.85" />
+                  <circle cx="18" cy="5" r="0.7" fill="#3D2A1A" opacity="0.7" />
+                  <circle cx="16" cy="10" r="0.5" fill="#3D2A1A" opacity="0.5" />
+                </g>
+                <path d="M11,3.5 L9,1" stroke="#3D2A1A" strokeWidth="0.4" strokeLinecap="round" />
+                <path d="M11,3.5 L13,1" stroke="#3D2A1A" strokeWidth="0.4" strokeLinecap="round" />
+              </svg>
+            </div>
+          </div>
+
+          {/* BUTTERFLY 2 — soft pink, drifts left + faster bob, opposite cycle */}
+          <div style={{ position: 'absolute', top: '82px', right: '14px', width: '18px', height: '13px', animation: 'driftLeft 24s ease-in-out infinite', animationDelay: '4s', pointerEvents: 'none' }}>
+            <div style={{ animation: 'bobAndTilt 2.6s ease-in-out infinite', animationDelay: '0.8s' }}>
+              <svg viewBox="0 0 18 13" style={{ width: '18px', height: '13px', display: 'block' }}>
+                <ellipse cx="9" cy="6.5" rx="0.7" ry="3.6" fill="#3D2A1A" />
+                <g style={{ transformBox: 'fill-box', transformOrigin: 'right center', animation: 'wingFlap 0.30s ease-in-out infinite' }}>
+                  <ellipse cx="4" cy="4.5" rx="4" ry="2.6" fill="#F5A8B8" opacity="0.92" />
+                  <ellipse cx="5" cy="8.5" rx="3.2" ry="2.1" fill="#E18FA0" opacity="0.85" />
+                  <circle cx="3" cy="4" r="0.5" fill="#3D2A1A" opacity="0.6" />
+                </g>
+                <g style={{ transformBox: 'fill-box', transformOrigin: 'left center', animation: 'wingFlap 0.30s ease-in-out infinite' }}>
+                  <ellipse cx="14" cy="4.5" rx="4" ry="2.6" fill="#F5A8B8" opacity="0.92" />
+                  <ellipse cx="13" cy="8.5" rx="3.2" ry="2.1" fill="#E18FA0" opacity="0.85" />
+                  <circle cx="15" cy="4" r="0.5" fill="#3D2A1A" opacity="0.6" />
+                </g>
+                <path d="M9,3 L7.5,1" stroke="#3D2A1A" strokeWidth="0.35" strokeLinecap="round" />
+                <path d="M9,3 L10.5,1" stroke="#3D2A1A" strokeWidth="0.35" strokeLinecap="round" />
+              </svg>
+            </div>
           </div>
 
           {/* Floating particles drifting up */}
