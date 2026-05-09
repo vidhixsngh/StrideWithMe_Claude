@@ -6,6 +6,7 @@ import { getProfile, getAllSprints, calculateDayNumber, isSprintLocked, updateSp
 import type { Sprint, Profile } from '../lib/db'
 import { enablePush, disablePush, isPushSupported, isStandaloneInstalled, isIOS } from '../lib/push'
 import { track, Events, setPeople } from '../lib/analytics'
+import { supabase } from '../lib/supabase'
 
 type Visibility = 'PRIVATE' | 'COHORT' | 'PUBLIC'
 const VISIBILITY_OPTIONS: { value: Visibility; emoji: string; title: string; subtitle: string }[] = [
@@ -27,6 +28,8 @@ export default function ProfilePage() {
   const [savingReminder, setSavingReminder] = useState(false)
   const [reminderError, setReminderError] = useState('')
   const [showInstallNudge, setShowInstallNudge] = useState(false)
+  const [testingPush, setTestingPush] = useState(false)
+  const [testPushResult, setTestPushResult] = useState('')
 
   useEffect(() => {
     if (!user) return
@@ -203,8 +206,9 @@ export default function ProfilePage() {
               onClick={async () => {
                 if (!user) return
                 const next = !profile?.reminder_enabled
-                const ok = await updateReminderSettings(user.id, { reminder_enabled: next })
-                if (ok) setProfile({ ...(profile ?? {} as Profile), reminder_enabled: next })
+                const result = await updateReminderSettings(user.id, { reminder_enabled: next })
+                if (result.ok) setProfile({ ...(profile ?? {} as Profile), reminder_enabled: next })
+                else alert(`Save failed: ${result.error ?? 'unknown error'}`)
               }}
               style={{
                 width: '40px',
@@ -378,6 +382,46 @@ export default function ProfilePage() {
               </div>
             )}
 
+            {/* Test push button — only when reminder is currently enabled */}
+            {profile?.reminder_enabled && (
+              <div style={{ marginBottom: '12px' }}>
+                <button
+                  disabled={testingPush}
+                  onClick={async () => {
+                    setTestingPush(true)
+                    setTestPushResult('')
+                    try {
+                      const { data: { session } } = await supabase.auth.getSession()
+                      const token = session?.access_token
+                      if (!token) { setTestPushResult('Not signed in.'); setTestingPush(false); return }
+                      const res = await fetch('/api/test-push', { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+                      const json = await res.json()
+                      if (!res.ok) {
+                        setTestPushResult(`Failed: ${json.error ?? res.statusText}${json.detail ? ` — ${json.detail}` : ''}`)
+                      } else {
+                        const okCount = (json.results ?? []).filter((r: { ok: boolean }) => r.ok).length
+                        const total = json.subscriptions ?? 0
+                        if (okCount > 0) setTestPushResult(`✓ Pushed to ${okCount}/${total} device(s). Check your notifications.`)
+                        else setTestPushResult(`Push attempted but failed for all ${total} subscription(s). See console.`)
+                        console.log('[test-push] result', json)
+                      }
+                    } catch (e) {
+                      setTestPushResult(`Error: ${String(e)}`)
+                    }
+                    setTestingPush(false)
+                  }}
+                  style={{ width: '100%', height: '36px', background: 'rgba(118,197,72,0.10)', border: '1px dashed rgba(107,176,72,0.45)', borderRadius: '10px', fontFamily: 'var(--font-body)', fontSize: '11px', color: '#5A9A3A', fontWeight: 500, cursor: testingPush ? 'wait' : 'pointer', opacity: testingPush ? 0.6 : 1 }}
+                >
+                  {testingPush ? 'Sending test push…' : '🔔 Send test push now (verify pipeline)'}
+                </button>
+                {testPushResult && (
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: testPushResult.startsWith('✓') ? '#3D7A5F' : '#D97706', margin: '6px 4px 0', lineHeight: 1.5 }}>
+                    {testPushResult}
+                  </p>
+                )}
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: '8px' }}>
               {profile?.reminder_enabled && (
                 <button
@@ -385,14 +429,16 @@ export default function ProfilePage() {
                   onClick={async () => {
                     if (!user) return
                     setSavingReminder(true)
-                    const ok = await updateReminderSettings(user.id, { reminder_enabled: false })
+                    const result = await updateReminderSettings(user.id, { reminder_enabled: false })
                     await disablePush(user.id).catch(() => {})
                     setSavingReminder(false)
-                    if (ok) {
+                    if (result.ok) {
                       setProfile({ ...(profile ?? {} as Profile), reminder_enabled: false })
                       track(Events.ReminderDisabled)
                       setPeople({ reminder_enabled: false })
                       setReminderEditor(false)
+                    } else {
+                      setReminderError(`Save failed: ${result.error ?? 'unknown'}`)
                     }
                   }}
                   style={{ flex: 1, height: '44px', background: '#FEF3E8', color: '#D97706', border: '1px solid #F5D5A8', borderRadius: '9999px', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 500, cursor: 'pointer', opacity: savingReminder ? 0.5 : 1 }}
@@ -409,7 +455,7 @@ export default function ProfilePage() {
                   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
 
                   // 1. Persist time/timezone/enabled
-                  const ok = await updateReminderSettings(user.id, {
+                  const saveResult = await updateReminderSettings(user.id, {
                     reminder_time: `${reminderDraft}:00`,
                     reminder_timezone: tz,
                     reminder_enabled: true,
@@ -417,19 +463,34 @@ export default function ProfilePage() {
 
                   // 2. Try to subscribe to push (best-effort, email is the fallback)
                   let pushOk = false
+                  let pushErrorDetail = ''
                   if (isPushSupported()) {
                     track(Events.PushPermissionRequested)
                     const result = await enablePush(user.id)
                     pushOk = result.ok
                     if (result.ok) track(Events.PushPermissionGranted)
-                    else if (result.reason === 'denied') {
-                      track(Events.PushPermissionDenied)
-                      setReminderError("Notification permission was blocked — we'll email instead.")
+                    else {
+                      pushErrorDetail = `${result.reason}${result.detail ? ` — ${result.detail}` : ''}`
+                      if (result.reason === 'denied') {
+                        track(Events.PushPermissionDenied)
+                        setReminderError("Notification permission was blocked — we'll email instead.")
+                      } else if (result.reason === 'no-vapid') {
+                        setReminderError('Push not configured (VITE_VAPID_PUBLIC_KEY missing in Vercel). Email fallback only.')
+                      } else if (result.reason === 'save-failed') {
+                        setReminderError(`Push subscription save failed: ${result.detail ?? 'check push_subscriptions table exists'}`)
+                      } else if (result.reason === 'subscribe-failed') {
+                        setReminderError(`Browser couldn't subscribe: ${result.detail ?? 'unknown'}`)
+                      } else if (result.reason === 'unsupported') {
+                        setReminderError('Push not supported on this browser — we will email at reminder time.')
+                      }
                     }
                   }
 
                   setSavingReminder(false)
-                  if (!ok) { setReminderError('Could not save settings. Try again.'); return }
+                  if (!saveResult.ok) {
+                    setReminderError(`Save failed: ${saveResult.error ?? 'unknown'}${pushErrorDetail ? ` · push: ${pushErrorDetail}` : ''}`)
+                    return
+                  }
 
                   setProfile({
                     ...(profile ?? {} as Profile),

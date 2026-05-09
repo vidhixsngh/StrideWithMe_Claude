@@ -56,23 +56,28 @@ export interface Profile {
 export async function updateReminderSettings(
   userId: string,
   settings: { reminder_time?: string | null; reminder_timezone?: string | null; reminder_enabled?: boolean }
-): Promise<boolean> {
+): Promise<{ ok: boolean; error?: string }> {
   const { error } = await supabase
     .from('profiles')
     .update(settings)
     .eq('id', userId)
-  if (error) { console.error('updateReminderSettings:', error); return false }
-  return true
+  if (error) {
+    console.error('updateReminderSettings:', error)
+    return { ok: false, error: error.message }
+  }
+  return { ok: true }
 }
 
 export async function savePushSubscription(
   userId: string,
   sub: PushSubscription
-): Promise<boolean> {
+): Promise<{ ok: boolean; error?: string }> {
   const json = sub.toJSON()
   const endpoint = json.endpoint ?? sub.endpoint
   const keys = json.keys ?? {}
-  if (!endpoint || !keys.p256dh || !keys.auth) return false
+  if (!endpoint || !keys.p256dh || !keys.auth) {
+    return { ok: false, error: 'Subscription missing endpoint/keys' }
+  }
   const { error } = await supabase.from('push_subscriptions').upsert({
     user_id: userId,
     endpoint,
@@ -80,8 +85,11 @@ export async function savePushSubscription(
     auth: keys.auth,
     user_agent: typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 200) : null,
   }, { onConflict: 'user_id,endpoint' })
-  if (error) { console.error('savePushSubscription:', error); return false }
-  return true
+  if (error) {
+    console.error('savePushSubscription:', error)
+    return { ok: false, error: error.message }
+  }
+  return { ok: true }
 }
 
 export async function deletePushSubscription(userId: string, endpoint: string): Promise<boolean> {

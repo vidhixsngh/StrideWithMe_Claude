@@ -62,7 +62,7 @@ export async function enablePush(userId: string): Promise<PushEnableResult> {
   }
 
   const saved = await savePushSubscription(userId, sub)
-  if (!saved) return { ok: false, reason: 'save-failed' }
+  if (!saved.ok) return { ok: false, reason: 'save-failed', detail: saved.error }
 
   return { ok: true, subscription: sub }
 }
