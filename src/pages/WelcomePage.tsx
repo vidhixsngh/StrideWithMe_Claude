@@ -96,14 +96,23 @@ export default function WelcomePage() {
         </div>
 
         {/* Hero text — fixed height, won't shift CTA */}
-        <div style={{ padding: '32px 24px 0' }}>
+        <div style={{ padding: '24px 24px 0' }}>
+          {/* Problem-naming tag */}
+          <span style={{ display: 'inline-block', fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', letterSpacing: '0.12em', color: '#5A9A3A', textTransform: 'uppercase', fontWeight: 600, marginBottom: '14px' }}>
+            For everyone tired of starting over
+          </span>
           <span style={{ fontFamily: 'var(--font-heading)', fontSize: '34px', color: '#1A3028', fontWeight: 400, display: 'block', lineHeight: 1.15, letterSpacing: '-0.015em' }}>30 days to</span>
           <div style={{ height: '46px', display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
             <span style={{ fontFamily: 'var(--font-heading)', fontSize: '34px', fontStyle: 'italic', color: '#3D7A5F', fontWeight: 700, display: 'block', lineHeight: 1.15, letterSpacing: '-0.015em', opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(6px)', transition: 'opacity 0.3s ease, transform 0.3s ease', whiteSpace: 'nowrap' }}>{goals[goalIndex]}</span>
           </div>
           <span style={{ fontFamily: 'var(--font-heading)', fontSize: '34px', color: '#1A3028', fontWeight: 400, display: 'block', lineHeight: 1.15, letterSpacing: '-0.015em' }}>Start today.</span>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: '14px', color: '#6B9E8A', fontStyle: 'italic', lineHeight: 1.65, marginTop: '18px', maxWidth: '320px' }}>
-            Set a goal. Show up daily. Let AI verify your progress. Earn a Sprint Record that proves you did the work.
+
+          {/* Problem-aware body */}
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '14px', color: '#3D5949', lineHeight: 1.65, marginTop: '18px', maxWidth: '340px', fontWeight: 500 }}>
+            For the side project that won't ship. The goal that dies by Day 6. The launch you keep pushing to Monday.
+          </p>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', color: '#6B9E8A', lineHeight: 1.65, marginTop: '10px', maxWidth: '340px' }}>
+            AI verifies your work every day — accountability no calendar can fake. A Sprint Record at the end proves you actually showed up. No more shying away. No more "next month."
           </p>
         </div>
 
