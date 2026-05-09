@@ -1,11 +1,21 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Lock, Clock, ShieldCheck, Share2, X, Camera, Briefcase, Link2 } from 'lucide-react'
+import { Lock, ShieldCheck, Share2, X, Camera, Link2, Download } from 'lucide-react'
 import PageWrapper from '../components/PageWrapper'
 import ExampleRecordContent from '../components/ExampleRecordContent'
 import { useAuth } from '../context/AuthContext'
 import { getAllSprints, isSprintLocked, calculateDayNumber } from '../lib/db'
 import type { Sprint } from '../lib/db'
+
+function getMotivation(daysRemaining: number, sprintLength: number): string {
+  const pct = ((sprintLength - daysRemaining) / sprintLength) * 100
+  if (daysRemaining <= 1) return "Almost there. One more day. Don't slow down now."
+  if (daysRemaining <= 3) return 'The finish line is in sight. Hold the line.'
+  if (pct >= 75) return "You're past the hardest part. Stay with it."
+  if (pct >= 50) return "Halfway in. The compound effect is building."
+  if (pct >= 25) return "The early reps are paying off. Keep showing up."
+  return "Every day you log writes a line of your record."
+}
 
 export default function RecordListPage() {
   const navigate = useNavigate()
@@ -13,6 +23,7 @@ export default function RecordListPage() {
   const [sprints, setSprints] = useState<Sprint[]>([])
   const [loading, setLoading] = useState(true)
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [lockedSprint, setLockedSprint] = useState<Sprint | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -52,146 +63,208 @@ export default function RecordListPage() {
 
   return (
     <PageWrapper>
-      {/* Header */}
-      <div style={{ padding: '20px 20px 8px' }}>
-        <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '24px', color: '#1A3028', margin: 0 }}>Sprint Records</h1>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', color: '#6B9E8A', marginTop: '4px', letterSpacing: '0.01em' }}>Earned credentials from your sprints.</p>
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 80px - env(safe-area-inset-top) - env(safe-area-inset-bottom))' }}>
+      {/* Authoritative header */}
+      <div style={{ margin: '16px 16px 0', background: 'linear-gradient(135deg, #1C3D30 0%, #2D5A47 60%, #1C3D30 100%)', borderRadius: '24px', padding: '24px 22px', position: 'relative', overflow: 'hidden', boxShadow: '0 12px 32px rgba(28,61,48,0.18)' }}>
+        {/* Subtle inner glow */}
+        <div style={{ position: 'absolute', top: '-30px', right: '-30px', width: '140px', height: '140px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(118,197,72,0.18) 0%, rgba(118,197,72,0) 70%)', pointerEvents: 'none' }} />
+
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+            <ShieldCheck size={14} color="#7AB5A0" />
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', letterSpacing: '0.15em', color: '#7AB5A0', textTransform: 'uppercase', fontWeight: 600 }}>The reward</span>
+          </div>
+          <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '28px', fontWeight: 600, color: '#FFFFFF', margin: 0, letterSpacing: '-0.02em', lineHeight: 1.15 }}>
+            Sprint Records
+          </h1>
+          <p style={{ fontFamily: 'var(--font-heading)', fontSize: '14px', fontStyle: 'italic', color: 'rgba(255,255,255,0.75)', margin: '6px 0 14px', lineHeight: 1.5 }}>
+            Verified proof of every day you showed up. Earned, not given.
+          </p>
+          <button
+            onClick={() => setPreviewOpen(true)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.22)', borderRadius: '9999px', padding: '7px 14px', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '12px', color: '#FFFFFF', fontWeight: 500, backdropFilter: 'blur(4px)' }}
+          >
+            See what you'll earn →
+          </button>
+        </div>
       </div>
 
       {/* Sprint Cards */}
-      {sprints.map((sprint) => (
-        <div key={sprint.id} style={{ margin: '16px 16px 0', backgroundColor: '#FFFFFF', borderRadius: '20px', border: isSprintLocked(sprint.end_date) ? '2px solid #2D5A47' : '1px solid #EDF2EF', boxShadow: isSprintLocked(sprint.end_date) ? '0 0 0 4px rgba(45,90,71,0.08)' : '0 2px 12px rgba(45,90,71,0.06)', overflow: 'hidden' }}>
-          {isSprintLocked(sprint.end_date) ? (
-            <>
-              {/* Locked card */}
-              <div style={{ position: 'relative', height: '140px' }}>
-                {/* Blurred preview */}
-                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, #EAF5F0, #F0EEF8)', filter: 'blur(3px)', opacity: 0.7, overflow: 'hidden', padding: '16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#C8DDD5' }} />
-                    <div>
-                      <div style={{ width: '120px', height: '12px', backgroundColor: '#C8DDD5', borderRadius: '6px' }} />
-                      <div style={{ width: '80px', height: '8px', backgroundColor: '#C8DDD5', borderRadius: '4px', marginTop: '6px' }} />
-                    </div>
+      {sprints.map((sprint) => {
+        const locked = isSprintLocked(sprint.end_date)
+        const dayNum = calculateDayNumber(sprint.start_date)
+        const daysRemaining = Math.max(sprint.sprint_length - dayNum + 1, 0)
+        const progressPct = Math.round((dayNum / sprint.sprint_length) * 100)
+
+        if (locked) {
+          // OPTION A — ANTICIPATION STRIP (slim, clean)
+          return (
+            <div
+              key={sprint.id}
+              onClick={() => setLockedSprint(sprint)}
+              style={{
+                margin: '12px 16px 0',
+                background: 'rgba(255,255,255,0.7)',
+                borderRadius: '14px',
+                border: '1px solid #E8F0EC',
+                padding: '14px 16px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                position: 'relative',
+              }}
+            >
+              {/* Top row: goal + days */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '8px' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>
+                    <Lock size={10} color="#9BBFB2" />
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', letterSpacing: '0.1em', color: '#9BBFB2', textTransform: 'uppercase' }}>In progress</span>
                   </div>
-                  <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                    {[60, 60, 60].map((w, i) => <div key={i} style={{ width: `${w}px`, height: '8px', backgroundColor: '#C8DDD5', borderRadius: '4px' }} />)}
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: '2px' }}>
-                    {Array.from({ length: 20 }, (_, i) => <div key={i} style={{ width: '12px', height: '12px', backgroundColor: '#B8D9CC', borderRadius: '2px' }} />)}
-                  </div>
+                  <p style={{ fontFamily: 'var(--font-heading)', fontSize: '14px', fontStyle: 'italic', color: '#1A3028', margin: 0, lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {sprint.goal_text}
+                  </p>
                 </div>
-                {/* Lock overlay */}
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.15)' }}>
-                  <div style={{ width: '52px', height: '52px', backgroundColor: '#2D5A47', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 16px rgba(45,90,71,0.3)' }}>
-                    <Lock size={22} color="#FFFFFF" />
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ fontFamily: 'var(--font-heading)', fontSize: '22px', fontWeight: 600, background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', lineHeight: 1 }}>
+                    {daysRemaining}
                   </div>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2', margin: '2px 0 0' }}>{daysRemaining === 1 ? 'day to go' : 'days to go'}</p>
                 </div>
               </div>
 
-              <div style={{ padding: '16px' }}>
-                <p style={{ fontFamily: 'var(--font-heading)', fontSize: '13px', fontWeight: 500, fontStyle: 'italic', color: '#1A3028', margin: '0 0 12px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{sprint.goal_text}</p>
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: 600, color: '#1A3028', margin: '0 0 4px' }}>Sprint in Progress</p>
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A', lineHeight: 1.5, margin: 0 }}>
-                  Your Sprint Record unlocks when you complete the sprint. Keep going — Day {calculateDayNumber(sprint.start_date)} of {sprint.sprint_length}.
-                </p>
+              {/* Thin progress */}
+              <div style={{ width: '100%', height: '3px', borderRadius: '9999px', backgroundColor: '#E8F0EC', overflow: 'hidden' }}>
+                <div style={{ width: `${progressPct}%`, height: '100%', borderRadius: '9999px', background: 'linear-gradient(90deg, #76C548 0%, #6BB048 100%)' }} />
+              </div>
+            </div>
+          )
+        }
 
-                <div style={{ marginTop: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px', backgroundColor: '#EAF5F0', border: '1px solid #B8D9CC', borderRadius: '9999px', padding: '7px 16px' }}>
-                  <Clock size={13} color="#3D7A5F" />
-                  <span style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, color: '#3D7A5F' }}>{Math.max(sprint.sprint_length - calculateDayNumber(sprint.start_date) + 1, 0)} days remaining</span>
-                </div>
+        // Unlocked / Completed — keep existing design
+        return (
+          <div key={sprint.id} style={{ margin: '16px 16px 0', backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #EDF2EF', boxShadow: '0 2px 12px rgba(45,90,71,0.06)', overflow: 'hidden' }}>
+            {/* Completed / Unlocked card */}
+            <div style={{ backgroundColor: '#2D5A47', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', letterSpacing: '0.15em', color: '#7AB5A0', margin: '0 0 2px', textTransform: 'uppercase' }}>SPRINT RECORD</p>
+                <p style={{ fontFamily: 'var(--font-heading)', fontSize: '14px', color: '#FFFFFF', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '220px' }}>{sprint.goal_text}</p>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+                <ShieldCheck size={18} color="#7AB5A0" />
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#7AB5A0' }}>Verified</span>
+              </div>
+            </div>
 
-                <div style={{ marginTop: '12px', width: '100%', height: '5px', borderRadius: '9999px', backgroundColor: '#D4EDE3' }}>
-                  <div style={{ width: `${Math.round((calculateDayNumber(sprint.start_date) / sprint.sprint_length) * 100)}%`, height: '100%', borderRadius: '9999px', backgroundColor: '#3D7A5F' }} />
-                </div>
+            <div style={{ display: 'flex', height: '3px' }}>
+              <div style={{ flex: 3, backgroundColor: '#3D7A5F' }} />
+              <div style={{ flex: 0.5, backgroundColor: '#F59E4A' }} />
+              <div style={{ flex: 0.5, backgroundColor: '#7B6FA0' }} />
+            </div>
 
+            <div style={{ padding: '14px 16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', marginBottom: '12px' }}>
+                {[
+                  { label: 'Days', value: String(sprint.sprint_length), color: '#1A3028' },
+                  { label: 'Logged', value: '0', color: '#1A3028' },
+                  { label: 'Verified', value: '0 ✓', color: '#3D7A5F' },
+                  { label: 'Honest', value: '0 🤍', color: '#7B6FA0' },
+                ].map((s) => (
+                  <div key={s.label} style={{ textAlign: 'center' }}>
+                    <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', color: '#9BBFB2', margin: '0 0 2px' }}>{s.label}</p>
+                    <p style={{ fontFamily: 'var(--font-body)', fontSize: '18px', fontWeight: 700, color: s.color, margin: 0 }}>{s.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ borderTop: '1px solid #F5F5F5', paddingTop: '12px', display: 'flex', gap: '8px' }}>
                 <button
-                  onClick={() => setPreviewOpen(true)}
-                  style={{ width: '100%', marginTop: '14px', padding: '10px 16px', textAlign: 'center', color: '#FFFFFF', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', border: 'none', borderRadius: '9999px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(107,176,72,0.25)' }}
+                  onClick={() => navigate('/record/' + sprint.id)}
+                  style={{ flex: 1, height: '38px', backgroundColor: '#EAF5F0', color: '#2D5A47', border: '1px solid #B8D9CC', borderRadius: '9999px', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, cursor: 'pointer' }}
                 >
-                  See what you're working toward →
+                  View full record →
+                </button>
+                <button
+                  onClick={() => navigate('/record/' + sprint.id + '?share=true')}
+                  style={{ flex: 1, height: '38px', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', border: 'none', borderRadius: '9999px', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', boxShadow: '0 4px 12px rgba(107,176,72,0.25)' }}
+                >
+                  <Share2 size={13} /> Share →
                 </button>
               </div>
-            </>
-          ) : (
-            <>
-              {/* Completed / Unlocked card */}
-              <div style={{ backgroundColor: '#2D5A47', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', letterSpacing: '0.15em', color: '#7AB5A0', margin: '0 0 2px', textTransform: 'uppercase' }}>SPRINT RECORD</p>
-                  <p style={{ fontFamily: 'var(--font-heading)', fontSize: '14px', color: '#FFFFFF', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '220px' }}>{sprint.goal_text}</p>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
-                  <ShieldCheck size={18} color="#7AB5A0" />
-                  <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#7AB5A0' }}>Verified</span>
-                </div>
-              </div>
+            </div>
+          </div>
+        )
+      })}
 
-              <div style={{ display: 'flex', height: '3px' }}>
-                <div style={{ flex: 3, backgroundColor: '#3D7A5F' }} />
-                <div style={{ flex: 0.5, backgroundColor: '#F59E4A' }} />
-                <div style={{ flex: 0.5, backgroundColor: '#7B6FA0' }} />
-              </div>
+      {/* Caption — directly under the sprint cards */}
+      <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', margin: '20px 16px 0', lineHeight: 1.5, textAlign: 'center' }}>
+        AI-verified proof of work. Yours opens when the sprint ends.
+      </p>
 
-              <div style={{ padding: '14px 16px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', marginBottom: '12px' }}>
-                  {[
-                    { label: 'Days', value: String(sprint.sprint_length), color: '#1A3028' },
-                    { label: 'Logged', value: '0', color: '#1A3028' },
-                    { label: 'Verified', value: '0 ✓', color: '#3D7A5F' },
-                    { label: 'Honest', value: '0 🤍', color: '#7B6FA0' },
-                  ].map((s) => (
-                    <div key={s.label} style={{ textAlign: 'center' }}>
-                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', color: '#9BBFB2', margin: '0 0 2px' }}>{s.label}</p>
-                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '18px', fontWeight: 700, color: s.color, margin: 0 }}>{s.value}</p>
-                    </div>
-                  ))}
-                </div>
-
-                <div style={{ borderTop: '1px solid #F5F5F5', paddingTop: '12px', display: 'flex', gap: '8px' }}>
-                  <button
-                    onClick={() => navigate('/record/' + sprint.id)}
-                    style={{ flex: 1, height: '38px', backgroundColor: '#EAF5F0', color: '#2D5A47', border: '1px solid #B8D9CC', borderRadius: '9999px', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, cursor: 'pointer' }}
-                  >
-                    View full record →
-                  </button>
-                  <button
-                    onClick={() => navigate('/record/' + sprint.id + '?share=true')}
-                    style={{ flex: 1, height: '38px', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', border: 'none', borderRadius: '9999px', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', boxShadow: '0 4px 12px rgba(107,176,72,0.25)' }}
-                  >
-                    <Share2 size={13} /> Share →
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      ))}
-
-      {/* Share it anywhere */}
-      <div style={{ margin: '12px 16px 0', backgroundColor: '#FFFFFF', borderRadius: '16px', border: '1px solid #EDF2EF', padding: '14px 16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-          <span style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, fontStyle: 'italic', color: '#1A3028' }}>When you earn it, share it anywhere.</span>
-          <span style={{ fontSize: '16px' }}>🏆</span>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {/* Shareable section — pinned right above the BottomNav */}
+      <div style={{ margin: '20px 16px 16px', textAlign: 'center', marginTop: 'auto', paddingTop: '32px' }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', letterSpacing: '0.1em', color: '#9BBFB2', textTransform: 'uppercase', margin: '0 0 12px' }}>Shareable to</p>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '14px' }}>
           {[
-            { icon: <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 700, color: '#FFFFFF' }}>in</span>, bg: '#0A66C2', text: 'Pin to LinkedIn as a verified proof-of-work credential.' },
-            { icon: <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: 700, color: '#FFFFFF' }}>N</span>, bg: '#FF7555', text: 'Link on Naukri alongside your resume.' },
-            { icon: <Camera size={11} color="#FFFFFF" />, bg: 'linear-gradient(45deg, #f09433, #dc2743, #bc1888)', text: 'Share as an Instagram story or carousel post.' },
-            { icon: <Briefcase size={11} color="#FFFFFF" />, bg: '#4A8C6F', text: 'Send to a client as proof you ship consistently.' },
-            { icon: <Link2 size={11} color="#FFFFFF" />, bg: '#7B6FA0', text: 'Keep it private — proof you showed up for yourself.' },
-          ].map((row, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: row.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{row.icon}</div>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#2D4A3E' }}>{row.text}</span>
+            { label: 'LinkedIn', node: <span style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 700, color: '#FFFFFF' }}>in</span>, bg: '#0A66C2' },
+            { label: 'Naukri', node: <span style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 700, color: '#FFFFFF' }}>N</span>, bg: '#FF7555' },
+            { label: 'Instagram', node: <Camera size={14} color="#FFFFFF" />, bg: 'linear-gradient(45deg, #f09433, #dc2743, #bc1888)' },
+            { label: 'Download', node: <Download size={14} color="#FFFFFF" />, bg: 'linear-gradient(135deg, #2D5A47 0%, #1C3D30 100%)' },
+            { label: 'Copy link', node: <Link2 size={14} color="#FFFFFF" />, bg: '#7B6FA0' },
+          ].map((s) => (
+            <div key={s.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(28,61,48,0.10)' }}>
+                {s.node}
+              </div>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', color: '#9BBFB2' }}>{s.label}</span>
             </div>
           ))}
         </div>
-        <div style={{ marginTop: '10px', borderTop: '1px solid #F5F5F5', paddingTop: '10px', textAlign: 'center' }}>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', margin: 0 }}>AI-verified proof of work. Not a badge — a record.</p>
-        </div>
       </div>
+      </div>
+
+      {/* Locked sprint motivational popup */}
+      {lockedSprint && (() => {
+        const dn = calculateDayNumber(lockedSprint.start_date)
+        const remaining = Math.max(lockedSprint.sprint_length - dn + 1, 0)
+        const motivation = getMotivation(remaining, lockedSprint.sprint_length)
+        return (
+          <>
+            <div onClick={() => setLockedSprint(null)} style={{ position: 'fixed', inset: 0, zIndex: 9998, backgroundColor: 'rgba(0,0,0,0.5)' }} />
+            <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 'calc(100% - 40px)', maxWidth: '360px', zIndex: 9999, background: '#FFFFFF', borderRadius: '24px', padding: '24px', boxShadow: '0 24px 64px rgba(28,61,48,0.20)', textAlign: 'center' }}>
+              {/* Close */}
+              <button onClick={() => setLockedSprint(null)} style={{ position: 'absolute', top: '12px', right: '12px', background: 'none', border: 'none', cursor: 'pointer', padding: '6px' }}>
+                <X size={18} color="#9BBFB2" />
+              </button>
+
+              {/* Lock icon */}
+              <div style={{ width: '56px', height: '56px', margin: '0 auto 14px', borderRadius: '50%', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 20px rgba(107,176,72,0.30)' }}>
+                <Lock size={22} color="#FFFFFF" />
+              </div>
+
+              {/* Status */}
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', letterSpacing: '0.12em', color: '#5A9A3A', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 600 }}>In progress · Sealed</p>
+              <p style={{ fontFamily: 'var(--font-heading)', fontSize: '20px', fontWeight: 600, color: '#1A3028', margin: '0 0 6px', letterSpacing: '-0.01em' }}>
+                {remaining} {remaining === 1 ? 'day' : 'days'} until your record opens
+              </p>
+              <p style={{ fontFamily: 'var(--font-heading)', fontSize: '13px', fontStyle: 'italic', color: '#6B9E8A', margin: '0 0 18px', lineHeight: 1.5 }}>
+                "{lockedSprint.goal_text}"
+              </p>
+
+              {/* Sprout green motivational box */}
+              <div style={{ background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', borderRadius: '14px', padding: '14px 16px', boxShadow: '0 6px 16px rgba(107,176,72,0.25)' }}>
+                <p style={{ fontFamily: 'var(--font-heading)', fontSize: '14px', fontStyle: 'italic', color: '#FFFFFF', margin: 0, lineHeight: 1.5, fontWeight: 500 }}>
+                  {motivation}
+                </p>
+              </div>
+
+              {/* Day caption */}
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', margin: '14px 0 0' }}>
+                Day {dn} of {lockedSprint.sprint_length}
+              </p>
+            </div>
+          </>
+        )
+      })()}
 
       {/* Preview Bottom Sheet */}
       {previewOpen && (
