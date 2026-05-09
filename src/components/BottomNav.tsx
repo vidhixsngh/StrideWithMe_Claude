@@ -62,23 +62,19 @@ export default function BottomNav() {
                 style={{
                   width: '52px',
                   height: '52px',
-                  borderRadius: '18px',
-                  background: 'linear-gradient(135deg, #76C548 0%, #6BB048 60%, #5A9A3A 100%)',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)',
                   border: 'none',
                   cursor: 'pointer',
-                  boxShadow: '0 8px 22px rgba(107,176,72,0.34), 0 2px 6px rgba(107,176,72,0.18), inset 0 1px 0 rgba(255,255,255,0.20)',
+                  boxShadow: '0 8px 24px rgba(107,176,72,0.32), 0 4px 12px rgba(107,176,72,0.18)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  transform: 'translateY(-14px)',
-                  transition: 'transform 0.15s ease',
+                  transform: 'translateY(-10px)',
                   padding: 0,
                 }}
-                onMouseDown={(e) => (e.currentTarget.style.transform = 'translateY(-12px) scale(0.96)')}
-                onMouseUp={(e) => (e.currentTarget.style.transform = 'translateY(-14px) scale(1)')}
-                onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(-14px) scale(1)')}
               >
-                <Plus size={26} strokeWidth={2.4} color="#FFFFFF" />
+                <Plus size={24} color="#FFFFFF" />
               </button>
             </div>
           )
