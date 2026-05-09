@@ -30,6 +30,7 @@ export default function OnboardingPage() {
   const { user } = useAuth()
   const [step, setStep] = useState(1)
   const [goal, setGoal] = useState('')
+  const [pastReflection, setPastReflection] = useState('')
   const [sprintLength, setSprintLength] = useState<number | null>(null)
   const [visibility, setVisibility] = useState<Visibility>('PRIVATE')
   const [animating, setAnimating] = useState(false)
@@ -104,7 +105,7 @@ export default function OnboardingPage() {
 
   const handleGoToStep4 = async () => {
     setGeneratingPlan(true)
-    const result = await generateSprintPlan(goal, sprintLength ?? 30, 'general')
+    const result = await generateSprintPlan(goal, sprintLength ?? 30, 'general', pastReflection)
     setAiTasks(result.tasks)
     setWasVague(result.wasVague)
     setPlanGenerated(true)
@@ -145,7 +146,7 @@ export default function OnboardingPage() {
 
       {/* Content */}
       <div className="w-full max-w-[430px] px-6 flex-1 flex flex-col" style={transitionStyle}>
-        {step === 1 && <Step1Goal goal={goal} setGoal={setGoal} onNext={() => goToStep(2)} />}
+        {step === 1 && <Step1Goal goal={goal} setGoal={setGoal} pastReflection={pastReflection} setPastReflection={setPastReflection} onNext={() => goToStep(2)} />}
         {step === 2 && (
           <Step2Sprint sprintLength={sprintLength} setSprintLength={setSprintLength} onNext={() => goToStep(3)} />
         )}
@@ -318,13 +319,18 @@ const GOAL_THEMES: { key: string; label: string; emoji: string; goals: string[] 
 function Step1Goal({
   goal,
   setGoal,
+  pastReflection,
+  setPastReflection,
   onNext,
 }: {
   goal: string
   setGoal: (v: string) => void
+  pastReflection: string
+  setPastReflection: (v: string) => void
   onNext: () => void
 }) {
   const [activeTheme, setActiveTheme] = useState<string | null>(null)
+  const goalCommitted = goal.length >= 10
   return (
     <div className="flex-1 flex flex-col">
       <StepLabel step={1} label="Your commitment" />
@@ -439,6 +445,50 @@ function Step1Goal({
           </div>
         )}
       </div>
+
+      {/* Optional reflection — appears once a goal is committed */}
+      {goalCommitted && (
+        <div style={{ marginTop: '24px', padding: '14px 16px', background: 'linear-gradient(135deg, rgba(245,213,71,0.06) 0%, rgba(118,197,72,0.06) 100%)', borderRadius: '14px', border: '1px solid rgba(184,217,204,0.5)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+            <span style={{ fontSize: '13px' }}>🪞</span>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', letterSpacing: '0.08em', color: '#5A9A3A', textTransform: 'uppercase', fontWeight: 600, margin: 0 }}>
+              One reflection · Optional
+            </p>
+          </div>
+          <p style={{ fontFamily: 'var(--font-heading)', fontSize: '14px', color: '#1A3028', margin: '0 0 4px', fontWeight: 500, lineHeight: 1.4 }}>
+            What came through the last time you tried chasing a goal?
+          </p>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', margin: '0 0 10px', lineHeight: 1.5 }}>
+            Lost steam by Day 6? Burned out? Got busy? — naming it helps the AI tailor your plan around what tripped you up.
+          </p>
+          <textarea
+            value={pastReflection}
+            onChange={(e) => setPastReflection(e.target.value)}
+            placeholder="Last time I tried, I…"
+            style={{
+              width: '100%',
+              minHeight: '80px',
+              backgroundColor: '#FFFFFF',
+              borderRadius: '10px',
+              border: '1px solid #D4EDE3',
+              padding: '10px 12px',
+              fontFamily: 'var(--font-body)',
+              fontSize: '12px',
+              lineHeight: 1.55,
+              color: '#2D4A3E',
+              fontStyle: pastReflection ? 'normal' : 'italic',
+              resize: 'none',
+              outline: 'none',
+              boxSizing: 'border-box',
+            }}
+            onFocus={(e) => (e.target.style.borderColor = '#7AB5A0')}
+            onBlur={(e) => (e.target.style.borderColor = '#D4EDE3')}
+          />
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2', margin: '4px 0 0', textAlign: 'right' }}>
+            {pastReflection.length > 0 ? `${pastReflection.length} chars · skip if you want` : 'Skip if you want'}
+          </p>
+        </div>
+      )}
 
       <div className="mt-auto" style={{ paddingTop: '24px', paddingBottom: '32px' }}>
         <CTAButton label="This is my goal →" disabled={goal.length < 10} onClick={onNext} />

@@ -68,8 +68,13 @@ export interface GeneratedTask {
 export async function generateSprintPlan(
   goalText: string,
   sprintLength: number,
-  goalCategory: string
+  goalCategory: string,
+  pastReflection?: string
 ): Promise<{ tasks: GeneratedTask[], wasVague: boolean }> {
+  const reflectionBlock = pastReflection && pastReflection.trim().length > 0
+    ? `\nThe user reflected on what went wrong last time:\n"${pastReflection.trim()}"\n\nUse this context to avoid repeating those failure patterns. If they mentioned losing motivation, structure the early tasks for quick wins. If they mentioned overcommitment, keep early tasks tight and easy. If they mentioned isolation, weave in tasks that involve sharing or feedback.`
+    : ''
+
   const prompt = `
 You are a sprint planning assistant for StrideWithMe, an AI-verified accountability platform.
 
@@ -78,7 +83,7 @@ A user has set this goal:
 
 Sprint length: ${sprintLength} days
 Goal category: ${goalCategory}
-
+${reflectionBlock}
 TASK:
 Generate a daily task plan SPECIFICALLY for this exact goal. Every task must directly contribute to achieving "${goalText}". Do NOT generate generic productivity tasks.
 
