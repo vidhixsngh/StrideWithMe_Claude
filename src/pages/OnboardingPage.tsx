@@ -41,6 +41,8 @@ export default function OnboardingPage() {
   const [generatingPlan, setGeneratingPlan] = useState(false)
   const [wasVague, setWasVague] = useState(false)
   const [, setPlanGenerated] = useState(false)
+  const [extraContext, setExtraContext] = useState('')
+  const [hasUsedExtraContext, setHasUsedExtraContext] = useState(false)
 
   const goToStep = (next: number) => {
     setDirection('out')
@@ -105,12 +107,23 @@ export default function OnboardingPage() {
 
   const handleGoToStep4 = async () => {
     setGeneratingPlan(true)
-    const result = await generateSprintPlan(goal, sprintLength ?? 30, 'general', pastReflection)
+    const result = await generateSprintPlan(goal, sprintLength ?? 30, 'general', pastReflection, extraContext)
     setAiTasks(result.tasks)
     setWasVague(result.wasVague)
     setPlanGenerated(true)
     setGeneratingPlan(false)
     goToStep(4)
+  }
+
+  const handleRegenerateWithContext = async (text: string) => {
+    setExtraContext(text)
+    setHasUsedExtraContext(true)
+    setGeneratingPlan(true)
+    const result = await generateSprintPlan(goal, sprintLength ?? 30, 'general', pastReflection, text)
+    setAiTasks(result.tasks)
+    setWasVague(result.wasVague)
+    setPlanGenerated(true)
+    setGeneratingPlan(false)
   }
 
   const transitionStyle: React.CSSProperties = {
@@ -153,7 +166,7 @@ export default function OnboardingPage() {
         {step === 3 && (
           <Step3Visibility visibility={visibility} setVisibility={setVisibility} onNext={handleGoToStep4} generatingPlan={generatingPlan} />
         )}
-        {step === 4 && <Step4Preview goal={goal} onBegin={handleBeginDay1} submitting={submitting} submitError={submitError} aiTasks={aiTasks} wasVague={wasVague} onRegenerate={handleGoToStep4} generatingPlan={generatingPlan} onUpdateTasks={setAiTasks} pastReflection={pastReflection} />}
+        {step === 4 && <Step4Preview goal={goal} onBegin={handleBeginDay1} submitting={submitting} submitError={submitError} aiTasks={aiTasks} wasVague={wasVague} generatingPlan={generatingPlan} onUpdateTasks={setAiTasks} pastReflection={pastReflection} extraContext={extraContext} hasUsedExtraContext={hasUsedExtraContext} onRegenerateWithContext={handleRegenerateWithContext} />}
       </div>
 
       {generatingPlan && (
@@ -657,7 +670,9 @@ function Step3Visibility({
 }
 
 /* ============ STEP 4 ============ */
-function Step4Preview({ goal, onBegin, submitting, submitError, aiTasks, wasVague, onRegenerate, generatingPlan, onUpdateTasks, pastReflection }: { goal: string; onBegin: () => void; submitting?: boolean; submitError?: string; aiTasks?: GeneratedTask[]; wasVague?: boolean; onRegenerate?: () => void; generatingPlan?: boolean; onUpdateTasks?: (tasks: GeneratedTask[]) => void; pastReflection?: string }) {
+function Step4Preview({ goal, onBegin, submitting, submitError, aiTasks, wasVague, generatingPlan, onUpdateTasks, pastReflection, extraContext, hasUsedExtraContext, onRegenerateWithContext }: { goal: string; onBegin: () => void; submitting?: boolean; submitError?: string; aiTasks?: GeneratedTask[]; wasVague?: boolean; generatingPlan?: boolean; onUpdateTasks?: (tasks: GeneratedTask[]) => void; pastReflection?: string; extraContext?: string; hasUsedExtraContext?: boolean; onRegenerateWithContext?: (text: string) => void }) {
+  const [contextOpen, setContextOpen] = useState(false)
+  const [contextDraft, setContextDraft] = useState('')
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [editText, setEditText] = useState('')
   const [dragIndex, setDragIndex] = useState<number | null>(null)
@@ -848,12 +863,87 @@ function Step4Preview({ goal, onBegin, submitting, submitError, aiTasks, wasVagu
         })}
       </div>
 
-      {/* Regenerate */}
-      {onRegenerate && (
-        <button onClick={onRegenerate} disabled={generatingPlan} style={{ width: '100%', fontFamily: 'var(--font-body)', fontSize: '12px', color: '#5A9A3A', background: 'rgba(118,197,72,0.06)', border: '1px dashed rgba(107,176,72,0.45)', borderRadius: '12px', padding: '10px', cursor: generatingPlan ? 'wait' : 'pointer', opacity: generatingPlan ? 0.6 : 1, fontWeight: 500, marginBottom: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-          <span style={{ fontSize: '13px' }}>{generatingPlan ? '⏳' : '✨'}</span>
-          <span>{generatingPlan ? 'Regenerating plan...' : 'Regenerate plan'}</span>
+      {/* Missed-something context — one-shot tailoring */}
+      {!hasUsedExtraContext && onRegenerateWithContext && !contextOpen && (
+        <button
+          onClick={() => setContextOpen(true)}
+          disabled={generatingPlan}
+          style={{ width: '100%', fontFamily: 'var(--font-body)', fontSize: '12px', color: '#5A9A3A', background: 'rgba(118,197,72,0.06)', border: '1px dashed rgba(107,176,72,0.45)', borderRadius: '12px', padding: '10px', cursor: generatingPlan ? 'wait' : 'pointer', opacity: generatingPlan ? 0.6 : 1, fontWeight: 500, marginBottom: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+        >
+          <span style={{ fontSize: '13px' }}>💭</span>
+          <span>Missed something? Tell us more.</span>
         </button>
+      )}
+
+      {!hasUsedExtraContext && onRegenerateWithContext && contextOpen && (
+        <div style={{ marginBottom: '14px', padding: '14px', background: 'rgba(118,197,72,0.06)', border: '1px solid rgba(107,176,72,0.30)', borderRadius: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+            <span style={{ fontSize: '13px' }}>💭</span>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', letterSpacing: '0.08em', color: '#5A9A3A', textTransform: 'uppercase', fontWeight: 600, margin: 0 }}>
+              Add context · One shot
+            </p>
+          </div>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', color: '#3D5949', margin: '0 0 8px', lineHeight: 1.5 }}>
+            Blockers? Tools you'll use? A deadline? A specific deliverable? Anything that should shape the plan.
+          </p>
+          <textarea
+            value={contextDraft}
+            onChange={(e) => setContextDraft(e.target.value)}
+            placeholder="e.g. I only have 30 mins/day, and I'm using Figma + Vercel. Need to demo to my manager by Day 20."
+            style={{
+              width: '100%',
+              minHeight: '90px',
+              backgroundColor: '#FFFFFF',
+              borderRadius: '10px',
+              border: '1px solid #D4EDE3',
+              padding: '10px 12px',
+              fontFamily: 'var(--font-body)',
+              fontSize: '12px',
+              lineHeight: 1.55,
+              color: '#2D4A3E',
+              resize: 'none',
+              outline: 'none',
+              boxSizing: 'border-box',
+              fontStyle: contextDraft ? 'normal' : 'italic',
+            }}
+            onFocus={(e) => (e.target.style.borderColor = '#7AB5A0')}
+            onBlur={(e) => (e.target.style.borderColor = '#D4EDE3')}
+          />
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2', margin: '4px 0 10px', textAlign: 'right' }}>
+            {contextDraft.length} chars · this regenerate is one-shot
+          </p>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={() => { setContextOpen(false); setContextDraft('') }}
+              disabled={generatingPlan}
+              style={{ flex: 1, height: '40px', background: '#FFFFFF', border: '1px solid #D4EDE3', color: '#6B9E8A', borderRadius: '9999px', fontFamily: 'var(--font-body)', fontSize: '12px', cursor: 'pointer', fontWeight: 500 }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => { if (contextDraft.trim().length >= 5) { onRegenerateWithContext(contextDraft.trim()); setContextOpen(false) } }}
+              disabled={generatingPlan || contextDraft.trim().length < 5}
+              style={{ flex: 2, height: '40px', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', border: 'none', borderRadius: '9999px', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, cursor: (generatingPlan || contextDraft.trim().length < 5) ? 'not-allowed' : 'pointer', opacity: (generatingPlan || contextDraft.trim().length < 5) ? 0.5 : 1, boxShadow: '0 4px 12px rgba(107,176,72,0.25)' }}
+            >
+              {generatingPlan ? 'Regenerating…' : 'Regenerate with this →'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Used-once indicator */}
+      {hasUsedExtraContext && extraContext && extraContext.trim().length > 0 && (
+        <div style={{ marginBottom: '14px', padding: '10px 14px', background: 'rgba(118,197,72,0.06)', border: '1px solid rgba(107,176,72,0.20)', borderRadius: '12px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+          <span style={{ fontSize: '13px', flexShrink: 0, marginTop: '1px' }}>✓</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', letterSpacing: '0.06em', color: '#5A9A3A', margin: '0 0 2px', textTransform: 'uppercase', fontWeight: 600 }}>
+              Plan regenerated with your context
+            </p>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', margin: 0, lineHeight: 1.5, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
+              "{extraContext.trim()}"
+            </p>
+          </div>
+        </div>
       )}
 
       {/* Info note — minimal sprout green */}

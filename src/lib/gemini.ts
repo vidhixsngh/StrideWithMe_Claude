@@ -69,8 +69,27 @@ export async function generateSprintPlan(
   goalText: string,
   sprintLength: number,
   goalCategory: string,
-  pastReflection?: string
+  pastReflection?: string,
+  extraContext?: string
 ): Promise<{ tasks: GeneratedTask[], wasVague: boolean }> {
+  const extraContextBlock = extraContext && extraContext.trim().length > 0
+    ? `
+
+ADDITIONAL CONTEXT (the user's clarifications, blockers, scope details, tools, or deadlines they want you to know):
+"${extraContext.trim()}"
+
+Treat this as AUTHORITATIVE additions to the goal. The plan MUST reflect these specifics:
+- Named tools / platforms → tasks must reference them by name (e.g. "Open the Figma file", "Push to the Vercel preview")
+- Stated blockers / constraints → tasks must work AROUND them (e.g. "limited to 30 min/day" → split work into 30-min units)
+- Concrete deliverables they mentioned → those become explicit task milestones in the right week
+- Deadlines or fixed dates → schedule the matching milestone task on a specific Day N
+- Skills they're missing → add a learn/research task on Day 1–3 specifically for that gap
+- Side projects, dependencies, prior work → reference those in the relevant task text
+
+Do NOT generate generic tasks when this context is available. Specificity is the whole point.
+`
+    : ''
+
   const reflectionBlock = pastReflection && pastReflection.trim().length > 0
     ? `
 
@@ -100,7 +119,7 @@ A user has set this goal:
 
 Sprint length: ${sprintLength} days
 Goal category: ${goalCategory}
-${reflectionBlock}
+${reflectionBlock}${extraContextBlock}
 TASK:
 Generate a daily task plan SPECIFICALLY for this exact goal. Every task must directly contribute to achieving "${goalText}". Do NOT generate generic productivity tasks.
 
