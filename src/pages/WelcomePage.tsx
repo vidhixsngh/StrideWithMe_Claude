@@ -118,9 +118,9 @@ export default function WelcomePage() {
 
           <div style={{ position: 'relative', zIndex: 2 }}>
             {/* Substantial pill for the problem line */}
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '7px 14px', borderRadius: '9999px', background: 'linear-gradient(135deg, rgba(118,197,72,0.14) 0%, rgba(118,197,72,0.04) 100%)', border: '1px solid rgba(90,154,58,0.35)', marginBottom: '16px', animation: 'tagPulse 2.8s ease-in-out infinite' }}>
-              <span style={{ fontSize: '13px' }}>🌱</span>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', letterSpacing: '0.10em', color: '#3D7A5F', textTransform: 'uppercase', fontWeight: 700 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '9999px', background: 'linear-gradient(135deg, rgba(118,197,72,0.14) 0%, rgba(118,197,72,0.04) 100%)', border: '1px solid rgba(90,154,58,0.35)', marginBottom: '16px', animation: 'tagPulse 2.8s ease-in-out infinite', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+              <span style={{ fontSize: '12px' }}>🌱</span>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', letterSpacing: '0.07em', color: '#3D7A5F', textTransform: 'uppercase', fontWeight: 700 }}>
                 For everyone tired of starting over
               </span>
             </div>
