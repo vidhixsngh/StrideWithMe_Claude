@@ -286,6 +286,13 @@ export async function markLogPostedToFeed(logId: string): Promise<void> {
     .eq('id', logId)
 }
 
+export async function updateLogDraft(logId: string, draft: string): Promise<void> {
+  await supabase
+    .from('daily_logs')
+    .update({ ai_draft_post: draft })
+    .eq('id', logId)
+}
+
 // ── REACTION OPERATIONS ──
 
 export async function toggleReaction(postId: string, userId: string, reactionType: 'WITNESSED' | 'FACING_THIS_TOO'): Promise<boolean> {

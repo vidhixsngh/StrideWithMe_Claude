@@ -6,7 +6,7 @@ import BloomOverlay from '../components/BloomOverlay'
 import VerifyingOverlay from '../components/VerifyingOverlay'
 import { verifyLog, generatePostDraft } from '../lib/gemini'
 import type { VerificationResult } from '../lib/gemini'
-import { createLog, getLogsForSprint, getAllActiveSprints, getTodayTask, getTasksForSprint, calculateDayNumber, createFeedPost, markLogPostedToFeed } from '../lib/db'
+import { createLog, getLogsForSprint, getAllActiveSprints, getTodayTask, getTasksForSprint, calculateDayNumber, createFeedPost, markLogPostedToFeed, updateLogDraft } from '../lib/db'
 import { useAuth } from '../context/AuthContext'
 import type { Sprint, Task, DailyLog } from '../lib/db'
 
@@ -27,7 +27,7 @@ export default function LogPage() {
   const sprint = sprints[selectedIdx] ?? null
   const [logText, setLogText] = useState('')
   const [activeTab, setActiveTab] = useState('text')
-  const [phase, setPhase] = useState<'input' | 'verifying' | 'verified' | 'honest' | 'done'>('input')
+  const [phase, setPhase] = useState<'input' | 'verifying' | 'verified' | 'honest' | 'honest_done' | 'done'>('input')
   const [showBloom, setShowBloom] = useState(false)
   const [todayTaskData, setTodayTaskData] = useState<Task | null>(null)
   const [dayNumber, setDayNumber] = useState(0)
@@ -180,7 +180,7 @@ export default function LogPage() {
       localStorage.removeItem(DRAFT_KEY)
       setVerificationResult(result)
       setShowBloom(true)
-      generateAndSaveDraft()
+      generateAndSaveDraft(newLog?.id)
     } else {
       setAttemptNumber(prev => prev + 1)
       setVerificationResult(result)
@@ -200,7 +200,7 @@ export default function LogPage() {
     navigate('/dashboard')
   }
 
-  const generateAndSaveDraft = async () => {
+  const generateAndSaveDraft = async (logId?: string) => {
     setGeneratingDraft(true)
     const draft = await generatePostDraft({
       goalText: sprint?.goal_text ?? '',
@@ -215,6 +215,25 @@ export default function LogPage() {
     setPostDraft(draft)
     setGeneratingDraft(false)
     setDraftReady(true)
+    const id = logId ?? lastLogId
+    if (id) updateLogDraft(id, draft)
+  }
+
+  const generateHonestDraft = async (honestText: string, logId: string) => {
+    setGeneratingDraft(true)
+    const draft = await generatePostDraft({
+      goalText: sprint?.goal_text ?? '',
+      logText: honestText,
+      dayNumber,
+      sprintLength: sprint?.sprint_length ?? 30,
+      isHonestDay: true,
+      mediaType: null,
+      images: [],
+    })
+    setPostDraft(draft)
+    setGeneratingDraft(false)
+    setDraftReady(true)
+    updateLogDraft(logId, draft)
   }
 
   return (
@@ -290,23 +309,42 @@ export default function LogPage() {
         {phase === 'verifying' && <VerifyingPhase />}
         {phase === 'verified' && <VerifiedPhase logText={logText} onBack={() => navigate('/dashboard')} onPostToFeed={handlePostToFeed} postDraft={postDraft} setPostDraft={setPostDraft} generatingDraft={generatingDraft} draftReady={draftReady} taskText={todayTaskData?.task_text ?? mockLog.todayTask} dayNum={dayNumber || mockLog.day} verifiedCount={verifiedCountState} daysLeft={sprint ? sprint.sprint_length - dayNumber : 0} currentStreak={currentStreak} verificationResult={verificationResult} activeTab={activeTab} imageFiles={imageFiles} linkUrl={linkUrl} />}
         {phase === 'honest' && <HonestPhase onSubmit={async (honestText: string) => {
-          if (sprint && user) {
-            await createLog({
-              sprint_id: sprint.id,
-              user_id: user.id,
-              day_number: dayNumber,
-              log_type: 'HONEST',
-              log_text: honestText,
-              media_url: null,
-              ai_verification_result: null,
-              ai_draft_post: null,
-              posted_to_feed: false,
-              verification_attempts: 0,
-            })
-          }
+          if (!sprint || !user) return
+          const newLog = await createLog({
+            sprint_id: sprint.id,
+            user_id: user.id,
+            day_number: dayNumber,
+            log_type: 'HONEST',
+            log_text: honestText,
+            media_url: null,
+            ai_verification_result: null,
+            ai_draft_post: null,
+            posted_to_feed: false,
+            verification_attempts: 0,
+          })
           localStorage.removeItem('stridewithme_draft_log')
-          navigate('/dashboard')
+          if (newLog) {
+            setLastLogId(newLog.id)
+            setLogText(honestText)
+            setPhase('honest_done')
+            generateHonestDraft(honestText, newLog.id)
+          } else {
+            navigate('/dashboard')
+          }
         }} />}
+        {phase === 'honest_done' && <HonestDonePhase
+          honestText={logText}
+          dayNum={dayNumber || mockLog.day}
+          verifiedCount={verifiedCountState}
+          currentStreak={currentStreak}
+          daysLeft={sprint ? sprint.sprint_length - dayNumber : 0}
+          postDraft={postDraft}
+          setPostDraft={setPostDraft}
+          generatingDraft={generatingDraft}
+          draftReady={draftReady}
+          onPostToFeed={handlePostToFeed}
+          onBack={() => navigate('/dashboard')}
+        />}
         {phase === 'done' && existingLog && (
           <DonePhase
             dayNum={dayNumber || 1}
@@ -316,6 +354,8 @@ export default function LogPage() {
             existingLog={existingLog}
             taskText={todayTaskData?.task_text ?? mockLog.todayTask}
             onBack={() => navigate('/dashboard')}
+            sprintId={sprint?.id}
+            userId={user?.id}
           />
         )}
       </div>
@@ -1000,11 +1040,26 @@ function HonestPhase({ onSubmit }: { onSubmit: (text: string) => void }) {
   )
 }
 
-function DonePhase({ dayNum, verifiedCount, currentStreak, daysLeft, existingLog, taskText, onBack }: {
+function DonePhase({ dayNum, verifiedCount, currentStreak, daysLeft, existingLog, taskText, onBack, sprintId, userId }: {
   dayNum: number; verifiedCount: number; currentStreak: number; daysLeft: number;
-  existingLog: DailyLog; taskText: string; onBack: () => void
+  existingLog: DailyLog; taskText: string; onBack: () => void;
+  sprintId?: string; userId?: string
 }) {
   const logTime = new Date(existingLog.logged_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+  const [draftText, setDraftText] = useState(existingLog.ai_draft_post ?? '')
+  const [posted, setPosted] = useState(existingLog.posted_to_feed)
+  const [posting, setPosting] = useState(false)
+  const canShare = !!existingLog.ai_draft_post && !posted && !!sprintId && !!userId
+
+  const handleShare = async () => {
+    if (!sprintId || !userId || !draftText) return
+    setPosting(true)
+    await createFeedPost({ log_id: existingLog.id, sprint_id: sprintId, user_id: userId, post_text: draftText })
+    await markLogPostedToFeed(existingLog.id)
+    if (draftText !== existingLog.ai_draft_post) await updateLogDraft(existingLog.id, draftText)
+    setPosted(true)
+    setPosting(false)
+  }
 
   return (
     <>
@@ -1057,12 +1112,130 @@ function DonePhase({ dayNum, verifiedCount, currentStreak, daysLeft, existingLog
         )}
       </div>
 
+      {/* Saved post draft — share later that day */}
+      {canShare && (
+        <div style={{ marginBottom: '16px' }}>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', letterSpacing: '0.1em', color: '#7AB5A0', textTransform: 'uppercase' }}>YOUR POST DRAFT</span>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', margin: '2px 0 6px' }}>Saved earlier — edit and share when you're ready.</p>
+          <textarea
+            value={draftText}
+            onChange={(e) => setDraftText(e.target.value)}
+            style={{ width: '100%', backgroundColor: '#F5FAF7', borderRadius: '12px', border: '1px solid #D4EDE3', padding: '12px', fontFamily: 'var(--font-body)', fontSize: '13px', color: '#2D4A3E', fontStyle: 'italic', lineHeight: 1.6, minHeight: '80px', resize: 'none', outline: 'none', boxSizing: 'border-box' }}
+          />
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: draftText.length > 200 ? '#D97706' : '#9BBFB2', textAlign: 'right', margin: '4px 0 0' }}>{draftText.length}/200</p>
+          <button
+            onClick={handleShare}
+            disabled={posting || !draftText}
+            style={{ width: '100%', marginTop: '8px', height: '44px', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', border: 'none', borderRadius: '9999px', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 500, cursor: posting ? 'not-allowed' : 'pointer', opacity: posting ? 0.6 : 1, boxShadow: '0 4px 12px rgba(107,176,72,0.25)' }}
+          >
+            {posting ? 'Posting...' : 'Post to feed →'}
+          </button>
+        </div>
+      )}
+      {posted && (
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#3D7A5F', textAlign: 'center', marginBottom: '12px' }}>✓ Shared to feed</p>
+      )}
+
       {/* Back button */}
       <button
         onClick={onBack}
         style={{ width: '100%', height: '48px', backgroundColor: '#EAF5F0', color: '#2D5A47', border: '1px solid #B8D9CC', borderRadius: '9999px', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}
       >
         ← Back to dashboard
+      </button>
+    </>
+  )
+}
+
+function HonestDonePhase({ honestText, dayNum, verifiedCount, currentStreak, daysLeft, postDraft, setPostDraft, generatingDraft, draftReady, onPostToFeed, onBack }: {
+  honestText: string; dayNum: number; verifiedCount: number; currentStreak: number; daysLeft: number;
+  postDraft: string; setPostDraft: (v: string) => void;
+  generatingDraft: boolean; draftReady: boolean;
+  onPostToFeed: () => void; onBack: () => void
+}) {
+  return (
+    <>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', letterSpacing: '0.1em', color: '#D97706' }}>HONEST CHECK-IN</span>
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: '12px', backgroundColor: '#FEF3E8', color: '#D97706', borderRadius: '9999px', padding: '4px 10px' }}>
+          🤍 Logged
+        </span>
+      </div>
+      <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '28px', color: '#1A3028', margin: '8px 0 16px' }}>Day {dayNum}</h1>
+
+      {/* Warm completion card */}
+      <div style={{ background: 'linear-gradient(135deg, #FEF8F0 0%, #FEF3E8 100%)', borderRadius: '24px', padding: '24px', textAlign: 'center', marginBottom: '16px', border: '1px solid #F5D5A8' }}>
+        <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', boxShadow: '0 4px 16px rgba(245, 158, 74, 0.20)', fontSize: '28px' }}>
+          🤍
+        </div>
+        <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '24px', color: '#1A3028', marginTop: '16px' }}>Day {dayNum} logged. Honestly.</h2>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontStyle: 'italic', color: '#A66A2A', margin: '4px 0 16px' }}>Showing up imperfectly is still showing up.</p>
+
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {[
+            { value: String(verifiedCount), label: 'Verified days' },
+            { value: String(currentStreak + 1), emoji: '🔥', label: 'Day streak' },
+            { value: String(daysLeft), label: 'Days left' },
+          ].map((s) => (
+            <div key={s.label} style={{ flex: 1, backgroundColor: '#FFFFFF', borderRadius: '12px', padding: '12px 16px', textAlign: 'center' }}>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: '20px', fontWeight: 700, color: '#1A3028' }}>
+                {s.value}{s.emoji && <span style={{ marginLeft: '2px' }}>{s.emoji}</span>}
+              </div>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#6B9E8A' }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* What you wrote */}
+      <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', border: '1px solid #EDF2EF', padding: '14px 16px', marginBottom: '16px' }}>
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', textTransform: 'uppercase', fontStyle: 'italic', letterSpacing: '0.1em', color: '#9BBFB2' }}>What you wrote</span>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', lineHeight: 1.6, fontStyle: 'italic', color: '#2D4A3E', margin: '6px 0 0' }}>
+          {honestText}
+        </p>
+      </div>
+
+      <div style={{ background: 'rgba(254, 243, 232, 0.6)', borderRadius: '12px', padding: '12px 14px', marginBottom: '16px', border: '1px solid #F5D5A8' }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#A66A2A', margin: 0, lineHeight: 1.6 }}>
+          Honest days count toward your record. They tell the real story — and that's the one worth telling.
+        </p>
+      </div>
+
+      {/* Post Draft */}
+      <div style={{ marginBottom: '16px' }}>
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', letterSpacing: '0.1em', color: '#D97706', textTransform: 'uppercase' }}>SHARE YOUR HONEST DAY</span>
+        {generatingDraft && (
+          <div style={{ padding: '14px 16px', background: 'rgba(254,243,232,0.5)', borderRadius: '12px', border: '1px solid #F5D5A8', marginTop: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+              <span style={{ fontSize: '14px' }}>✍️</span>
+              <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: '#D97706', fontStyle: 'italic', margin: 0, letterSpacing: '0.04em' }}>Drafting your post...</p>
+            </div>
+            {[100, 85, 60].map((width, i) => (
+              <div key={i} style={{ height: '10px', width: `${width}%`, borderRadius: '4px', backgroundColor: '#F5D5A8', marginBottom: i < 2 ? '6px' : 0, animation: `shimmer 1.5s ease-in-out ${i * 0.15}s infinite` }} />
+            ))}
+          </div>
+        )}
+        {draftReady && (
+          <>
+            <textarea
+              value={postDraft}
+              onChange={(e) => setPostDraft(e.target.value)}
+              style={{ width: '100%', marginTop: '8px', backgroundColor: '#FEF8F0', borderRadius: '12px', border: '1px solid #F5D5A8', padding: '12px', fontFamily: 'var(--font-body)', fontSize: '13px', color: '#2D4A3E', fontStyle: 'italic', lineHeight: 1.6, minHeight: '80px', resize: 'none', outline: 'none', boxSizing: 'border-box' }}
+            />
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: postDraft.length > 200 ? '#D97706' : '#9BBFB2', textAlign: 'right', margin: '4px 0 0' }}>{postDraft.length}/200</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
+              <button onClick={onBack} style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#9BBFB2', background: 'none', border: 'none', cursor: 'pointer' }}>Skip — keep it private</button>
+              <button onClick={onPostToFeed} style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, color: '#FFFFFF', background: 'linear-gradient(135deg, #F59E4A 0%, #D97706 100%)', border: 'none', borderRadius: '9999px', padding: '8px 16px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(217,119,6,0.25)' }}>Post to feed →</button>
+            </div>
+          </>
+        )}
+      </div>
+
+      <button
+        onClick={onBack}
+        style={{ width: '100%', padding: '16px', background: 'linear-gradient(180deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', borderRadius: '9999px', border: 'none', fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: 500, cursor: 'pointer', boxShadow: '0 8px 24px rgba(107,176,72,0.32), 0 4px 12px rgba(107,176,72,0.18)' }}
+      >
+        Back to my sprint →
       </button>
     </>
   )
