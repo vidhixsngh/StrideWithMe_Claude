@@ -72,7 +72,24 @@ export async function generateSprintPlan(
   pastReflection?: string
 ): Promise<{ tasks: GeneratedTask[], wasVague: boolean }> {
   const reflectionBlock = pastReflection && pastReflection.trim().length > 0
-    ? `\nThe user reflected on what went wrong last time:\n"${pastReflection.trim()}"\n\nUse this context to avoid repeating those failure patterns. If they mentioned losing motivation, structure the early tasks for quick wins. If they mentioned overcommitment, keep early tasks tight and easy. If they mentioned isolation, weave in tasks that involve sharing or feedback.`
+    ? `
+
+PAST-FAILURE REFLECTION (CRITICAL — this user has tried before and told you what tripped them up):
+"${pastReflection.trim()}"
+
+You MUST adapt the plan to defuse the specific failure pattern they described. This is non-negotiable — the plan should look measurably different from a generic plan because of this context. Apply ALL relevant heuristics below:
+
+- "lost motivation / faded / steam died / Day N" → Front-load DAYS 1–4 with three quick wins (a finished tangible artifact each). DAY 6 must be a visible milestone or external share — exactly when they typically quit. Avoid abstract research tasks before Day 5.
+- "burned out / overwhelmed / too much / overcommitted" → Cap each task at strictly 1-hour scope. Use shorter task_text (under 60 chars). Build in a deliberately-light task at Day 7, 14, 21 ("review and rest" framing). Reduce build-density in the middle 50%.
+- "got busy / no time / life got in the way / family / work" → Tasks must be doable in fragmented 30-min sessions. Task wording should imply small, isolatable units of work. Avoid tasks that assume long blocks of focus.
+- "fear / scared / afraid to share / imposter / not ready" → Add forced-share/exposure tasks at Days 3, 10, 18 (e.g. "Share rough version with one person"). Don't let them hide.
+- "started over / quit and restarted / abandoned" → DAY 1 must be deliberately small and achievable in 20 mins. The first week must build evidence they can sustain it; complexity climbs only after Day 7.
+- "no accountability / alone / solo / no one watching" → Weave in cohort/share/external-feedback tasks at Days 5, 12, 22.
+- "perfectionism / kept rewriting / never shipped / never finished" → Force ship-first tasks: rough drafts shipped on Day 4, public version on Day 14, final on Day 25. Frame as "publish ugly first."
+- "distracted / scope creep / chased shiny things" → Lock the goal scope; tasks should explicitly reference the original goal phrasing. Add a Day 8 "kill the side ideas" review task.
+
+If their reflection doesn't match any pattern above, infer the closest one and apply its heuristic. The first week's tasks (Days 1–7) MUST visibly reflect this adaptation.
+`
     : ''
 
   const prompt = `

@@ -153,7 +153,7 @@ export default function OnboardingPage() {
         {step === 3 && (
           <Step3Visibility visibility={visibility} setVisibility={setVisibility} onNext={handleGoToStep4} generatingPlan={generatingPlan} />
         )}
-        {step === 4 && <Step4Preview goal={goal} onBegin={handleBeginDay1} submitting={submitting} submitError={submitError} aiTasks={aiTasks} wasVague={wasVague} onRegenerate={handleGoToStep4} generatingPlan={generatingPlan} onUpdateTasks={setAiTasks} />}
+        {step === 4 && <Step4Preview goal={goal} onBegin={handleBeginDay1} submitting={submitting} submitError={submitError} aiTasks={aiTasks} wasVague={wasVague} onRegenerate={handleGoToStep4} generatingPlan={generatingPlan} onUpdateTasks={setAiTasks} pastReflection={pastReflection} />}
       </div>
 
       {generatingPlan && (
@@ -657,7 +657,7 @@ function Step3Visibility({
 }
 
 /* ============ STEP 4 ============ */
-function Step4Preview({ goal, onBegin, submitting, submitError, aiTasks, wasVague, onRegenerate, generatingPlan, onUpdateTasks }: { goal: string; onBegin: () => void; submitting?: boolean; submitError?: string; aiTasks?: GeneratedTask[]; wasVague?: boolean; onRegenerate?: () => void; generatingPlan?: boolean; onUpdateTasks?: (tasks: GeneratedTask[]) => void }) {
+function Step4Preview({ goal, onBegin, submitting, submitError, aiTasks, wasVague, onRegenerate, generatingPlan, onUpdateTasks, pastReflection }: { goal: string; onBegin: () => void; submitting?: boolean; submitError?: string; aiTasks?: GeneratedTask[]; wasVague?: boolean; onRegenerate?: () => void; generatingPlan?: boolean; onUpdateTasks?: (tasks: GeneratedTask[]) => void; pastReflection?: string }) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [editText, setEditText] = useState('')
   const [dragIndex, setDragIndex] = useState<number | null>(null)
@@ -748,6 +748,24 @@ function Step4Preview({ goal, onBegin, submitting, submitError, aiTasks, wasVagu
           {goal}
         </p>
       </div>
+
+      {/* Reflection-tailored badge — only when user shared past reflection */}
+      {pastReflection && pastReflection.trim().length > 0 && (
+        <div style={{ background: 'linear-gradient(135deg, rgba(123,111,160,0.10) 0%, rgba(118,197,72,0.06) 100%)', border: '1px solid rgba(123,111,160,0.30)', borderRadius: '14px', padding: '12px 14px', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+            <span style={{ fontSize: '13px' }}>🪞</span>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', letterSpacing: '0.1em', color: '#7B6FA0', margin: 0, textTransform: 'uppercase', fontWeight: 600 }}>
+              Tailored to what tripped you up
+            </p>
+          </div>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', margin: '0 0 6px', lineHeight: 1.5 }}>
+            "{pastReflection.trim().length > 110 ? pastReflection.trim().slice(0, 110) + '…' : pastReflection.trim()}"
+          </p>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#3D5949', margin: 0, lineHeight: 1.5 }}>
+            We've shaped the early days of your plan to defuse this exact pattern.
+          </p>
+        </div>
+      )}
 
       {/* Editable hint (always shown) */}
       <div style={{ backgroundColor: '#FEF3E8', border: '1px solid #F5D5A8', borderRadius: '12px', padding: '10px 14px', marginBottom: '12px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
