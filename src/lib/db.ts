@@ -110,6 +110,15 @@ export async function getActiveSprint(userId: string): Promise<Sprint | null> {
   return data
 }
 
+export async function updateSprintVisibility(sprintId: string, visibility: 'PRIVATE' | 'COHORT' | 'PUBLIC'): Promise<boolean> {
+  const { error } = await supabase
+    .from('sprints')
+    .update({ visibility })
+    .eq('id', sprintId)
+  if (error) { console.error('updateSprintVisibility:', error); return false }
+  return true
+}
+
 export async function getAllActiveSprints(userId: string): Promise<Sprint[]> {
   const today = new Date().toISOString().split('T')[0]
   const { data, error } = await supabase
