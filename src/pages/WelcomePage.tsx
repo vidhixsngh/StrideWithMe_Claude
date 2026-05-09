@@ -98,8 +98,8 @@ export default function WelcomePage() {
 
         {/* Hero text + big prominent sun behind */}
         <div style={{ padding: '20px 24px 0', position: 'relative' }}>
-          {/* BIG SUN — moved above the headline line, slightly right of center */}
-          <div style={{ position: 'absolute', top: '-58px', right: '20px', width: '130px', height: '130px', pointerEvents: 'none', opacity: 0.9, zIndex: 1, animation: 'sunGlow 4s ease-in-out infinite' }}>
+          {/* BIG SUN — lifted way up so it sits in the sky above all text */}
+          <div style={{ position: 'absolute', top: '-100px', right: '20px', width: '110px', height: '110px', pointerEvents: 'none', opacity: 0.92, zIndex: 1, animation: 'sunGlow 4s ease-in-out infinite' }}>
             <svg viewBox="0 0 160 160" style={{ width: '100%', height: '100%' }}>
               <g style={{ transformOrigin: '80px 80px', animation: 'spin 40s linear infinite' }}>
                 {Array.from({ length: 12 }).map((_, i) => (
@@ -112,8 +112,8 @@ export default function WelcomePage() {
             </svg>
           </div>
 
-          {/* Soft sun glow wash above the headline */}
-          <div style={{ position: 'absolute', top: '-30px', right: '0px', width: '260px', height: '200px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,213,71,0.18) 0%, rgba(245,213,71,0) 65%)', pointerEvents: 'none', zIndex: 1 }} />
+          {/* Soft sun glow wash high above the headline */}
+          <div style={{ position: 'absolute', top: '-80px', right: '0px', width: '240px', height: '180px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,213,71,0.20) 0%, rgba(245,213,71,0) 60%)', pointerEvents: 'none', zIndex: 0 }} />
 
           <div style={{ position: 'relative', zIndex: 2 }}>
             {/* Substantial pill for the problem line */}
@@ -123,11 +123,11 @@ export default function WelcomePage() {
                 For everyone tired of starting over
               </span>
             </div>
-            <span style={{ fontFamily: 'var(--font-heading)', fontSize: '36px', color: '#1A3028', fontWeight: 400, display: 'block', lineHeight: 1.12, letterSpacing: '-0.02em' }}>30 days to</span>
-            <div style={{ height: '48px', display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
-              <span style={{ fontFamily: 'var(--font-heading)', fontSize: '36px', fontStyle: 'italic', color: '#3D7A5F', fontWeight: 700, display: 'block', lineHeight: 1.12, letterSpacing: '-0.02em', opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(6px)', transition: 'opacity 0.3s ease, transform 0.3s ease', whiteSpace: 'nowrap' }}>{goals[goalIndex]}</span>
+            <span style={{ fontFamily: 'var(--font-heading)', fontSize: '26px', color: '#1A3028', fontWeight: 400, display: 'block', lineHeight: 1.2, letterSpacing: '-0.015em' }}>30 days to</span>
+            <div style={{ height: '34px', display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+              <span style={{ fontFamily: 'var(--font-heading)', fontSize: '26px', fontStyle: 'italic', color: '#3D7A5F', fontWeight: 700, display: 'block', lineHeight: 1.2, letterSpacing: '-0.015em', opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(4px)', transition: 'opacity 0.3s ease, transform 0.3s ease', whiteSpace: 'nowrap' }}>{goals[goalIndex]}</span>
             </div>
-            <span style={{ fontFamily: 'var(--font-heading)', fontSize: '36px', color: '#1A3028', fontWeight: 400, display: 'block', lineHeight: 1.12, letterSpacing: '-0.02em' }}>Start today.</span>
+            <span style={{ fontFamily: 'var(--font-heading)', fontSize: '26px', color: '#1A3028', fontWeight: 400, display: 'block', lineHeight: 1.2, letterSpacing: '-0.015em' }}>Start today.</span>
           </div>
         </div>
 
