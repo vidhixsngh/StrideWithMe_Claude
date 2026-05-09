@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
-import { Resend } from 'resend'
 
 const APP_URL = process.env.APP_URL ?? 'https://stridewithme.app'
-const FROM_EMAIL = process.env.REMINDER_FROM_EMAIL ?? 'StrideWithMe <reminders@stridewithme.app>'
+const SENDER_EMAIL = process.env.BREVO_SENDER_EMAIL ?? 'reminders@stridewithme.app'
+const SENDER_NAME = process.env.BREVO_SENDER_NAME ?? 'StrideWithMe'
 
 function getLocalDateAndTime(timezone: string): { date: string; minutes: number } {
   const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -23,6 +23,28 @@ function getLocalDateAndTime(timezone: string): { date: string; minutes: number 
   return { date, minutes: hour * 60 + minute }
 }
 
+async function sendBrevoEmail(apiKey: string, to: string, subject: string, html: string) {
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'accept': 'application/json',
+      'api-key': apiKey,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      sender: { name: SENDER_NAME, email: SENDER_EMAIL },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+    }),
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Brevo ${res.status}: ${text}`)
+  }
+  return res.json()
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Cron auth — Vercel sets `Authorization: Bearer <CRON_SECRET>` automatically
   if (process.env.CRON_SECRET && req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -31,17 +53,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  const resendKey = process.env.RESEND_API_KEY
+  const brevoKey = process.env.BREVO_API_KEY
 
   if (!supabaseUrl || !serviceKey) {
     return res.status(500).json({ error: 'Supabase env not configured' })
   }
-  if (!resendKey) {
-    return res.status(500).json({ error: 'Resend env not configured' })
+  if (!brevoKey) {
+    return res.status(500).json({ error: 'Brevo env not configured' })
   }
 
   const supabase = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
-  const resend = new Resend(resendKey)
 
   // Pull users who opted in
   const { data: profiles, error: profErr } = await supabase
@@ -53,7 +74,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (profErr) return res.status(500).json({ error: profErr.message })
   if (!profiles || profiles.length === 0) return res.status(200).json({ checked: 0, sent: 0 })
 
-  // The cron fires hourly — accept reminders within ±32 mins of "now" in the user's local time
+  // Window of acceptance (mins) — generous so a daily cron still catches users
   const WINDOW_MIN = 32
   let sent = 0
   const skipped: string[] = []
@@ -122,7 +143,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 </div></body></html>`
 
     try {
-      await resend.emails.send({ from: FROM_EMAIL, to: email, subject, html })
+      await sendBrevoEmail(brevoKey, email, subject, html)
       sent++
     } catch (e) {
       console.error('[reminder] send failed', p.id, e)
