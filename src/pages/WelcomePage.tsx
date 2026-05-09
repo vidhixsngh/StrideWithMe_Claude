@@ -95,21 +95,44 @@ export default function WelcomePage() {
           </div>
         </div>
 
-        {/* Hero text — big rotating headline back, small tag above */}
-        <div style={{ padding: '24px 24px 0', position: 'relative', zIndex: 2 }}>
-          <span style={{ display: 'inline-block', fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', letterSpacing: '0.12em', color: '#5A9A3A', textTransform: 'uppercase', fontWeight: 600, marginBottom: '14px' }}>
-            For everyone tired of starting over
-          </span>
-          <span style={{ fontFamily: 'var(--font-heading)', fontSize: '36px', color: '#1A3028', fontWeight: 400, display: 'block', lineHeight: 1.12, letterSpacing: '-0.02em' }}>30 days to</span>
-          <div style={{ height: '48px', display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
-            <span style={{ fontFamily: 'var(--font-heading)', fontSize: '36px', fontStyle: 'italic', color: '#3D7A5F', fontWeight: 700, display: 'block', lineHeight: 1.12, letterSpacing: '-0.02em', opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(6px)', transition: 'opacity 0.3s ease, transform 0.3s ease', whiteSpace: 'nowrap' }}>{goals[goalIndex]}</span>
+        {/* Hero text + big prominent sun behind */}
+        <div style={{ padding: '20px 24px 0', position: 'relative' }}>
+          {/* BIG SUN — restored to its earlier prominent placement, behind the text */}
+          <div style={{ position: 'absolute', top: '-10px', right: '-30px', width: '160px', height: '160px', pointerEvents: 'none', opacity: 0.85, zIndex: 1, animation: 'sunGlow 4s ease-in-out infinite' }}>
+            <svg viewBox="0 0 160 160" style={{ width: '100%', height: '100%' }}>
+              <g style={{ transformOrigin: '80px 80px', animation: 'spin 40s linear infinite' }}>
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <line key={i} x1="80" y1="14" x2="80" y2="30" stroke="#F5B447" strokeWidth="2.8" strokeLinecap="round" opacity="0.55" transform={`rotate(${i * 30} 80 80)`} />
+                ))}
+              </g>
+              <circle cx="80" cy="80" r="26" fill="#F5D547" opacity="0.25" />
+              <circle cx="80" cy="80" r="19" fill="#F5C547" />
+              <circle cx="76" cy="76" r="7" fill="#F8DD66" opacity="0.7" />
+            </svg>
           </div>
-          <span style={{ fontFamily: 'var(--font-heading)', fontSize: '36px', color: '#1A3028', fontWeight: 400, display: 'block', lineHeight: 1.12, letterSpacing: '-0.02em' }}>Start today.</span>
+
+          {/* Soft sun glow wash */}
+          <div style={{ position: 'absolute', top: '20px', right: '0px', width: '260px', height: '260px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,213,71,0.16) 0%, rgba(245,213,71,0) 65%)', pointerEvents: 'none', zIndex: 1 }} />
+
+          <div style={{ position: 'relative', zIndex: 2 }}>
+            {/* Substantial pill for the problem line */}
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '7px 14px', borderRadius: '9999px', background: 'linear-gradient(135deg, rgba(118,197,72,0.14) 0%, rgba(118,197,72,0.04) 100%)', border: '1px solid rgba(90,154,58,0.35)', marginBottom: '16px', animation: 'tagPulse 2.8s ease-in-out infinite' }}>
+              <span style={{ fontSize: '13px' }}>🌱</span>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', letterSpacing: '0.10em', color: '#3D7A5F', textTransform: 'uppercase', fontWeight: 700 }}>
+                For everyone tired of starting over
+              </span>
+            </div>
+            <span style={{ fontFamily: 'var(--font-heading)', fontSize: '36px', color: '#1A3028', fontWeight: 400, display: 'block', lineHeight: 1.12, letterSpacing: '-0.02em' }}>30 days to</span>
+            <div style={{ height: '48px', display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+              <span style={{ fontFamily: 'var(--font-heading)', fontSize: '36px', fontStyle: 'italic', color: '#3D7A5F', fontWeight: 700, display: 'block', lineHeight: 1.12, letterSpacing: '-0.02em', opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(6px)', transition: 'opacity 0.3s ease, transform 0.3s ease', whiteSpace: 'nowrap' }}>{goals[goalIndex]}</span>
+            </div>
+            <span style={{ fontFamily: 'var(--font-heading)', fontSize: '36px', color: '#1A3028', fontWeight: 400, display: 'block', lineHeight: 1.12, letterSpacing: '-0.02em' }}>Start today.</span>
+          </div>
         </div>
 
-        {/* Plant-journey animation strip — left-to-right growth ending in a sunflower */}
-        <div style={{ position: 'relative', margin: '24px 16px 0', height: '170px', overflow: 'hidden', borderRadius: '20px', background: 'linear-gradient(180deg, rgba(245,213,71,0.06) 0%, rgba(255,255,255,0.4) 35%, rgba(118,197,72,0.10) 100%)', border: '1px solid rgba(184,217,204,0.4)' }}>
-          <svg viewBox="0 0 360 170" preserveAspectRatio="xMidYEnd meet" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
+        {/* Plant-journey strip — denser, more detailed, with grass/flowers/butterfly */}
+        <div style={{ position: 'relative', margin: '24px 16px 0', height: '180px', overflow: 'hidden', borderRadius: '20px', background: 'linear-gradient(180deg, rgba(245,213,71,0.05) 0%, rgba(255,255,255,0.4) 30%, rgba(118,197,72,0.10) 100%)', border: '1px solid rgba(184,217,204,0.4)' }}>
+          <svg viewBox="0 0 360 180" preserveAspectRatio="xMidYEnd meet" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
             <defs>
               <radialGradient id="flowerCenter">
                 <stop offset="0%" stopColor="#A66A2A" />
@@ -119,120 +142,199 @@ export default function WelcomePage() {
                 <stop offset="0%" stopColor="#7CCB52" />
                 <stop offset="100%" stopColor="#5A9A3A" />
               </linearGradient>
+              <linearGradient id="leafGradLight" x1="0" x2="1" y1="0" y2="0.5">
+                <stop offset="0%" stopColor="#9BD96E" />
+                <stop offset="100%" stopColor="#5A9A3A" />
+              </linearGradient>
             </defs>
 
-            {/* SUN — top-right with rotating rays + glow */}
-            <g style={{ filter: 'drop-shadow(0 0 12px rgba(245,180,71,0.55))' }}>
-              <g style={{ transformOrigin: '310px 32px', animation: 'spin 40s linear infinite' }}>
-                {Array.from({ length: 12 }).map((_, i) => (
-                  <line key={i} x1="310" y1="14" x2="310" y2="22" stroke="#F5B447" strokeWidth="2" strokeLinecap="round" opacity="0.6" transform={`rotate(${i * 30} 310 32)`} />
-                ))}
-              </g>
-              <circle cx="310" cy="32" r="13" fill="#F5C547" />
-              <circle cx="306" cy="29" r="4" fill="#F8DD66" opacity="0.7" />
-            </g>
+            {/* DISTANT HILLS silhouette */}
+            <path d="M0,150 Q60,135 120,142 T240,138 T360,145 L360,180 L0,180 Z" fill="#B8D9CC" opacity="0.35" />
+            <path d="M0,156 Q40,148 80,152 T160,150 T240,148 T320,152 T360,150 L360,180 L0,180 Z" fill="#76C548" opacity="0.20" />
 
             {/* Ground line (dashed) */}
-            <line x1="0" y1="148" x2="360" y2="148" stroke="#B8D9CC" strokeWidth="1" opacity="0.55" strokeDasharray="3,4" />
+            <line x1="0" y1="158" x2="360" y2="158" stroke="#B8D9CC" strokeWidth="1" opacity="0.5" strokeDasharray="3,4" />
 
-            {/* PLANT 1 — tiny seed sprout */}
-            <g style={{ transformOrigin: '32px 148px', animation: 'sway 5s ease-in-out infinite' }}>
-              <ellipse cx="32" cy="150" rx="14" ry="2.5" fill="#5A4A3A" opacity="0.18" />
-              <path d="M32,148 L32,134" stroke="#6BB048" strokeWidth="2" strokeLinecap="round" strokeDasharray="20" style={{ animation: 'seedlingDraw 6s ease-out infinite' }} />
-              <g style={{ transformOrigin: '32px 134px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '0.4s' }}>
-                <ellipse cx="24" cy="130" rx="6" ry="3" fill="#7CCB52" transform="rotate(-30 24 130)" />
-                <ellipse cx="40" cy="130" rx="6" ry="3" fill="#76C548" transform="rotate(30 40 130)" />
+            {/* GRASS TUFTS scattered along the ground */}
+            {[15, 50, 78, 122, 145, 188, 215, 258, 280, 332, 350].map((x, i) => (
+              <g key={`grass-${i}`} style={{ transformOrigin: `${x}px 158px`, animation: `sway ${4 + (i % 3)}s ease-in-out infinite`, animationDelay: `${i * 0.3}s` }}>
+                <path d={`M${x},158 Q${x-2},${153 - (i%3)} ${x-3},${149 - (i%3)}`} stroke="#76C548" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+                <path d={`M${x},158 Q${x},${152 - (i%3)} ${x+1},${147 - (i%3)}`} stroke="#5A9A3A" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+                <path d={`M${x},158 Q${x+2},${153 - (i%3)} ${x+3},${149 - (i%3)}`} stroke="#76C548" strokeWidth="1.2" fill="none" strokeLinecap="round" />
               </g>
-            </g>
+            ))}
 
-            {/* PLANT 2 — small sapling */}
-            <g style={{ transformOrigin: '95px 148px', animation: 'sway 5.5s ease-in-out infinite', animationDelay: '0.4s' }}>
-              <ellipse cx="95" cy="150" rx="16" ry="3" fill="#5A4A3A" opacity="0.18" />
-              <path d="M95,148 Q94,124 95,104" stroke="#6BB048" strokeWidth="2.2" strokeLinecap="round" fill="none" strokeDasharray="50" style={{ animation: 'seedlingDraw 6s ease-out infinite', animationDelay: '0.5s' }} />
-              <g style={{ transformOrigin: '95px 124px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '0.9s' }}>
-                <ellipse cx="80" cy="120" rx="11" ry="5" fill="#76C548" transform="rotate(-30 80 120)" />
-              </g>
-              <g style={{ transformOrigin: '95px 112px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '1.1s' }}>
-                <ellipse cx="111" cy="108" rx="11" ry="5" fill="#7CCB52" transform="rotate(28 111 108)" />
-              </g>
-              <g style={{ transformOrigin: '95px 104px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '1.3s' }}>
-                <path d="M95,104 Q88,96 92,89 Q97,93 95,102 Z" fill="#7CCB52" />
-                <path d="M95,104 Q102,96 98,89 Q93,93 95,102 Z" fill="#76C548" />
-              </g>
-            </g>
-
-            {/* PLANT 3 — medium plant */}
-            <g style={{ transformOrigin: '160px 148px', animation: 'sway 6s ease-in-out infinite', animationDelay: '0.6s' }}>
-              <ellipse cx="160" cy="150" rx="20" ry="3" fill="#5A4A3A" opacity="0.18" />
-              <path d="M160,148 Q158,116 160,80" stroke="#6BB048" strokeWidth="2.5" strokeLinecap="round" fill="none" strokeDasharray="80" style={{ animation: 'seedlingDraw 6s ease-out infinite', animationDelay: '1s' }} />
-              <g style={{ transformOrigin: '160px 124px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '1.5s' }}>
-                <ellipse cx="142" cy="122" rx="13" ry="6" fill="#76C548" transform="rotate(-30 142 122)" />
-              </g>
-              <g style={{ transformOrigin: '160px 108px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '1.7s' }}>
-                <ellipse cx="178" cy="104" rx="13" ry="6" fill="#7CCB52" transform="rotate(28 178 104)" />
-              </g>
-              <g style={{ transformOrigin: '160px 92px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '1.9s' }}>
-                <ellipse cx="146" cy="90" rx="11" ry="5" fill="#76C548" transform="rotate(-30 146 90)" />
-              </g>
-              <g style={{ transformOrigin: '160px 80px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '2.1s' }}>
-                <path d="M160,80 Q150,72 156,64 Q162,68 160,78 Z" fill="#7CCB52" />
-                <path d="M160,80 Q170,72 164,64 Q158,68 160,78 Z" fill="#76C548" />
-              </g>
-            </g>
-
-            {/* PLANT 4 — tall stem with bud forming */}
-            <g style={{ transformOrigin: '230px 148px', animation: 'sway 6.5s ease-in-out infinite', animationDelay: '0.8s' }}>
-              <ellipse cx="230" cy="150" rx="22" ry="3" fill="#5A4A3A" opacity="0.18" />
-              <path d="M230,148 Q228,112 230,62" stroke="#6BB048" strokeWidth="2.8" strokeLinecap="round" fill="none" strokeDasharray="100" style={{ animation: 'seedlingDraw 6s ease-out infinite', animationDelay: '1.5s' }} />
-              <g style={{ transformOrigin: '230px 124px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '2.0s' }}>
-                <ellipse cx="210" cy="122" rx="14" ry="7" fill="#76C548" transform="rotate(-30 210 122)" />
-              </g>
-              <g style={{ transformOrigin: '230px 102px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '2.2s' }}>
-                <ellipse cx="250" cy="98" rx="14" ry="7" fill="#7CCB52" transform="rotate(28 250 98)" />
-              </g>
-              <g style={{ transformOrigin: '230px 82px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '2.4s' }}>
-                <ellipse cx="214" cy="80" rx="12" ry="6" fill="#76C548" transform="rotate(-30 214 80)" />
-              </g>
-              {/* Closed bud */}
-              <g style={{ transformOrigin: '230px 62px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '2.7s' }}>
-                <ellipse cx="230" cy="55" rx="7" ry="11" fill="url(#leafGrad)" />
-                <path d="M225,58 Q230,46 235,58" stroke="#5A9A3A" strokeWidth="0.8" fill="none" />
-              </g>
-            </g>
-
-            {/* PLANT 5 — full blooming sunflower */}
-            <g style={{ transformOrigin: '305px 148px', animation: 'sway 7s ease-in-out infinite', animationDelay: '1s' }}>
-              <ellipse cx="305" cy="150" rx="24" ry="3" fill="#5A4A3A" opacity="0.18" />
-              <path d="M305,148 Q303,108 305,74" stroke="#6BB048" strokeWidth="3" strokeLinecap="round" fill="none" strokeDasharray="100" style={{ animation: 'seedlingDraw 6s ease-out infinite', animationDelay: '2s' }} />
-              <g style={{ transformOrigin: '305px 124px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '2.5s' }}>
-                <ellipse cx="284" cy="122" rx="15" ry="7" fill="#76C548" transform="rotate(-30 284 122)" />
-              </g>
-              <g style={{ transformOrigin: '305px 100px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '2.8s' }}>
-                <ellipse cx="326" cy="96" rx="15" ry="7" fill="#7CCB52" transform="rotate(28 326 96)" />
-              </g>
-              {/* Sunflower head — petals + center */}
-              <g style={{ transformOrigin: '305px 74px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '3.1s' }}>
-                {Array.from({ length: 12 }).map((_, i) => (
-                  <ellipse key={i} cx="305" cy="60" rx="4.5" ry="10" fill="#F5C547" transform={`rotate(${i * 30} 305 74)`} />
+            {/* SMALL DAISIES at the base — 5-petal little flowers */}
+            {[{ x: 64, color: '#FFFFFF' }, { x: 132, color: '#F5C547' }, { x: 200, color: '#FFFFFF' }, { x: 268, color: '#F5C547' }, { x: 340, color: '#FFFFFF' }].map((d, i) => (
+              <g key={`daisy-${i}`} style={{ transformOrigin: `${d.x}px 154px`, animation: `leafBloom 6s ease-out infinite`, animationDelay: `${1.5 + i * 0.4}s` }}>
+                {Array.from({ length: 5 }).map((_, p) => (
+                  <ellipse key={p} cx={d.x} cy="150" rx="1.8" ry="3.2" fill={d.color} stroke="rgba(0,0,0,0.05)" strokeWidth="0.3" transform={`rotate(${p * 72} ${d.x} 154)`} />
                 ))}
-                <circle cx="305" cy="74" r="7" fill="url(#flowerCenter)" />
-                <circle cx="303" cy="72" r="2" fill="#A66A2A" opacity="0.6" />
+                <circle cx={d.x} cy="154" r="1.4" fill="#D97706" />
+              </g>
+            ))}
+
+            {/* PLANT 1 — tiny seed sprout with proper cotyledons */}
+            <g style={{ transformOrigin: '32px 158px', animation: 'sway 5s ease-in-out infinite' }}>
+              <ellipse cx="32" cy="160" rx="14" ry="2.5" fill="#5A4A3A" opacity="0.20" />
+              <path d="M32,158 Q31,150 32,140" stroke="#6BB048" strokeWidth="2" strokeLinecap="round" fill="none" strokeDasharray="22" style={{ animation: 'seedlingDraw 6s ease-out infinite' }} />
+              <g style={{ transformOrigin: '32px 140px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '0.4s' }}>
+                <path d="M32,140 Q22,138 18,134 Q24,130 32,138 Z" fill="url(#leafGradLight)" />
+                <path d="M32,140 Q42,138 46,134 Q40,130 32,138 Z" fill="url(#leafGradLight)" />
+                <line x1="32" y1="140" x2="22" y2="135" stroke="#5A9A3A" strokeWidth="0.4" opacity="0.6" />
+                <line x1="32" y1="140" x2="42" y2="135" stroke="#5A9A3A" strokeWidth="0.4" opacity="0.6" />
+              </g>
+            </g>
+
+            {/* PLANT 2 — small fern-like sapling, more leaves */}
+            <g style={{ transformOrigin: '95px 158px', animation: 'sway 5.5s ease-in-out infinite', animationDelay: '0.4s' }}>
+              <ellipse cx="95" cy="160" rx="17" ry="3" fill="#5A4A3A" opacity="0.20" />
+              <path d="M95,158 Q93,134 95,114" stroke="#6BB048" strokeWidth="2.2" strokeLinecap="round" fill="none" strokeDasharray="50" style={{ animation: 'seedlingDraw 6s ease-out infinite', animationDelay: '0.5s' }} />
+              {/* Pointed leaves with veins */}
+              <g style={{ transformOrigin: '95px 134px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '0.9s' }}>
+                <path d="M95,134 Q82,128 76,118 Q86,124 95,132 Z" fill="url(#leafGradLight)" />
+                <line x1="95" y1="134" x2="78" y2="120" stroke="#5A9A3A" strokeWidth="0.5" opacity="0.7" />
+              </g>
+              <g style={{ transformOrigin: '95px 124px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '1.1s' }}>
+                <path d="M95,124 Q108,118 114,108 Q104,114 95,122 Z" fill="#7CCB52" />
+                <line x1="95" y1="124" x2="112" y2="110" stroke="#5A9A3A" strokeWidth="0.5" opacity="0.7" />
+              </g>
+              <g style={{ transformOrigin: '95px 116px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '1.3s' }}>
+                <path d="M95,116 Q86,110 82,102 Q90,106 95,114 Z" fill="url(#leafGradLight)" />
+                <line x1="95" y1="116" x2="84" y2="104" stroke="#5A9A3A" strokeWidth="0.4" opacity="0.7" />
+              </g>
+              <g style={{ transformOrigin: '95px 114px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '1.5s' }}>
+                <path d="M95,114 Q88,106 92,98 Q98,103 95,112 Z" fill="#7CCB52" />
+                <path d="M95,114 Q102,106 98,98 Q92,103 95,112 Z" fill="#76C548" />
+              </g>
+            </g>
+
+            {/* PLANT 3 — bushy with multiple alternate leaves + small bud */}
+            <g style={{ transformOrigin: '160px 158px', animation: 'sway 6s ease-in-out infinite', animationDelay: '0.6s' }}>
+              <ellipse cx="160" cy="160" rx="22" ry="3.5" fill="#5A4A3A" opacity="0.20" />
+              <path d="M160,158 Q157,124 160,86" stroke="#6BB048" strokeWidth="2.6" strokeLinecap="round" fill="none" strokeDasharray="80" style={{ animation: 'seedlingDraw 6s ease-out infinite', animationDelay: '1s' }} />
+              <g style={{ transformOrigin: '160px 134px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '1.5s' }}>
+                <path d="M160,134 Q140,128 134,116 Q146,124 160,132 Z" fill="url(#leafGradLight)" />
+                <line x1="160" y1="134" x2="138" y2="120" stroke="#5A9A3A" strokeWidth="0.5" opacity="0.7" />
+              </g>
+              <g style={{ transformOrigin: '160px 118px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '1.7s' }}>
+                <path d="M160,118 Q180,112 186,100 Q174,108 160,116 Z" fill="#7CCB52" />
+                <line x1="160" y1="118" x2="184" y2="104" stroke="#5A9A3A" strokeWidth="0.5" opacity="0.7" />
+              </g>
+              <g style={{ transformOrigin: '160px 102px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '1.9s' }}>
+                <path d="M160,102 Q144,96 140,86 Q150,92 160,100 Z" fill="url(#leafGradLight)" />
+                <line x1="160" y1="102" x2="142" y2="88" stroke="#5A9A3A" strokeWidth="0.5" opacity="0.7" />
+              </g>
+              <g style={{ transformOrigin: '160px 92px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '2.0s' }}>
+                <path d="M160,92 Q174,86 178,76 Q168,82 160,90 Z" fill="#7CCB52" />
+                <line x1="160" y1="92" x2="176" y2="78" stroke="#5A9A3A" strokeWidth="0.4" opacity="0.7" />
+              </g>
+              {/* Small forming bud at top */}
+              <g style={{ transformOrigin: '160px 86px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '2.2s' }}>
+                <ellipse cx="160" cy="80" rx="4" ry="6" fill="url(#leafGrad)" />
+                <circle cx="160" cy="78" r="1.5" fill="#F5C547" opacity="0.6" />
+              </g>
+            </g>
+
+            {/* PLANT 4 — tall with prominent bud forming a flower */}
+            <g style={{ transformOrigin: '230px 158px', animation: 'sway 6.5s ease-in-out infinite', animationDelay: '0.8s' }}>
+              <ellipse cx="230" cy="160" rx="24" ry="3.5" fill="#5A4A3A" opacity="0.20" />
+              <path d="M230,158 Q227,118 230,68" stroke="#6BB048" strokeWidth="2.9" strokeLinecap="round" fill="none" strokeDasharray="100" style={{ animation: 'seedlingDraw 6s ease-out infinite', animationDelay: '1.5s' }} />
+              <g style={{ transformOrigin: '230px 134px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '2.0s' }}>
+                <path d="M230,134 Q208,126 200,112 Q216,122 230,132 Z" fill="url(#leafGradLight)" />
+                <line x1="230" y1="134" x2="206" y2="116" stroke="#5A9A3A" strokeWidth="0.6" opacity="0.7" />
+              </g>
+              <g style={{ transformOrigin: '230px 114px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '2.2s' }}>
+                <path d="M230,114 Q252,106 260,94 Q244,104 230,112 Z" fill="#7CCB52" />
+                <line x1="230" y1="114" x2="256" y2="98" stroke="#5A9A3A" strokeWidth="0.6" opacity="0.7" />
+              </g>
+              <g style={{ transformOrigin: '230px 92px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '2.4s' }}>
+                <path d="M230,92 Q212,84 208,72 Q220,80 230,90 Z" fill="url(#leafGradLight)" />
+                <line x1="230" y1="92" x2="212" y2="76" stroke="#5A9A3A" strokeWidth="0.5" opacity="0.7" />
+              </g>
+              {/* Half-open bud with hint of petals */}
+              <g style={{ transformOrigin: '230px 68px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '2.7s' }}>
+                <ellipse cx="230" cy="60" rx="8" ry="12" fill="url(#leafGrad)" />
+                {/* Hint of petals starting to emerge */}
+                {[0, 45, 90, 135].map((a, k) => (
+                  <ellipse key={k} cx="230" cy="54" rx="2.5" ry="6" fill="#F5C547" opacity="0.7" transform={`rotate(${a} 230 60)`} />
+                ))}
+                <circle cx="230" cy="60" r="3" fill="#A66A2A" opacity="0.5" />
+              </g>
+            </g>
+
+            {/* PLANT 5 — full blooming sunflower with seed pattern */}
+            <g style={{ transformOrigin: '310px 158px', animation: 'sway 7s ease-in-out infinite', animationDelay: '1s' }}>
+              <ellipse cx="310" cy="160" rx="26" ry="3.5" fill="#5A4A3A" opacity="0.20" />
+              <path d="M310,158 Q307,116 310,80" stroke="#6BB048" strokeWidth="3.2" strokeLinecap="round" fill="none" strokeDasharray="100" style={{ animation: 'seedlingDraw 6s ease-out infinite', animationDelay: '2s' }} />
+              <g style={{ transformOrigin: '310px 134px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '2.5s' }}>
+                <path d="M310,134 Q286,126 278,110 Q294,122 310,132 Z" fill="url(#leafGradLight)" />
+                <line x1="310" y1="134" x2="284" y2="114" stroke="#5A9A3A" strokeWidth="0.7" opacity="0.7" />
+              </g>
+              <g style={{ transformOrigin: '310px 110px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '2.8s' }}>
+                <path d="M310,110 Q334,102 342,90 Q326,100 310,108 Z" fill="#7CCB52" />
+                <line x1="310" y1="110" x2="338" y2="94" stroke="#5A9A3A" strokeWidth="0.7" opacity="0.7" />
+              </g>
+              {/* Sunflower head — petals + seed center */}
+              <g style={{ transformOrigin: '310px 80px', animation: 'leafBloom 6s ease-out infinite', animationDelay: '3.0s' }}>
+                {/* Outer petals */}
+                {Array.from({ length: 14 }).map((_, i) => (
+                  <ellipse key={i} cx="310" cy="64" rx="4" ry="11" fill="#F5C547" transform={`rotate(${i * (360/14)} 310 80)`} stroke="#D9A22F" strokeWidth="0.4" />
+                ))}
+                {/* Inner petal layer */}
+                {Array.from({ length: 14 }).map((_, i) => (
+                  <ellipse key={`inner-${i}`} cx="310" cy="69" rx="2.5" ry="6" fill="#F8DD66" transform={`rotate(${i * (360/14) + 13} 310 80)`} opacity="0.85" />
+                ))}
+                {/* Seed center */}
+                <circle cx="310" cy="80" r="8" fill="url(#flowerCenter)" />
+                {/* Seed dots pattern */}
+                {Array.from({ length: 7 }).map((_, i) => {
+                  const angle = i * (360/7) * Math.PI / 180
+                  const x = 310 + Math.cos(angle) * 4
+                  const y = 80 + Math.sin(angle) * 4
+                  return <circle key={`seed-${i}`} cx={x} cy={y} r="0.7" fill="#3A2A0A" opacity="0.8" />
+                })}
+                <circle cx="310" cy="80" r="0.8" fill="#3A2A0A" opacity="0.8" />
               </g>
             </g>
           </svg>
 
+          {/* Butterfly fluttering across the scene */}
+          <div style={{ position: 'absolute', top: '30px', left: '20px', width: '20px', height: '14px', animation: 'flutter 14s ease-in-out infinite', pointerEvents: 'none' }}>
+            <svg viewBox="0 0 20 14" style={{ width: '100%', height: '100%' }}>
+              {/* Body */}
+              <ellipse cx="10" cy="7" rx="0.8" ry="4" fill="#3D2A1A" />
+              {/* Left wings */}
+              <g style={{ transformOrigin: '10px 7px', animation: 'wingFlap 0.4s ease-in-out infinite' }}>
+                <ellipse cx="5" cy="5" rx="4.5" ry="3" fill="#F5C547" opacity="0.9" />
+                <ellipse cx="6" cy="9" rx="3.5" ry="2.4" fill="#F5B447" opacity="0.85" />
+                <circle cx="4" cy="5" r="0.6" fill="#3D2A1A" opacity="0.7" />
+              </g>
+              {/* Right wings */}
+              <g style={{ transformOrigin: '10px 7px', animation: 'wingFlap 0.4s ease-in-out infinite reverse' }}>
+                <ellipse cx="15" cy="5" rx="4.5" ry="3" fill="#F5C547" opacity="0.9" />
+                <ellipse cx="14" cy="9" rx="3.5" ry="2.4" fill="#F5B447" opacity="0.85" />
+                <circle cx="16" cy="5" r="0.6" fill="#3D2A1A" opacity="0.7" />
+              </g>
+              {/* Antennae */}
+              <path d="M10,3 L8,1" stroke="#3D2A1A" strokeWidth="0.4" />
+              <path d="M10,3 L12,1" stroke="#3D2A1A" strokeWidth="0.4" />
+            </svg>
+          </div>
+
           {/* Floating particles drifting up */}
           {[
-            { left: '12%', size: 4, color: '#76C548', delay: '0s', duration: '6s' },
-            { left: '28%', size: 3, color: '#7AB5A0', delay: '1.4s', duration: '7s' },
-            { left: '44%', size: 4, color: '#F5C547', delay: '2.2s', duration: '5.5s' },
-            { left: '62%', size: 3, color: '#76C548', delay: '3s', duration: '6.5s' },
-            { left: '78%', size: 4, color: '#F5C547', delay: '4.2s', duration: '6s' },
-            { left: '90%', size: 3, color: '#76C548', delay: '5s', duration: '5.8s' },
+            { left: '8%', size: 4, color: '#76C548', delay: '0s', duration: '6s' },
+            { left: '22%', size: 3, color: '#7AB5A0', delay: '1.4s', duration: '7s' },
+            { left: '38%', size: 4, color: '#F5C547', delay: '2.2s', duration: '5.5s' },
+            { left: '52%', size: 3, color: '#76C548', delay: '3s', duration: '6.5s' },
+            { left: '68%', size: 4, color: '#F5C547', delay: '4.2s', duration: '6s' },
+            { left: '84%', size: 3, color: '#76C548', delay: '5s', duration: '5.8s' },
+            { left: '94%', size: 4, color: '#F5C547', delay: '2.8s', duration: '6.2s' },
           ].map((p, i) => (
             <div key={i} style={{
               position: 'absolute',
-              bottom: '12px',
+              bottom: '14px',
               left: p.left,
               width: `${p.size}px`,
               height: `${p.size}px`,
@@ -245,9 +347,9 @@ export default function WelcomePage() {
             }} />
           ))}
 
-          {/* Subtle journey label */}
-          <span style={{ position: 'absolute', bottom: '6px', left: '14px', fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', letterSpacing: '0.1em', color: '#9BBFB2', textTransform: 'uppercase' }}>Day 1</span>
-          <span style={{ position: 'absolute', bottom: '6px', right: '14px', fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', letterSpacing: '0.1em', color: '#5A9A3A', textTransform: 'uppercase', fontWeight: 600 }}>Day 30 · Bloom</span>
+          {/* Journey labels */}
+          <span style={{ position: 'absolute', bottom: '4px', left: '14px', fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', letterSpacing: '0.1em', color: '#9BBFB2', textTransform: 'uppercase' }}>Day 1</span>
+          <span style={{ position: 'absolute', bottom: '4px', right: '14px', fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', letterSpacing: '0.1em', color: '#5A9A3A', textTransform: 'uppercase', fontWeight: 600 }}>Day 30 · Bloom</span>
         </div>
 
         {/* Primary CTA — at the edge of the first fold */}

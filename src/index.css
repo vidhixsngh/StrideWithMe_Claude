@@ -98,3 +98,22 @@ body {
   0%, 100% { transform: rotate(-2deg); }
   50%      { transform: rotate(2deg); }
 }
+
+@keyframes flutter {
+  0%   { transform: translate(0, 0) rotate(-3deg); }
+  20%  { transform: translate(60px, -18px) rotate(4deg); }
+  40%  { transform: translate(140px, -8px) rotate(-2deg); }
+  60%  { transform: translate(220px, -22px) rotate(3deg); }
+  80%  { transform: translate(290px, -10px) rotate(-3deg); }
+  100% { transform: translate(0, 0) rotate(-3deg); }
+}
+
+@keyframes wingFlap {
+  0%, 100% { transform: scaleX(1); }
+  50%      { transform: scaleX(0.55); }
+}
+
+@keyframes tagPulse {
+  0%, 100% { box-shadow: 0 2px 8px rgba(28,61,48,0.04), 0 0 0 0 rgba(118,197,72,0); }
+  50%      { box-shadow: 0 2px 8px rgba(28,61,48,0.04), 0 0 0 6px rgba(118,197,72,0.10); }
+}
