@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Home, Compass, Plus, Award, User } from 'lucide-react'
+import { Home, Users, Plus, FileText, User } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 interface NavItem {
@@ -10,9 +10,9 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { icon: Home, label: 'Home', path: '/dashboard' },
-  { icon: Compass, label: 'Feed', path: '/feed' },
+  { icon: Users, label: 'Feed', path: '/feed' },
   { icon: null, label: '', path: '/log' }, // center button slot
-  { icon: Award, label: 'Record', path: '/record' },
+  { icon: FileText, label: 'Record', path: '/record' },
   { icon: User, label: 'Profile', path: '/profile' },
 ]
 
