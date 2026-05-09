@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import PageWrapper from '../components/PageWrapper'
 import { useAuth } from '../context/AuthContext'
-import { getProfile, getAllSprints, calculateDayNumber, isSprintLocked, updateSprintVisibility } from '../lib/db'
+import { getProfile, getAllSprints, calculateDayNumber, isSprintLocked, updateSprintVisibility, updateReminderSettings } from '../lib/db'
 import type { Sprint, Profile } from '../lib/db'
 
 type Visibility = 'PRIVATE' | 'COHORT' | 'PUBLIC'
@@ -20,6 +20,9 @@ export default function ProfilePage() {
   const [sprints, setSprints] = useState<Sprint[]>([])
   const [loading, setLoading] = useState(true)
   const [visibilityEditor, setVisibilityEditor] = useState<{ sprintId: string; current: Visibility } | null>(null)
+  const [reminderEditor, setReminderEditor] = useState(false)
+  const [reminderDraft, setReminderDraft] = useState('20:00')
+  const [savingReminder, setSavingReminder] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -167,16 +170,71 @@ export default function ProfilePage() {
 
         {/* Settings */}
         <div style={{ marginTop: '24px' }}>
-          {[
-            { label: 'Reminder time', value: 'Coming soon', soon: true },
-            { label: 'Email notifications', value: 'Coming soon', soon: true },
-            { label: 'Push notifications', value: 'Coming soon', soon: true },
-          ].map((item, i) => (
-            <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', borderBottom: i < 2 ? '1px solid #EDF2EF' : 'none' }}>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: '14px', color: '#1A3028' }}>{item.label}</span>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#9BBFB2', fontStyle: 'italic', backgroundColor: '#F5F8F4', borderRadius: '9999px', padding: '3px 10px' }}>{item.value}</span>
+          {/* Reminder time — tappable */}
+          <button
+            onClick={() => {
+              setReminderDraft(profile?.reminder_time ? profile.reminder_time.slice(0, 5) : '20:00')
+              setReminderEditor(true)
+            }}
+            style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', borderBottom: '1px solid #EDF2EF', background: 'none', border: 'none', borderBottomColor: '#EDF2EF', borderBottomStyle: 'solid', borderBottomWidth: '1px', cursor: 'pointer' }}
+          >
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: '14px', color: '#1A3028' }}>Daily reminder</span>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: '12px', color: profile?.reminder_enabled ? '#3D7A5F' : '#9BBFB2', fontStyle: 'italic', backgroundColor: profile?.reminder_enabled ? '#EAF5F0' : '#F5F8F4', borderRadius: '9999px', padding: '4px 12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              {profile?.reminder_enabled && profile.reminder_time
+                ? `${profile.reminder_time.slice(0, 5)} ✓`
+                : 'Off'}
+              <span style={{ fontSize: '10px', opacity: 0.7 }}>›</span>
+            </span>
+          </button>
+
+          {/* Email notifications — tied to reminder_enabled */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', borderBottom: '1px solid #EDF2EF' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: '14px', color: '#1A3028' }}>Email notifications</span>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#9BBFB2', fontStyle: 'italic' }}>
+                We email if you haven't logged by reminder time
+              </span>
             </div>
-          ))}
+            <button
+              onClick={async () => {
+                if (!user) return
+                const next = !profile?.reminder_enabled
+                const ok = await updateReminderSettings(user.id, { reminder_enabled: next })
+                if (ok) setProfile({ ...(profile ?? {} as Profile), reminder_enabled: next })
+              }}
+              style={{
+                width: '40px',
+                height: '22px',
+                borderRadius: '9999px',
+                border: 'none',
+                background: profile?.reminder_enabled ? 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)' : '#D4EDE3',
+                position: 'relative',
+                cursor: 'pointer',
+                transition: 'background 0.2s ease',
+                flexShrink: 0,
+              }}
+              aria-label="Toggle email notifications"
+            >
+              <span style={{
+                position: 'absolute',
+                top: '2px',
+                left: profile?.reminder_enabled ? '20px' : '2px',
+                width: '18px',
+                height: '18px',
+                borderRadius: '50%',
+                background: '#FFFFFF',
+                transition: 'left 0.2s ease',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+              }} />
+            </button>
+          </div>
+
+          {/* Push notifications — still soon */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0' }}>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: '14px', color: '#1A3028' }}>Push notifications</span>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#9BBFB2', fontStyle: 'italic', backgroundColor: '#F5F8F4', borderRadius: '9999px', padding: '3px 10px' }}>Coming soon</span>
+          </div>
+
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0' }}>
             <button
               onClick={async () => { await signOut(); navigate('/', { replace: true }) }}
@@ -187,6 +245,126 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Reminder editor bottom sheet */}
+      {reminderEditor && (
+        <>
+          <div onClick={() => !savingReminder && setReminderEditor(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9998 }} />
+          <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: '430px', background: 'white', borderRadius: '24px 24px 0 0', zIndex: 9999, padding: '20px 20px 32px' }}>
+            <div style={{ width: '40px', height: '4px', background: '#E0E0E0', borderRadius: '2px', margin: '0 auto 18px' }} />
+            <p style={{ fontFamily: 'var(--font-heading)', fontSize: '18px', fontWeight: 600, color: '#1A3028', margin: '0 0 4px', textAlign: 'center' }}>Daily reminder</p>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A', textAlign: 'center', margin: '0 0 18px', lineHeight: 1.5 }}>
+              We'll email you if you haven't logged by this time.
+            </p>
+
+            {/* Big time input */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+              <input
+                type="time"
+                value={reminderDraft}
+                onChange={(e) => setReminderDraft(e.target.value)}
+                style={{
+                  fontFamily: 'var(--font-heading)',
+                  fontSize: '32px',
+                  fontWeight: 600,
+                  color: '#1A3028',
+                  background: '#F5FAF7',
+                  border: '1.5px solid #B8D9CC',
+                  borderRadius: '14px',
+                  padding: '12px 18px',
+                  outline: 'none',
+                  letterSpacing: '0.02em',
+                  textAlign: 'center',
+                }}
+              />
+            </div>
+
+            {/* Quick presets */}
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '20px', flexWrap: 'wrap' }}>
+              {[
+                { label: '8 AM', value: '08:00' },
+                { label: '1 PM', value: '13:00' },
+                { label: '6 PM', value: '18:00' },
+                { label: '8 PM', value: '20:00' },
+                { label: '10 PM', value: '22:00' },
+              ].map((p) => {
+                const active = reminderDraft === p.value
+                return (
+                  <button
+                    key={p.value}
+                    onClick={() => setReminderDraft(p.value)}
+                    style={{
+                      padding: '7px 14px',
+                      borderRadius: '9999px',
+                      border: active ? 'none' : '1px solid #E8F0EC',
+                      background: active ? 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)' : 'rgba(255,255,255,0.85)',
+                      color: active ? '#FFFFFF' : '#3D5949',
+                      fontFamily: 'var(--font-body)',
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      boxShadow: active ? '0 4px 12px rgba(107,176,72,0.25)' : 'none',
+                    }}
+                  >
+                    {p.label}
+                  </button>
+                )
+              })}
+            </div>
+
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', textAlign: 'center', margin: '0 0 16px' }}>
+              Detected timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}
+            </p>
+
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {profile?.reminder_enabled && (
+                <button
+                  disabled={savingReminder}
+                  onClick={async () => {
+                    if (!user) return
+                    setSavingReminder(true)
+                    const ok = await updateReminderSettings(user.id, { reminder_enabled: false })
+                    setSavingReminder(false)
+                    if (ok) {
+                      setProfile({ ...(profile ?? {} as Profile), reminder_enabled: false })
+                      setReminderEditor(false)
+                    }
+                  }}
+                  style={{ flex: 1, height: '44px', background: '#FEF3E8', color: '#D97706', border: '1px solid #F5D5A8', borderRadius: '9999px', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 500, cursor: 'pointer', opacity: savingReminder ? 0.5 : 1 }}
+                >
+                  Turn off
+                </button>
+              )}
+              <button
+                disabled={savingReminder}
+                onClick={async () => {
+                  if (!user) return
+                  setSavingReminder(true)
+                  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+                  const ok = await updateReminderSettings(user.id, {
+                    reminder_time: `${reminderDraft}:00`,
+                    reminder_timezone: tz,
+                    reminder_enabled: true,
+                  })
+                  setSavingReminder(false)
+                  if (ok) {
+                    setProfile({
+                      ...(profile ?? {} as Profile),
+                      reminder_time: `${reminderDraft}:00`,
+                      reminder_timezone: tz,
+                      reminder_enabled: true,
+                    })
+                    setReminderEditor(false)
+                  }
+                }}
+                style={{ flex: 2, height: '44px', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', border: 'none', borderRadius: '9999px', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 500, cursor: 'pointer', opacity: savingReminder ? 0.6 : 1, boxShadow: '0 4px 12px rgba(107,176,72,0.25)' }}
+              >
+                {savingReminder ? 'Saving…' : `Save · remind at ${reminderDraft}`}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Visibility editor bottom sheet */}
       {visibilityEditor && (

@@ -48,6 +48,21 @@ export interface Profile {
   display_name: string | null
   avatar_url: string | null
   created_at: string
+  reminder_time?: string | null
+  reminder_timezone?: string | null
+  reminder_enabled?: boolean
+}
+
+export async function updateReminderSettings(
+  userId: string,
+  settings: { reminder_time?: string | null; reminder_timezone?: string | null; reminder_enabled?: boolean }
+): Promise<boolean> {
+  const { error } = await supabase
+    .from('profiles')
+    .update(settings)
+    .eq('id', userId)
+  if (error) { console.error('updateReminderSettings:', error); return false }
+  return true
 }
 
 // ── PROFILE OPERATIONS ──
