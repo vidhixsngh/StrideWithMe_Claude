@@ -3,6 +3,6 @@
     { "source": "/((?!api/).*)", "destination": "/" }
   ],
   "crons": [
-    { "path": "/api/cron/check-reminders", "schedule": "0 * * * *" }
+    { "path": "/api/cron/check-reminders", "schedule": "30 14 * * *" }
   ]
 }
