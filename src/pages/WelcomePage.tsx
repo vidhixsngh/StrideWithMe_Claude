@@ -44,6 +44,7 @@ export default function WelcomePage() {
   const [goalIndex, setGoalIndex] = useState(0)
   const [visible, setVisible] = useState(true)
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [filledDays, setFilledDays] = useState(0)
   const tickerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -55,6 +56,14 @@ export default function WelcomePage() {
       }, 300)
     }, 2500)
     return () => clearInterval(interval)
+  }, [])
+
+  // 30-day heatmap fill animation
+  useEffect(() => {
+    const id = setInterval(() => {
+      setFilledDays((prev) => (prev >= 32 ? 0 : prev + 1))
+    }, 180)
+    return () => clearInterval(id)
   }, [])
 
   useEffect(() => {
@@ -106,14 +115,55 @@ export default function WelcomePage() {
             <span style={{ fontFamily: 'var(--font-heading)', fontSize: '34px', fontStyle: 'italic', color: '#3D7A5F', fontWeight: 700, display: 'block', lineHeight: 1.15, letterSpacing: '-0.015em', opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(6px)', transition: 'opacity 0.3s ease, transform 0.3s ease', whiteSpace: 'nowrap' }}>{goals[goalIndex]}</span>
           </div>
           <span style={{ fontFamily: 'var(--font-heading)', fontSize: '34px', color: '#1A3028', fontWeight: 400, display: 'block', lineHeight: 1.15, letterSpacing: '-0.015em' }}>Start today.</span>
+        </div>
 
-          {/* Problem-aware body */}
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: '14px', color: '#3D5949', lineHeight: 1.65, marginTop: '18px', maxWidth: '340px', fontWeight: 500 }}>
-            For the side project that won't ship. The goal that dies by Day 6. The launch you keep pushing to Monday.
-          </p>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', color: '#6B9E8A', lineHeight: 1.65, marginTop: '10px', maxWidth: '340px' }}>
-            AI verifies your work every day — accountability no calendar can fake. A Sprint Record at the end proves you actually showed up. No more shying away. No more "next month."
-          </p>
+        {/* Animated 30-day heatmap — the visual centerpiece */}
+        <div style={{ padding: '22px 24px 0' }}>
+          <div style={{ position: 'relative', padding: '18px 18px 16px', background: 'linear-gradient(135deg, rgba(255,255,255,0.85) 0%, rgba(234,245,240,0.65) 100%)', borderRadius: '20px', border: '1px solid rgba(184,217,204,0.5)', boxShadow: '0 6px 24px rgba(28,61,48,0.08)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', overflow: 'hidden' }}>
+            {/* Inner glow */}
+            <div style={{ position: 'absolute', top: '-30px', right: '-30px', width: '120px', height: '120px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(118,197,72,0.18) 0%, rgba(118,197,72,0) 70%)', pointerEvents: 'none' }} />
+
+            <div style={{ position: 'relative', zIndex: 1 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '10px' }}>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', letterSpacing: '0.14em', color: '#7AB5A0', textTransform: 'uppercase', fontWeight: 600 }}>Sprint heatmap</span>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#3D7A5F', fontWeight: 600 }}>
+                  {Math.min(filledDays, 30)} <span style={{ color: '#9BBFB2', fontWeight: 400, fontStyle: 'italic' }}>/ 30 verified</span>
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(15, 1fr)', gap: '4px' }}>
+                {Array.from({ length: 30 }, (_, d) => {
+                  const fill = Math.min(filledDays, 30)
+                  const isFilled = d < fill
+                  const isHonest = isFilled && (d === 7 || d === 16 || d === 22)
+                  const isCurrent = d === fill - 1
+                  return (
+                    <div
+                      key={d}
+                      style={{
+                        height: '14px',
+                        borderRadius: '3px',
+                        background: isHonest
+                          ? 'linear-gradient(135deg, #F59E4A 0%, #D97706 100%)'
+                          : isFilled
+                          ? 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)'
+                          : '#E8F0EC',
+                        boxShadow: isCurrent ? '0 0 14px rgba(118,197,72,0.7), 0 0 4px rgba(118,197,72,0.4)' : 'none',
+                        transform: isCurrent ? 'scale(1.18)' : 'scale(1)',
+                        transition: 'background 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease',
+                      }}
+                    />
+                  )
+                })}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', color: '#9BBFB2' }}>Day 1</span>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#5A9A3A', fontWeight: 500 }}>
+                  AI verifies every day. The work has to be real.
+                </span>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', color: '#9BBFB2' }}>Day 30</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Primary CTA */}
@@ -131,42 +181,7 @@ export default function WelcomePage() {
           </div>
         </div>
 
-        {/* LIVE SPRINTERS */}
-        <div style={{ marginTop: '48px', padding: '0 24px' }}>
-          <SectionLabel>Right now, people are building</SectionLabel>
-          <div style={{ background: 'rgba(255,255,255,0.75)', borderRadius: '20px', border: '1px solid #EDF2EF', boxShadow: '0 2px 16px rgba(45,90,71,0.06)', overflow: 'hidden' }}>
-            <div style={{ padding: '14px 16px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#3D7A5F', animation: 'pillPulse 1.8s ease-in-out infinite' }} />
-                <span style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 500, color: '#1A3028' }}>Active sprinters</span>
-              </div>
-              <div style={{ display: 'flex' }}>
-                {[{ bg: '#3D7A5F', i: 'PS' }, { bg: '#F59E4A', i: 'KN' }, { bg: '#7AB5A0', i: 'RV' }, { bg: '#D97706', i: 'AM' }].map((a, idx) => (
-                  <div key={idx} style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: a.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 600, color: '#FFFFFF', marginLeft: idx > 0 ? '-8px' : '0', border: '2px solid #FFFFFF', position: 'relative', zIndex: 4 - idx }}>{a.i}</div>
-                ))}
-              </div>
-            </div>
-            <div style={{ height: '180px', overflow: 'hidden' }}>
-              <div ref={tickerRef} style={{ height: '100%', overflowY: 'hidden' }}>
-                {[...mockActivity, ...mockActivity].map((item, i) => (
-                  <div key={i} style={{ display: 'flex', gap: '10px', padding: '10px 14px', borderBottom: '1px solid #F8F8F8' }}>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: item.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFFFFF', fontSize: '11px', fontWeight: 600, flexShrink: 0, fontFamily: 'var(--font-body)' }}>{item.initials}</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                        <span style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 600, color: '#1A3028' }}>{item.name}</span>
-                        <span style={{ backgroundColor: '#D4EDE3', color: '#3D7A5F', fontFamily: 'var(--font-body)', fontSize: '10px', borderRadius: '9999px', padding: '2px 8px' }}>Day {item.day}</span>
-                        <span style={{ fontSize: '12px' }}>{item.type === 'VERIFIED' ? '✅' : '🤍'}</span>
-                      </div>
-                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', margin: '2px 0 0', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.text}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* PROOF CARDS */}
+        {/* PROOF CARDS — moved up: this is what you earn */}
         <div style={{ marginTop: '48px', padding: '0 24px' }}>
           <SectionLabel>What you earn at the end</SectionLabel>
         </div>
@@ -205,6 +220,41 @@ export default function WelcomePage() {
           ))}
         </div>
         <p style={{ textAlign: 'center', marginTop: '14px', fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2' }}>Tap to see a full Sprint Record →</p>
+
+        {/* LIVE SPRINTERS — moved below proof cards */}
+        <div style={{ marginTop: '48px', padding: '0 24px' }}>
+          <SectionLabel>Right now, people are building</SectionLabel>
+          <div style={{ background: 'rgba(255,255,255,0.75)', borderRadius: '20px', border: '1px solid #EDF2EF', boxShadow: '0 2px 16px rgba(45,90,71,0.06)', overflow: 'hidden' }}>
+            <div style={{ padding: '14px 16px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#3D7A5F', animation: 'pillPulse 1.8s ease-in-out infinite' }} />
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 500, color: '#1A3028' }}>Active sprinters</span>
+              </div>
+              <div style={{ display: 'flex' }}>
+                {[{ bg: '#3D7A5F', i: 'PS' }, { bg: '#F59E4A', i: 'KN' }, { bg: '#7AB5A0', i: 'RV' }, { bg: '#D97706', i: 'AM' }].map((a, idx) => (
+                  <div key={idx} style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: a.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 600, color: '#FFFFFF', marginLeft: idx > 0 ? '-8px' : '0', border: '2px solid #FFFFFF', position: 'relative', zIndex: 4 - idx }}>{a.i}</div>
+                ))}
+              </div>
+            </div>
+            <div style={{ height: '180px', overflow: 'hidden' }}>
+              <div ref={tickerRef} style={{ height: '100%', overflowY: 'hidden' }}>
+                {[...mockActivity, ...mockActivity].map((item, i) => (
+                  <div key={i} style={{ display: 'flex', gap: '10px', padding: '10px 14px', borderBottom: '1px solid #F8F8F8' }}>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: item.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFFFFF', fontSize: '11px', fontWeight: 600, flexShrink: 0, fontFamily: 'var(--font-body)' }}>{item.initials}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <span style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 600, color: '#1A3028' }}>{item.name}</span>
+                        <span style={{ backgroundColor: '#D4EDE3', color: '#3D7A5F', fontFamily: 'var(--font-body)', fontSize: '10px', borderRadius: '9999px', padding: '2px 8px' }}>Day {item.day}</span>
+                        <span style={{ fontSize: '12px' }}>{item.type === 'VERIFIED' ? '✅' : '🤍'}</span>
+                      </div>
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', margin: '2px 0 0', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.text}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* HOW IT WORKS */}
         <div style={{ marginTop: '56px', padding: '0 20px' }}>
