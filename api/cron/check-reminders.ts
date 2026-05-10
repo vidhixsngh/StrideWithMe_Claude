@@ -85,13 +85,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const WINDOW_AFTER = 4
   // Dedup: don't re-send within this many hours of the last delivery
   const DEDUP_HOURS = 23
+  // Testing override — adding ?force=1 bypasses dedup so you can fire repeatedly
+  const forceParam = req.query?.force
+  const bypassDedup = forceParam === '1' || forceParam === 'true'
   let pushSent = 0
   let emailSent = 0
   const skipped: string[] = []
 
   for (const p of profiles) {
-    // Dedup — was a reminder already sent recently?
-    if (p.reminder_last_sent_at) {
+    // Dedup — was a reminder already sent recently? (skipped if ?force=1)
+    if (!bypassDedup && p.reminder_last_sent_at) {
       const ageHours = (Date.now() - new Date(p.reminder_last_sent_at).getTime()) / 3_600_000
       if (ageHours < DEDUP_HOURS) { skipped.push(`${p.id}:dedup-recent-send`); continue }
     }
