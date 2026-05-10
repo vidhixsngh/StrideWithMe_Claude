@@ -73,27 +73,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { data: profiles, error: profErr } = await supabase
     .from('profiles')
-    .select('id, display_name, reminder_time, reminder_timezone')
+    .select('id, display_name, reminder_time, reminder_timezone, reminder_last_sent_at')
     .eq('reminder_enabled', true)
     .not('reminder_time', 'is', null)
 
   if (profErr) return res.status(500).json({ error: profErr.message })
   if (!profiles || profiles.length === 0) return res.status(200).json({ checked: 0, push: 0, email: 0 })
 
-  const WINDOW_MIN = 32
+  // Forward-only window: fire AT or up to N minutes AFTER the reminder time.
+  // Tight window assumes the cron ticks frequently (every minute via cron-job.org).
+  const WINDOW_AFTER = 4
+  // Dedup: don't re-send within this many hours of the last delivery
+  const DEDUP_HOURS = 23
   let pushSent = 0
   let emailSent = 0
   const skipped: string[] = []
 
   for (const p of profiles) {
+    // Dedup — was a reminder already sent recently?
+    if (p.reminder_last_sent_at) {
+      const ageHours = (Date.now() - new Date(p.reminder_last_sent_at).getTime()) / 3_600_000
+      if (ageHours < DEDUP_HOURS) { skipped.push(`${p.id}:dedup-recent-send`); continue }
+    }
+
     const tz = p.reminder_timezone ?? 'UTC'
     const { date: localDate, minutes: nowMin } = getLocalDateAndTime(tz)
     const [rh, rm] = (p.reminder_time as string).split(':').map(Number)
     const reminderMin = rh * 60 + rm
 
-    const diff = Math.abs(nowMin - reminderMin)
-    const wrappedDiff = Math.min(diff, 1440 - diff)
-    if (wrappedDiff > WINDOW_MIN) { skipped.push(`${p.id}:out-of-window`); continue }
+    // Forward-only modular distance: e.g. reminder 23:58, now 00:02 → 4 minutes past
+    const minutesPast = ((nowMin - reminderMin) + 1440) % 1440
+    if (minutesPast > WINDOW_AFTER) { skipped.push(`${p.id}:out-of-window`); continue }
 
     const { data: sprints } = await supabase
       .from('sprints')
@@ -155,7 +165,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    if (pushDelivered) { pushSent++; continue }
+    if (pushDelivered) {
+      pushSent++
+      await supabase.from('profiles').update({ reminder_last_sent_at: new Date().toISOString() }).eq('id', p.id)
+      continue
+    }
 
     // Fallback: email via Brevo (if configured)
     if (!brevoKey) { skipped.push(`${p.id}:no-push-no-email`); continue }
@@ -183,6 +197,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
       await sendBrevoEmail(brevoKey, email, subject, html)
       emailSent++
+      await supabase.from('profiles').update({ reminder_last_sent_at: new Date().toISOString() }).eq('id', p.id)
     } catch (e) {
       console.error('[reminder] email failed', p.id, e)
       skipped.push(`${p.id}:email-failed`)
