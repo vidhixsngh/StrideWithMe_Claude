@@ -471,7 +471,37 @@ export default function WelcomePage() {
         </div>
         <p style={{ textAlign: 'center', marginTop: '14px', fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2' }}>Tap to see a full Sprint Record →</p>
 
-        {/* LIVE SPRINTERS — moved below proof cards */}
+        {/* HOW IT WORKS — now sits right after What you earn */}
+        <div style={{ marginTop: '48px', padding: '0 20px' }}>
+          <SectionLabel>How it works</SectionLabel>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {[
+              { num: '01', title: 'Set your goal', body: "Write what you're actually going after. Be specific — the AI reads it and builds your entire daily plan from it.", emoji: '🎯', detail: '30 tasks. One per day. Escalating in complexity. Fully editable before you begin.' },
+              { num: '02', title: 'Show up and log', body: 'Every day, log what you did — text, a photo, or a link to your work. Then Claude reads it.', emoji: '🔍', detail: "Not a word count. Not a checkbox. Claude decides: did this person actually move forward today? Vague logs don't pass. Real work does." },
+              { num: '03', title: 'Earn your Sprint Record', body: 'At the end, you receive a verified credential — an AI-narrated document of everything you built.', emoji: '🏆', detail: 'Share it on LinkedIn, Naukri, or anywhere you prove your work. It shows you actually showed up — not just that you intended to.' },
+            ].map((step) => (
+              <div key={step.num} style={{ background: '#FFFFFF', borderRadius: '20px', padding: '20px', border: '1px solid rgba(184, 217, 204, 0.4)', boxShadow: '0 1px 3px rgba(28,61,48,0.04), 0 8px 24px rgba(107,176,72,0.06)', position: 'relative', overflow: 'hidden' }}>
+                {/* Top-right accent dot */}
+                <div style={{ position: 'absolute', top: '20px', right: '20px', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#6BB048' }} />
+                {/* Step number — large, decorative */}
+                <span style={{ fontFamily: 'var(--font-heading)', fontSize: '48px', fontWeight: 600, background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', lineHeight: 1, letterSpacing: '-0.04em', display: 'block', marginBottom: '8px' }}>{step.num}</span>
+                {/* Title row */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                  <span style={{ fontSize: '18px' }}>{step.emoji}</span>
+                  <p style={{ fontFamily: 'var(--font-heading)', fontSize: '17px', fontWeight: 600, color: '#1A3028', margin: 0, letterSpacing: '-0.01em' }}>{step.title}</p>
+                </div>
+                {/* Body — readable green-grey */}
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: '#3D5949', lineHeight: 1.65, margin: 0 }}>{step.body}</p>
+                {/* Divider with sprout green tint */}
+                <div style={{ height: '1px', background: 'linear-gradient(90deg, rgba(107,176,72,0.35) 0%, transparent 100%)', margin: '14px 0' }} />
+                {/* Detail — sprout green, full opacity */}
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#5A9A3A', lineHeight: 1.6, margin: 0, fontWeight: 500 }}>{step.detail}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* LIVE SPRINTERS — now below How it works */}
         <div style={{ marginTop: '48px', padding: '0 24px' }}>
           <SectionLabel>Right now, people are building</SectionLabel>
           <div style={{ background: 'rgba(255,255,255,0.75)', borderRadius: '20px', border: '1px solid #EDF2EF', boxShadow: '0 2px 16px rgba(45,90,71,0.06)', overflow: 'hidden' }}>
@@ -503,36 +533,6 @@ export default function WelcomePage() {
                 ))}
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* HOW IT WORKS */}
-        <div style={{ marginTop: '56px', padding: '0 20px' }}>
-          <SectionLabel>How it works</SectionLabel>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {[
-              { num: '01', title: 'Set your goal', body: "Write what you're actually going after. Be specific — the AI reads it and builds your entire daily plan from it.", emoji: '🎯', detail: '30 tasks. One per day. Escalating in complexity. Fully editable before you begin.' },
-              { num: '02', title: 'Show up and log', body: 'Every day, log what you did — text, a photo, or a link to your work. Then Claude reads it.', emoji: '🔍', detail: "Not a word count. Not a checkbox. Claude decides: did this person actually move forward today? Vague logs don't pass. Real work does." },
-              { num: '03', title: 'Earn your Sprint Record', body: 'At the end, you receive a verified credential — an AI-narrated document of everything you built.', emoji: '🏆', detail: 'Share it on LinkedIn, Naukri, or anywhere you prove your work. It shows you actually showed up — not just that you intended to.' },
-            ].map((step) => (
-              <div key={step.num} style={{ background: '#FFFFFF', borderRadius: '20px', padding: '20px', border: '1px solid rgba(184, 217, 204, 0.4)', boxShadow: '0 1px 3px rgba(28,61,48,0.04), 0 8px 24px rgba(107,176,72,0.06)', position: 'relative', overflow: 'hidden' }}>
-                {/* Top-right accent dot */}
-                <div style={{ position: 'absolute', top: '20px', right: '20px', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#6BB048' }} />
-                {/* Step number — large, decorative */}
-                <span style={{ fontFamily: 'var(--font-heading)', fontSize: '48px', fontWeight: 600, background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', lineHeight: 1, letterSpacing: '-0.04em', display: 'block', marginBottom: '8px' }}>{step.num}</span>
-                {/* Title row */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-                  <span style={{ fontSize: '18px' }}>{step.emoji}</span>
-                  <p style={{ fontFamily: 'var(--font-heading)', fontSize: '17px', fontWeight: 600, color: '#1A3028', margin: 0, letterSpacing: '-0.01em' }}>{step.title}</p>
-                </div>
-                {/* Body — readable green-grey */}
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: '#3D5949', lineHeight: 1.65, margin: 0 }}>{step.body}</p>
-                {/* Divider with sprout green tint */}
-                <div style={{ height: '1px', background: 'linear-gradient(90deg, rgba(107,176,72,0.35) 0%, transparent 100%)', margin: '14px 0' }} />
-                {/* Detail — sprout green, full opacity */}
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#5A9A3A', lineHeight: 1.6, margin: 0, fontWeight: 500 }}>{step.detail}</p>
-              </div>
-            ))}
           </div>
         </div>
 
