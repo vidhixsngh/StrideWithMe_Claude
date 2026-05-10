@@ -20,10 +20,10 @@ export default function WelcomeBackSplash({ onComplete }: Props) {
   const firstName = getFirstName(user?.user_metadata as Record<string, unknown> | undefined, user?.email)
 
   useEffect(() => {
-    // Stagger: enter (0–200ms), hold (200–1500ms), exit (1500–2000ms), complete at 2000ms
-    const t1 = setTimeout(() => setPhase('hold'), 200)
-    const t2 = setTimeout(() => setPhase('exit'), 1500)
-    const t3 = setTimeout(onComplete, 2000)
+    // Stagger: enter (0–250ms), hold (250–3300ms), exit (3300–3900ms), complete at 3900ms
+    const t1 = setTimeout(() => setPhase('hold'), 250)
+    const t2 = setTimeout(() => setPhase('exit'), 3300)
+    const t3 = setTimeout(onComplete, 3900)
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3) }
   }, [onComplete])
 
@@ -329,8 +329,8 @@ export default function WelcomeBackSplash({ onComplete }: Props) {
         }} />
       ))}
 
-      {/* Butterfly drifting */}
-      <div style={{ position: 'absolute', top: '30vh', left: '20px', width: '22px', height: '16px', animation: 'driftRight 14s ease-in-out infinite', pointerEvents: 'none' }}>
+      {/* Butterfly 1 — yellow, drifts right at 30vh */}
+      <div style={{ position: 'absolute', top: '30vh', left: '20px', width: '22px', height: '16px', animation: 'driftRight 18s ease-in-out infinite', pointerEvents: 'none' }}>
         <div style={{ animation: 'bobAndTilt 2.6s ease-in-out infinite' }}>
           <svg viewBox="0 0 22 16" style={{ width: '22px', height: '16px', display: 'block' }}>
             <ellipse cx="11" cy="8" rx="0.9" ry="4.5" fill="#3D2A1A" />
@@ -341,6 +341,40 @@ export default function WelcomeBackSplash({ onComplete }: Props) {
             <g style={{ transformBox: 'fill-box', transformOrigin: 'left center', animation: 'wingFlap 0.32s ease-in-out infinite' }}>
               <ellipse cx="17" cy="5.5" rx="5" ry="3.3" fill="#F5C547" opacity="0.92" />
               <ellipse cx="16" cy="10" rx="4" ry="2.6" fill="#F5B447" opacity="0.85" />
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      {/* Butterfly 2 — soft pink, drifts left at 65vh */}
+      <div style={{ position: 'absolute', top: '65vh', right: '20px', width: '20px', height: '14px', animation: 'driftLeft 22s ease-in-out infinite', animationDelay: '1.5s', pointerEvents: 'none' }}>
+        <div style={{ animation: 'bobAndTilt 2.2s ease-in-out infinite', animationDelay: '0.5s' }}>
+          <svg viewBox="0 0 20 14" style={{ width: '20px', height: '14px', display: 'block' }}>
+            <ellipse cx="10" cy="7" rx="0.8" ry="4" fill="#3D2A1A" />
+            <g style={{ transformBox: 'fill-box', transformOrigin: 'right center', animation: 'wingFlap 0.28s ease-in-out infinite' }}>
+              <ellipse cx="5" cy="5" rx="4.5" ry="3" fill="#F5A8B8" opacity="0.93" />
+              <ellipse cx="6" cy="9" rx="3.6" ry="2.4" fill="#E18FA0" opacity="0.86" />
+            </g>
+            <g style={{ transformBox: 'fill-box', transformOrigin: 'left center', animation: 'wingFlap 0.28s ease-in-out infinite' }}>
+              <ellipse cx="15" cy="5" rx="4.5" ry="3" fill="#F5A8B8" opacity="0.93" />
+              <ellipse cx="14" cy="9" rx="3.6" ry="2.4" fill="#E18FA0" opacity="0.86" />
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      {/* Butterfly 3 — amber/orange, drifts right at 45vh, slower */}
+      <div style={{ position: 'absolute', top: '45vh', left: '40px', width: '18px', height: '13px', animation: 'driftRight 26s ease-in-out infinite', animationDelay: '2.2s', pointerEvents: 'none' }}>
+        <div style={{ animation: 'bobAndTilt 3.0s ease-in-out infinite', animationDelay: '1.1s' }}>
+          <svg viewBox="0 0 18 13" style={{ width: '18px', height: '13px', display: 'block' }}>
+            <ellipse cx="9" cy="6.5" rx="0.7" ry="3.6" fill="#3D2A1A" />
+            <g style={{ transformBox: 'fill-box', transformOrigin: 'right center', animation: 'wingFlap 0.36s ease-in-out infinite' }}>
+              <ellipse cx="4" cy="4.5" rx="4" ry="2.6" fill="#F5A847" opacity="0.92" />
+              <ellipse cx="5" cy="8.5" rx="3.2" ry="2.1" fill="#E08A2A" opacity="0.85" />
+            </g>
+            <g style={{ transformBox: 'fill-box', transformOrigin: 'left center', animation: 'wingFlap 0.36s ease-in-out infinite' }}>
+              <ellipse cx="14" cy="4.5" rx="4" ry="2.6" fill="#F5A847" opacity="0.92" />
+              <ellipse cx="13" cy="8.5" rx="3.2" ry="2.1" fill="#E08A2A" opacity="0.85" />
             </g>
           </svg>
         </div>
