@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import PageWrapper from '../components/PageWrapper'
 import ExampleRecordContent from '../components/ExampleRecordContent'
@@ -67,6 +67,12 @@ export default function WelcomePage() {
     setShowSplash(true)
   }, [authLoading, user, navigate])
 
+  // Memoized so the splash's effect doesn't tear down on every parent re-render
+  const handleSplashComplete = useCallback(() => {
+    sessionStorage.setItem(SPLASH_SESSION_FLAG, '1')
+    navigate('/dashboard', { replace: true })
+  }, [navigate])
+
   useEffect(() => {
     const interval = setInterval(() => {
       setVisible(false)
@@ -98,14 +104,7 @@ export default function WelcomePage() {
   }
 
   if (showSplash) {
-    return (
-      <WelcomeBackSplash
-        onComplete={() => {
-          sessionStorage.setItem(SPLASH_SESSION_FLAG, '1')
-          navigate('/dashboard', { replace: true })
-        }}
-      />
-    )
+    return <WelcomeBackSplash onComplete={handleSplashComplete} />
   }
 
   return (
