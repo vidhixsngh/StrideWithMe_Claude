@@ -2,7 +2,11 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import PageWrapper from '../components/PageWrapper'
 import ExampleRecordContent from '../components/ExampleRecordContent'
+import WelcomeBackSplash from '../components/WelcomeBackSplash'
+import { useAuth } from '../context/AuthContext'
 import { track, Events } from '../lib/analytics'
+
+const SPLASH_SESSION_FLAG = 'sw_welcome_back_shown'
 
 const goals = [
   "actually finish what you started.",
@@ -43,10 +47,25 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 export default function WelcomePage() {
   const navigate = useNavigate()
+  const { user, loading: authLoading } = useAuth()
   const [goalIndex, setGoalIndex] = useState(0)
   const [visible, setVisible] = useState(true)
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [authResolved, setAuthResolved] = useState(false)
+  const [showSplash, setShowSplash] = useState(false)
   const tickerRef = useRef<HTMLDivElement>(null)
+
+  // Decide once auth state has resolved: signed-in → splash → /dashboard, else fall through to landing
+  useEffect(() => {
+    if (authLoading) return
+    if (!user) { setAuthResolved(true); return }
+    const alreadyShown = sessionStorage.getItem(SPLASH_SESSION_FLAG) === '1'
+    if (alreadyShown) {
+      navigate('/dashboard', { replace: true })
+      return
+    }
+    setShowSplash(true)
+  }, [authLoading, user, navigate])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -72,6 +91,22 @@ export default function WelcomePage() {
     const id = setInterval(scroll, 16)
     return () => clearInterval(id)
   }, [])
+
+  // While auth is resolving, render nothing — avoids flashing the marketing page to a signed-in user
+  if (authLoading || (user && !authResolved && !showSplash)) {
+    return <div style={{ minHeight: '100vh', backgroundColor: '#FBFAF6' }} />
+  }
+
+  if (showSplash) {
+    return (
+      <WelcomeBackSplash
+        onComplete={() => {
+          sessionStorage.setItem(SPLASH_SESSION_FLAG, '1')
+          navigate('/dashboard', { replace: true })
+        }}
+      />
+    )
+  }
 
   return (
     <PageWrapper showNav={false}>
