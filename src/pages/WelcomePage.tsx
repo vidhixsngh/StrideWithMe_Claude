@@ -127,7 +127,7 @@ export default function WelcomePage() {
         <div style={{ padding: '12px 24px 0' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', border: '1px solid rgba(184,217,204,0.6)', borderRadius: '9999px', padding: '7px 16px', boxShadow: '0 2px 12px rgba(45,90,71,0.06)' }}>
             <div style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#3D7A5F', animation: 'pillPulse 1.8s ease-in-out infinite' }} />
-            <span style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', fontWeight: 500, color: '#3D7A5F' }}>847 people in active sprints</span>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', fontWeight: 500, color: '#3D7A5F' }}>AI-verified · 30-day sprints</span>
           </div>
         </div>
 

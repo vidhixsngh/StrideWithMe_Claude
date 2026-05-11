@@ -301,7 +301,7 @@ export default function RecordListPage() {
             <div onClick={() => setLockedSprint(null)} style={{ position: 'fixed', inset: 0, zIndex: 9998, backgroundColor: 'rgba(0,0,0,0.5)' }} />
             <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 'calc(100% - 40px)', maxWidth: '360px', zIndex: 9999, background: '#FFFFFF', borderRadius: '24px', padding: '24px', boxShadow: '0 24px 64px rgba(28,61,48,0.20)', textAlign: 'center' }}>
               {/* Close */}
-              <button onClick={() => setLockedSprint(null)} style={{ position: 'absolute', top: '12px', right: '12px', background: 'none', border: 'none', cursor: 'pointer', padding: '6px' }}>
+              <button onClick={() => setLockedSprint(null)} aria-label="Close" style={{ position: 'absolute', top: '12px', right: '12px', background: 'none', border: 'none', cursor: 'pointer', padding: '6px' }}>
                 <X size={18} color="#9BBFB2" />
               </button>
 

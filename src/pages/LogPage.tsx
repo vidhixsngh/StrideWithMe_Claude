@@ -196,16 +196,25 @@ export default function LogPage() {
 
   const handlePostToFeed = async () => {
     if (!sprint || !user || !lastLogId || !postDraft) return
-    await createFeedPost({
-      log_id: lastLogId,
-      sprint_id: sprint.id,
-      user_id: user.id,
-      post_text: postDraft,
-    })
-    await markLogPostedToFeed(lastLogId)
-    track(Events.FeedPostCreated, { sprint_id: sprint.id, length: postDraft.length, visibility: sprint.visibility })
-    incrementPeople('total_feed_posts', 1)
-    navigate('/dashboard')
+    try {
+      const created = await createFeedPost({
+        log_id: lastLogId,
+        sprint_id: sprint.id,
+        user_id: user.id,
+        post_text: postDraft,
+      })
+      if (!created) {
+        alert("Couldn't post to feed. Your log is saved — try again in a moment.")
+        return
+      }
+      await markLogPostedToFeed(lastLogId)
+      track(Events.FeedPostCreated, { sprint_id: sprint.id, length: postDraft.length, visibility: sprint.visibility })
+      incrementPeople('total_feed_posts', 1)
+      navigate('/dashboard')
+    } catch (e) {
+      console.error('handlePostToFeed:', e)
+      alert("Couldn't post to feed. Your log is saved — try again in a moment.")
+    }
   }
 
   const generateAndSaveDraft = async (logId?: string) => {

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import PageWrapper from '../components/PageWrapper'
 import { useAuth } from '../context/AuthContext'
-import { getProfile, getAllSprints, calculateDayNumber, isSprintLocked, updateSprintVisibility, updateReminderSettings } from '../lib/db'
+import { getProfile, getAllSprints, getLogsForSprint, calculateDayNumber, isSprintLocked, updateSprintVisibility, updateReminderSettings } from '../lib/db'
 import type { Sprint, Profile } from '../lib/db'
 import { enablePush, disablePush, isPushSupported, isStandaloneInstalled, isIOS } from '../lib/push'
 import { track, Events, setPeople } from '../lib/analytics'
@@ -22,6 +22,7 @@ export default function ProfilePage() {
   const { user, signOut } = useAuth()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [sprints, setSprints] = useState<Sprint[]>([])
+  const [bestStreak, setBestStreak] = useState(0)
   const [loading, setLoading] = useState(true)
   const [visibilityEditor, setVisibilityEditor] = useState<{ sprintId: string; current: Visibility } | null>(null)
   const [reminderEditor, setReminderEditor] = useState(false)
@@ -45,6 +46,22 @@ export default function ProfilePage() {
       setProfile(p)
       setSprints(s)
       setLoading(false)
+
+      // Compute best streak across all sprints (longest run of consecutive logged days)
+      if (s.length === 0) return
+      const allSprintLogs = await Promise.all(s.map(sp => getLogsForSprint(sp.id)))
+      let best = 0
+      for (const logs of allSprintLogs) {
+        if (logs.length === 0) continue
+        const days = [...new Set(logs.map(l => l.day_number))].sort((a, b) => a - b)
+        let run = 1
+        for (let i = 1; i < days.length; i++) {
+          run = days[i] === days[i - 1] + 1 ? run + 1 : 1
+          if (run > best) best = run
+        }
+        if (days.length === 1 && best === 0) best = 1
+      }
+      setBestStreak(best)
     }
     load()
   }, [user])
@@ -87,7 +104,7 @@ export default function ProfilePage() {
           {[
             { value: String(sprints.length), label: 'Sprints', color: '#1A3028' },
             { value: String(totalDays), label: 'Total days', color: '#3D7A5F' },
-            { value: '0', label: 'Best streak', color: '#1A3028' },
+            { value: String(bestStreak), label: 'Best streak', color: '#1A3028' },
           ].map((s) => (
             <div key={s.label} style={{ textAlign: 'center' }}>
               <div style={{ fontFamily: 'var(--font-body)', fontSize: '20px', fontWeight: 700, color: s.color }}>{s.value}</div>

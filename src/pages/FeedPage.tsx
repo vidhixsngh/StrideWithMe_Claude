@@ -119,15 +119,26 @@ export default function FeedPage() {
       const posts = await getFeedPosts()
       setRealPosts(posts)
       setLoadingPosts(false)
+      if (posts.length === 0) return
+
+      // Single batched query for all reactions across all visible posts
+      const postIds = posts.map(p => p.id)
+      const { data: reactions } = await supabase
+        .from('reactions')
+        .select('post_id, user_id, reaction_type')
+        .in('post_id', postIds)
+
+      const next: Record<string, { witnessed: number; facingThis: number; userWitnessed: boolean; userFacingThis: boolean }> = {}
       for (const post of posts) {
-        const { data: reactions } = await supabase.from('reactions').select('*').eq('post_id', post.id)
-        setReactionCounts(prev => ({ ...prev, [post.id]: {
-          witnessed: reactions?.filter(r => r.reaction_type === 'WITNESSED').length ?? 0,
-          facingThis: reactions?.filter(r => r.reaction_type === 'FACING_THIS_TOO').length ?? 0,
-          userWitnessed: reactions?.some(r => r.reaction_type === 'WITNESSED' && r.user_id === user?.id) ?? false,
-          userFacingThis: reactions?.some(r => r.reaction_type === 'FACING_THIS_TOO' && r.user_id === user?.id) ?? false,
-        }}))
+        const forPost = (reactions ?? []).filter(r => r.post_id === post.id)
+        next[post.id] = {
+          witnessed: forPost.filter(r => r.reaction_type === 'WITNESSED').length,
+          facingThis: forPost.filter(r => r.reaction_type === 'FACING_THIS_TOO').length,
+          userWitnessed: forPost.some(r => r.reaction_type === 'WITNESSED' && r.user_id === user?.id),
+          userFacingThis: forPost.some(r => r.reaction_type === 'FACING_THIS_TOO' && r.user_id === user?.id),
+        }
       }
+      setReactionCounts(next)
     }
     loadFeed()
   }, [user])
@@ -503,7 +514,7 @@ export default function FeedPage() {
         <>
           <div onClick={() => setShowCohortLock(false)} style={{ position: 'fixed', inset: 0, zIndex: 9998, backgroundColor: 'rgba(0,0,0,0.5)' }} />
           <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 'calc(100% - 40px)', maxWidth: '360px', zIndex: 9999, background: '#FFFFFF', borderRadius: '24px', padding: '24px', boxShadow: '0 24px 64px rgba(28,61,48,0.20)', textAlign: 'center' }}>
-            <button onClick={() => setShowCohortLock(false)} style={{ position: 'absolute', top: '12px', right: '12px', background: 'none', border: 'none', cursor: 'pointer', padding: '6px' }}>
+            <button onClick={() => setShowCohortLock(false)} aria-label="Close" style={{ position: 'absolute', top: '12px', right: '12px', background: 'none', border: 'none', cursor: 'pointer', padding: '6px' }}>
               <X size={18} color="#9BBFB2" />
             </button>
 
