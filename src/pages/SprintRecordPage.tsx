@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ChevronLeft, Share2, Camera, Link2, ShieldCheck, Download } from 'lucide-react'
 import html2canvas from 'html2canvas-pro'
 import { jsPDF } from 'jspdf'
@@ -20,6 +20,7 @@ function getRecordDayColor(day: number, logs: DailyLog[], sprintLength: number):
 export default function SprintRecordPage() {
   const navigate = useNavigate()
   const { id } = useParams()
+  const [searchParams] = useSearchParams()
   const { user } = useAuth()
   const [sprint, setSprint] = useState<Sprint | null>(null)
   const [logs, setLogs] = useState<DailyLog[]>([])
@@ -37,6 +38,14 @@ export default function SprintRecordPage() {
   }, [toast])
 
   useEffect(() => { loadRecord() }, [id])
+
+  // Auto-open the share sheet if the user arrived via /record/:id?share=true
+  useEffect(() => {
+    if (loading || accessDenied || stillLocked) return
+    if (searchParams.get('share') === 'true') setShowShareSheet(true)
+    if (searchParams.get('download') === 'true') handleDownloadPDF()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, accessDenied, stillLocked])
 
   async function loadRecord() {
     if (!id) return

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Lock, ShieldCheck, Share2, X, Camera, Link2, Download } from 'lucide-react'
 import PageWrapper from '../components/PageWrapper'
@@ -24,6 +24,58 @@ export default function RecordListPage() {
   const [loading, setLoading] = useState(true)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [lockedSprint, setLockedSprint] = useState<Sprint | null>(null)
+  const [toast, setToast] = useState('')
+  const [sheetDragY, setSheetDragY] = useState(0)
+  const sheetDragStartRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(''), 2200)
+    return () => clearTimeout(t)
+  }, [toast])
+
+  // Earned = end_date in the past (sprint completed). Pick the most recent earned one for share.
+  const earnedSprint = sprints.find((s) => !isSprintLocked(s.end_date))
+
+  const requireEarned = (action: () => void) => {
+    if (!earnedSprint) {
+      setToast('Earn your first Sprint Record to share it.')
+      return
+    }
+    action()
+  }
+
+  const handleShareLinkedIn = () => requireEarned(() => {
+    const url = `${window.location.origin}/record/${earnedSprint!.id}`
+    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`, '_blank')
+  })
+
+  const handleShareNaukri = () => requireEarned(async () => {
+    const url = `${window.location.origin}/record/${earnedSprint!.id}`
+    try { await navigator.clipboard.writeText(url) } catch { /* clipboard may be denied */ }
+    setToast('Link copied! Opening Naukri…')
+    setTimeout(() => window.open('https://www.naukri.com', '_blank'), 800)
+  })
+
+  const handleShareInstagram = () => requireEarned(async () => {
+    const url = `${window.location.origin}/record/${earnedSprint!.id}`
+    const nav = navigator as Navigator & { share?: (data: ShareData) => Promise<void> }
+    if (nav.share) {
+      try { await nav.share({ title: 'My Sprint Record', url }); return } catch { /* user cancelled */ }
+    }
+    try { await navigator.clipboard.writeText(url) } catch { /* */ }
+    setToast('Link copied! Paste in Instagram.')
+  })
+
+  const handleDownloadPDF = () => requireEarned(() => {
+    navigate(`/record/${earnedSprint!.id}?download=true`)
+  })
+
+  const handleCopyLink = () => requireEarned(async () => {
+    const url = `${window.location.origin}/record/${earnedSprint!.id}`
+    try { await navigator.clipboard.writeText(url); setToast('Link copied!') }
+    catch { setToast('Could not copy — try again.') }
+  })
 
   useEffect(() => {
     if (!user) return
@@ -202,21 +254,38 @@ export default function RecordListPage() {
 
       {/* Shareable section — pinned right above the BottomNav */}
       <div style={{ margin: '20px 16px 16px', textAlign: 'center', marginTop: 'auto', paddingTop: '32px' }}>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', letterSpacing: '0.1em', color: '#9BBFB2', textTransform: 'uppercase', margin: '0 0 12px' }}>Shareable to</p>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', letterSpacing: '0.1em', color: '#9BBFB2', textTransform: 'uppercase', margin: '0 0 12px' }}>
+          {earnedSprint ? 'Share your record' : 'Shareable to (when earned)'}
+        </p>
         <div style={{ display: 'flex', justifyContent: 'center', gap: '14px' }}>
           {[
-            { label: 'LinkedIn', node: <span style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 700, color: '#FFFFFF' }}>in</span>, bg: '#0A66C2' },
-            { label: 'Naukri', node: <span style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 700, color: '#FFFFFF' }}>N</span>, bg: '#FF7555' },
-            { label: 'Instagram', node: <Camera size={14} color="#FFFFFF" />, bg: 'linear-gradient(45deg, #f09433, #dc2743, #bc1888)' },
-            { label: 'Download', node: <Download size={14} color="#FFFFFF" />, bg: 'linear-gradient(135deg, #2D5A47 0%, #1C3D30 100%)' },
-            { label: 'Copy link', node: <Link2 size={14} color="#FFFFFF" />, bg: '#7B6FA0' },
+            { label: 'LinkedIn', node: <span style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 700, color: '#FFFFFF' }}>in</span>, bg: '#0A66C2', onClick: handleShareLinkedIn },
+            { label: 'Naukri', node: <span style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 700, color: '#FFFFFF' }}>N</span>, bg: '#FF7555', onClick: handleShareNaukri },
+            { label: 'Instagram', node: <Camera size={14} color="#FFFFFF" />, bg: 'linear-gradient(45deg, #f09433, #dc2743, #bc1888)', onClick: handleShareInstagram },
+            { label: 'Download', node: <Download size={14} color="#FFFFFF" />, bg: 'linear-gradient(135deg, #2D5A47 0%, #1C3D30 100%)', onClick: handleDownloadPDF },
+            { label: 'Copy link', node: <Link2 size={14} color="#FFFFFF" />, bg: '#7B6FA0', onClick: handleCopyLink },
           ].map((s) => (
-            <div key={s.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+            <button
+              key={s.label}
+              onClick={s.onClick}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '4px',
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer',
+                opacity: earnedSprint ? 1 : 0.55,
+                transition: 'opacity 0.15s ease, transform 0.15s ease',
+              }}
+            >
               <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(28,61,48,0.10)' }}>
                 {s.node}
               </div>
               <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', color: '#9BBFB2' }}>{s.label}</span>
-            </div>
+            </button>
           ))}
         </div>
       </div>
@@ -271,18 +340,45 @@ export default function RecordListPage() {
         <>
           <div style={{ position: 'fixed', inset: 0, zIndex: 9998, backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={() => setPreviewOpen(false)} />
           <div
-            style={{ position: 'fixed', bottom: 0, left: 0, right: 0, maxWidth: '430px', margin: '0 auto', zIndex: 9999, backgroundColor: '#FFFFFF', borderRadius: '28px 28px 0 0', maxHeight: '90vh', overflowY: 'auto', paddingBottom: '40px' }}
+            style={{
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              maxWidth: '430px',
+              margin: '0 auto',
+              zIndex: 9999,
+              backgroundColor: '#FFFFFF',
+              borderRadius: '28px 28px 0 0',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              paddingBottom: '40px',
+              transform: `translateY(${sheetDragY}px)`,
+              transition: sheetDragY === 0 ? 'transform 0.3s ease' : 'none',
+            }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Sheet header */}
-            <div style={{ position: 'sticky', top: 0, backgroundColor: '#FFFFFF', padding: '12px 20px 16px', borderBottom: '1px solid #F0F0F0', borderRadius: '28px 28px 0 0', zIndex: 1 }}>
-              <div style={{ width: '40px', height: '4px', backgroundColor: '#E0E0E0', borderRadius: '2px', margin: '0 auto 14px' }} />
+            {/* Sheet header — drag handle area, pull down to close */}
+            <div
+              style={{ position: 'sticky', top: 0, backgroundColor: '#FFFFFF', padding: '12px 20px 16px', borderBottom: '1px solid #F0F0F0', borderRadius: '28px 28px 0 0', zIndex: 1, touchAction: 'none' }}
+              onTouchStart={(e) => { sheetDragStartRef.current = e.touches[0].clientY }}
+              onTouchMove={(e) => {
+                if (sheetDragStartRef.current === null) return
+                const delta = e.touches[0].clientY - sheetDragStartRef.current
+                if (delta > 0) setSheetDragY(delta)
+              }}
+              onTouchEnd={() => {
+                if (sheetDragY > 90) { setPreviewOpen(false); setSheetDragY(0); sheetDragStartRef.current = null; return }
+                setSheetDragY(0); sheetDragStartRef.current = null
+              }}
+            >
+              <div style={{ width: '44px', height: '5px', backgroundColor: '#D0D0D0', borderRadius: '3px', margin: '0 auto 14px', cursor: 'grab' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                   <p style={{ fontFamily: 'var(--font-heading)', fontSize: '16px', color: '#1A3028', margin: 0 }}>Example Sprint Record</p>
                   <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A', marginTop: '2px', letterSpacing: '0.01em' }}>This is what you'll earn.</p>
                 </div>
-                <button onClick={() => setPreviewOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                <button onClick={() => setPreviewOpen(false)} aria-label="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
                   <X size={20} color="#9BBFB2" />
                 </button>
               </div>
@@ -320,6 +416,12 @@ export default function RecordListPage() {
             </div>
           </div>
         </>
+      )}
+
+      {toast && (
+        <div style={{ position: 'fixed', bottom: 'calc(96px + env(safe-area-inset-bottom))', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#1C3D30', color: '#FFFFFF', fontFamily: 'var(--font-body)', fontSize: '12px', borderRadius: '9999px', padding: '10px 18px', zIndex: 9999, boxShadow: '0 8px 24px rgba(28,61,48,0.30)', whiteSpace: 'nowrap', maxWidth: 'calc(100vw - 40px)' }}>
+          {toast}
+        </div>
       )}
     </PageWrapper>
   )
