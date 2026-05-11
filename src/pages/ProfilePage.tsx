@@ -7,6 +7,8 @@ import type { Sprint, Profile } from '../lib/db'
 import { enablePush, disablePush, isPushSupported, isStandaloneInstalled, isIOS } from '../lib/push'
 import { track, Events, setPeople } from '../lib/analytics'
 import { supabase } from '../lib/supabase'
+import ShareSheet from '../components/ShareSheet'
+import FeedbackSheet from '../components/FeedbackSheet'
 
 type Visibility = 'PRIVATE' | 'COHORT' | 'PUBLIC'
 const VISIBILITY_OPTIONS: { value: Visibility; emoji: string; title: string; subtitle: string }[] = [
@@ -30,6 +32,8 @@ export default function ProfilePage() {
   const [showInstallNudge, setShowInstallNudge] = useState(false)
   const [testingPush, setTestingPush] = useState(false)
   const [testPushResult, setTestPushResult] = useState('')
+  const [shareOpen, setShareOpen] = useState(false)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -237,11 +241,37 @@ export default function ProfilePage() {
             </button>
           </div>
 
-          {/* Push notifications — still soon */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0' }}>
-            <span style={{ fontFamily: 'var(--font-body)', fontSize: '14px', color: '#1A3028' }}>Push notifications</span>
-            <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#9BBFB2', fontStyle: 'italic', backgroundColor: '#F5F8F4', borderRadius: '9999px', padding: '3px 10px' }}>Coming soon</span>
-          </div>
+          {/* Share StrideWithMe */}
+          <button
+            onClick={() => { track(Events.ShareSheetOpened, { from: 'profile' }); setShareOpen(true) }}
+            style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', borderBottom: '1px solid #EDF2EF', background: 'none', border: 'none', borderBottomStyle: 'solid', borderBottomWidth: '1px', borderBottomColor: '#EDF2EF', cursor: 'pointer', textAlign: 'left' }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: '14px', color: '#1A3028' }}>Share StrideWithMe</span>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#9BBFB2', fontStyle: 'italic' }}>
+                Bring a friend along for the sprint
+              </span>
+            </div>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: '12px', color: '#3D7A5F', fontStyle: 'italic', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              🌱 <span style={{ fontSize: '10px', opacity: 0.7 }}>›</span>
+            </span>
+          </button>
+
+          {/* Send feedback */}
+          <button
+            onClick={() => { track(Events.FeedbackSheetOpened, { from: 'profile' }); setFeedbackOpen(true) }}
+            style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: '14px', color: '#1A3028' }}>Send feedback</span>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#9BBFB2', fontStyle: 'italic' }}>
+                Rate the app · tell us what's working or broken
+              </span>
+            </div>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: '12px', color: '#3D7A5F', fontStyle: 'italic', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              ⭐ <span style={{ fontSize: '10px', opacity: 0.7 }}>›</span>
+            </span>
+          </button>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0' }}>
             <button
@@ -574,6 +604,19 @@ export default function ProfilePage() {
           </div>
         </>
       )}
+
+      {/* Share & Feedback sheets */}
+      <ShareSheet
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        message={`I'm on a 30-day sprint with StrideWithMe — AI-verified, daily accountability. Want to start your own? 🌱`}
+        url={typeof window !== 'undefined' ? window.location.origin : 'https://stridewithme.vercel.app'}
+      />
+      <FeedbackSheet
+        open={feedbackOpen}
+        onClose={() => setFeedbackOpen(false)}
+        onWantsToShare={() => setShareOpen(true)}
+      />
     </PageWrapper>
   )
 }

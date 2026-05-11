@@ -92,6 +92,34 @@ export async function savePushSubscription(
   return { ok: true }
 }
 
+export interface FeedbackSubmission {
+  rating: number
+  message?: string
+  context?: string
+  would_share?: boolean
+  allow_contact?: boolean
+}
+
+export async function submitFeedback(
+  userId: string,
+  payload: FeedbackSubmission
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase.from('feedback').insert({
+    user_id: userId,
+    rating: payload.rating,
+    message: payload.message ?? null,
+    context: payload.context ?? 'profile',
+    would_share: payload.would_share ?? false,
+    allow_contact: payload.allow_contact ?? false,
+    user_agent: typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 200) : null,
+  })
+  if (error) {
+    console.error('submitFeedback:', error)
+    return { ok: false, error: error.message }
+  }
+  return { ok: true }
+}
+
 export async function deletePushSubscription(userId: string, endpoint: string): Promise<boolean> {
   const { error } = await supabase
     .from('push_subscriptions')

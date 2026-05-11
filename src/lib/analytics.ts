@@ -113,6 +113,12 @@ export const Events = {
   PwaInstallPromptShown: 'PWA Install Prompt Shown',
   PwaInstalled: 'PWA Installed',
 
+  // Share + feedback
+  ShareSheetOpened: 'Share Sheet Opened',
+  ShareToChannel: 'Share To Channel',
+  FeedbackSheetOpened: 'Feedback Sheet Opened',
+  FeedbackSubmitted: 'Feedback Submitted',
+
   // Errors
   ErrorOccurred: 'Error Occurred',
 } as const
