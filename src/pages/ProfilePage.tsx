@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import PageWrapper from '../components/PageWrapper'
 import { useAuth } from '../context/AuthContext'
@@ -6,7 +6,6 @@ import { getProfile, getAllSprints, calculateDayNumber, isSprintLocked, updateSp
 import type { Sprint, Profile } from '../lib/db'
 import { enablePush, disablePush, isPushSupported, isStandaloneInstalled, isIOS } from '../lib/push'
 import { track, Events, setPeople } from '../lib/analytics'
-import { supabase } from '../lib/supabase'
 import ShareSheet from '../components/ShareSheet'
 import FeedbackSheet from '../components/FeedbackSheet'
 
@@ -30,8 +29,9 @@ export default function ProfilePage() {
   const [savingReminder, setSavingReminder] = useState(false)
   const [reminderError, setReminderError] = useState('')
   const [showInstallNudge, setShowInstallNudge] = useState(false)
-  const [testingPush, setTestingPush] = useState(false)
-  const [testPushResult, setTestPushResult] = useState('')
+  const [reminderSheetDragY, setReminderSheetDragY] = useState(0)
+  const reminderDragStartRef = useRef<number | null>(null)
+  const needsIosInstall = isIOS() && !isStandaloneInstalled()
   const [shareOpen, setShareOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
 
@@ -332,12 +332,80 @@ export default function ProfilePage() {
       {reminderEditor && (
         <>
           <div onClick={() => !savingReminder && setReminderEditor(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9998 }} />
-          <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: '430px', background: 'white', borderRadius: '24px 24px 0 0', zIndex: 9999, padding: '20px 20px 32px' }}>
-            <div style={{ width: '40px', height: '4px', background: '#E0E0E0', borderRadius: '2px', margin: '0 auto 18px' }} />
-            <p style={{ fontFamily: 'var(--font-heading)', fontSize: '18px', fontWeight: 600, color: '#1A3028', margin: '0 0 4px', textAlign: 'center' }}>Daily reminder</p>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A', textAlign: 'center', margin: '0 0 18px', lineHeight: 1.5 }}>
-              We'll email you if you haven't logged by this time.
-            </p>
+          <div
+            style={{
+              position: 'fixed',
+              bottom: 0,
+              left: '50%',
+              transform: `translateX(-50%) translateY(${reminderSheetDragY}px)`,
+              width: '100%',
+              maxWidth: '430px',
+              background: 'white',
+              borderRadius: '24px 24px 0 0',
+              zIndex: 9999,
+              paddingBottom: 'calc(28px + env(safe-area-inset-bottom))',
+              transition: reminderSheetDragY === 0 ? 'transform 0.3s ease' : 'none',
+              boxShadow: '0 -8px 32px rgba(28,61,48,0.18)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Drag zone — handle + title (~110px) */}
+            <div
+              style={{ padding: '14px 20px 14px', touchAction: 'none', cursor: 'grab' }}
+              onTouchStart={(e) => { reminderDragStartRef.current = e.touches[0].clientY }}
+              onTouchMove={(e) => {
+                if (reminderDragStartRef.current === null) return
+                const d = e.touches[0].clientY - reminderDragStartRef.current
+                if (d > 0) { setReminderSheetDragY(d); e.preventDefault() }
+              }}
+              onTouchEnd={() => {
+                if (reminderSheetDragY > 90) {
+                  if (!savingReminder) setReminderEditor(false)
+                  setReminderSheetDragY(0); reminderDragStartRef.current = null; return
+                }
+                setReminderSheetDragY(0); reminderDragStartRef.current = null
+              }}
+              onTouchCancel={() => { setReminderSheetDragY(0); reminderDragStartRef.current = null }}
+            >
+              <div style={{ width: '44px', height: '5px', background: '#D0D0D0', borderRadius: '3px', margin: '0 auto 14px' }} />
+              <p style={{ fontFamily: 'var(--font-heading)', fontSize: '18px', fontWeight: 600, color: '#1A3028', margin: '0 0 4px', textAlign: 'center' }}>Daily reminder</p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A', textAlign: 'center', margin: 0, lineHeight: 1.5 }}>
+                We'll nudge you if you haven't logged by this time.
+              </p>
+            </div>
+
+            {/* iOS install requirement card — only when iOS Safari AND not added to home screen */}
+            {needsIosInstall && (
+              <div style={{ margin: '0 20px 16px', padding: '14px 16px', background: 'linear-gradient(135deg, rgba(118,197,72,0.10) 0%, rgba(245,213,71,0.06) 100%)', border: '1.5px solid rgba(107,176,72,0.30)', borderRadius: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '15px' }}>📲</span>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#5A9A3A', margin: 0, fontWeight: 700 }}>Required on iPhone</p>
+                </div>
+                <p style={{ fontFamily: 'var(--font-heading)', fontSize: '14px', fontWeight: 600, color: '#1A3028', margin: '0 0 4px', lineHeight: 1.4 }}>
+                  Add StrideWithMe to your Home Screen to receive reminders
+                </p>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', margin: '0 0 10px', lineHeight: 1.55 }}>
+                  iOS only delivers notifications when the app lives on your home screen.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {[
+                    { n: '1', t: 'Tap the Share icon', sub: 'Bottom-center of Safari.' },
+                    { n: '2', t: 'Tap "Add to Home Screen"', sub: 'Scroll the share sheet if needed.' },
+                    { n: '3', t: 'Open the app from there', sub: 'Reminders start arriving.' },
+                  ].map((s) => (
+                    <div key={s.n} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                      <div style={{ width: '20px', height: '20px', flexShrink: 0, borderRadius: '50%', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 700 }}>{s.n}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 600, color: '#1A3028', margin: 0, lineHeight: 1.35 }}>{s.t}</p>
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2', margin: '1px 0 0', lineHeight: 1.4 }}>{s.sub}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div style={{ padding: '4px 20px 0' }}>
 
             {/* Big time input */}
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
@@ -409,46 +477,6 @@ export default function ProfilePage() {
             {reminderError && (
               <div style={{ background: '#FEF3E8', border: '1px solid #F5D5A8', borderRadius: '10px', padding: '8px 12px', marginBottom: '12px' }}>
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#D97706', margin: 0, lineHeight: 1.5 }}>{reminderError}</p>
-              </div>
-            )}
-
-            {/* Test push button — only when reminder is currently enabled */}
-            {profile?.reminder_enabled && (
-              <div style={{ marginBottom: '12px' }}>
-                <button
-                  disabled={testingPush}
-                  onClick={async () => {
-                    setTestingPush(true)
-                    setTestPushResult('')
-                    try {
-                      const { data: { session } } = await supabase.auth.getSession()
-                      const token = session?.access_token
-                      if (!token) { setTestPushResult('Not signed in.'); setTestingPush(false); return }
-                      const res = await fetch('/api/test-push', { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
-                      const json = await res.json()
-                      if (!res.ok) {
-                        setTestPushResult(`Failed: ${json.error ?? res.statusText}${json.detail ? ` — ${json.detail}` : ''}`)
-                      } else {
-                        const okCount = (json.results ?? []).filter((r: { ok: boolean }) => r.ok).length
-                        const total = json.subscriptions ?? 0
-                        if (okCount > 0) setTestPushResult(`✓ Pushed to ${okCount}/${total} device(s). Check your notifications.`)
-                        else setTestPushResult(`Push attempted but failed for all ${total} subscription(s). See console.`)
-                        console.log('[test-push] result', json)
-                      }
-                    } catch (e) {
-                      setTestPushResult(`Error: ${String(e)}`)
-                    }
-                    setTestingPush(false)
-                  }}
-                  style={{ width: '100%', height: '36px', background: 'rgba(118,197,72,0.10)', border: '1px dashed rgba(107,176,72,0.45)', borderRadius: '10px', fontFamily: 'var(--font-body)', fontSize: '11px', color: '#5A9A3A', fontWeight: 500, cursor: testingPush ? 'wait' : 'pointer', opacity: testingPush ? 0.6 : 1 }}
-                >
-                  {testingPush ? 'Sending test push…' : '🔔 Send test push now (verify pipeline)'}
-                </button>
-                {testPushResult && (
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: testPushResult.startsWith('✓') ? '#3D7A5F' : '#D97706', margin: '6px 4px 0', lineHeight: 1.5 }}>
-                    {testPushResult}
-                  </p>
-                )}
               </div>
             )}
 
@@ -549,6 +577,7 @@ export default function ProfilePage() {
               >
                 {savingReminder ? 'Saving…' : `Save · remind at ${reminderDraft}`}
               </button>
+            </div>
             </div>
           </div>
         </>
