@@ -152,7 +152,9 @@ export default function SprintRecordPage() {
         <span style={{ fontSize: '40px' }}>⏳</span>
         <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '22px', color: '#1A3028', marginTop: '16px' }}>This sprint is still in progress</h2>
         <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', color: '#6B9E8A', marginTop: '8px' }}>The Sprint Record unlocks when the sprint ends.</p>
-        <button onClick={() => navigate(-1)} style={{ marginTop: '24px', height: '48px', padding: '0 24px', backgroundColor: '#EAF5F0', color: '#3D7A5F', borderRadius: '9999px', border: 'none', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}>Back →</button>
+        <button onClick={() => navigate(-1)} style={{ marginTop: '24px', height: '48px', padding: '0 22px', backgroundColor: '#EAF5F0', color: '#3D7A5F', borderRadius: '9999px', border: 'none', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 500, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+          <ChevronLeft size={16} /> Back
+        </button>
       </div>
     )
   }

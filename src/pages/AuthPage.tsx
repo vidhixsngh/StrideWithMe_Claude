@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ChevronLeft } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import PageWrapper from '../components/PageWrapper'
@@ -89,7 +90,30 @@ export default function AuthPage() {
 
   return (
     <PageWrapper showNav={false}>
-      <div style={{ padding: '48px 24px 32px', maxWidth: '430px', margin: '0 auto' }}>
+      <div style={{ padding: '20px 24px 32px', maxWidth: '430px', margin: '0 auto' }}>
+        {/* Back to welcome */}
+        <button
+          onClick={() => navigate('/')}
+          aria-label="Back"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            background: 'none',
+            border: 'none',
+            padding: '6px 10px 6px 0',
+            marginBottom: '20px',
+            marginLeft: '-10px',
+            cursor: 'pointer',
+            color: '#6B9E8A',
+            fontFamily: 'var(--font-body)',
+            fontSize: '13px',
+            fontStyle: 'italic',
+          }}
+        >
+          <ChevronLeft size={16} /> Back
+        </button>
+
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '40px' }}>
           <img src="/icon-192.png" alt="StrideWithMe" style={{ width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0, boxShadow: '0 4px 16px rgba(107,176,72,0.20)', objectFit: 'cover' }} />

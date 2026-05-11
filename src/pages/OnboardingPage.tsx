@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Lock, Users, Globe, Sprout } from 'lucide-react'
+import { Lock, Users, Globe, Sprout, ChevronLeft } from 'lucide-react'
 import PlanGeneratingScreen from '../components/PlanGeneratingScreen'
 import { useAuth } from '../context/AuthContext'
 import { createSprint, createTasks, calculateEndDate } from '../lib/db'
@@ -184,12 +184,12 @@ export default function OnboardingPage() {
       <div className="w-full max-w-[430px] px-6 flex-1 flex flex-col" style={transitionStyle}>
         {step === 1 && <Step1Goal goal={goal} setGoal={setGoal} pastReflection={pastReflection} setPastReflection={setPastReflection} onNext={() => goToStep(2)} />}
         {step === 2 && (
-          <Step2Sprint sprintLength={sprintLength} setSprintLength={setSprintLength} onNext={() => goToStep(3)} />
+          <Step2Sprint sprintLength={sprintLength} setSprintLength={setSprintLength} onNext={() => goToStep(3)} onBack={() => goToStep(1)} />
         )}
         {step === 3 && (
-          <Step3Visibility visibility={visibility} setVisibility={setVisibility} onNext={handleGoToStep4} generatingPlan={generatingPlan} />
+          <Step3Visibility visibility={visibility} setVisibility={setVisibility} onNext={handleGoToStep4} generatingPlan={generatingPlan} onBack={() => goToStep(2)} />
         )}
-        {step === 4 && <Step4Preview goal={goal} onBegin={handleBeginDay1} submitting={submitting} submitError={submitError} aiTasks={aiTasks} wasVague={wasVague} generatingPlan={generatingPlan} onUpdateTasks={setAiTasks} pastReflection={pastReflection} extraContext={extraContext} hasUsedExtraContext={hasUsedExtraContext} onRegenerateWithContext={handleRegenerateWithContext} />}
+        {step === 4 && <Step4Preview goal={goal} onBegin={handleBeginDay1} submitting={submitting} submitError={submitError} aiTasks={aiTasks} wasVague={wasVague} generatingPlan={generatingPlan} onUpdateTasks={setAiTasks} pastReflection={pastReflection} extraContext={extraContext} hasUsedExtraContext={hasUsedExtraContext} onRegenerateWithContext={handleRegenerateWithContext} onBack={() => goToStep(3)} />}
       </div>
 
       {generatingPlan && (
@@ -214,6 +214,32 @@ function StepLabel({ step, label }: { step: number; label: string }) {
     >
       Step {step} of 4 — {label}
     </p>
+  )
+}
+
+function BackButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label="Back"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '4px',
+        background: 'none',
+        border: 'none',
+        padding: '6px 10px 6px 0',
+        cursor: 'pointer',
+        color: '#6B9E8A',
+        fontFamily: 'var(--font-body)',
+        fontSize: '13px',
+        fontStyle: 'italic',
+        marginTop: '12px',
+        marginLeft: '-10px',
+      }}
+    >
+      <ChevronLeft size={16} /> Back
+    </button>
   )
 }
 
@@ -540,10 +566,12 @@ function Step2Sprint({
   sprintLength,
   setSprintLength,
   onNext,
+  onBack,
 }: {
   sprintLength: number | null
   setSprintLength: (v: number) => void
   onNext: () => void
+  onBack?: () => void
 }) {
   const options = [
     { days: 7, title: '7 days', subtitle: 'A focused mini-sprint', tagline: 'Best for goals you can wrap up in a week — ship a feature, finish a draft, run a test.', tag: 'Quick wins' },
@@ -553,6 +581,7 @@ function Step2Sprint({
 
   return (
     <div className="flex-1 flex flex-col">
+      {onBack && <BackButton onClick={onBack} />}
       <StepLabel step={2} label="Your sprint" />
       <Heading>How much time do we have?</Heading>
       <Subtext>
@@ -617,11 +646,13 @@ function Step3Visibility({
   setVisibility,
   onNext,
   generatingPlan,
+  onBack,
 }: {
   visibility: Visibility
   setVisibility: (v: Visibility) => void
   onNext: () => void
   generatingPlan?: boolean
+  onBack?: () => void
 }) {
   const options: { value: Visibility; icon: React.ReactNode; title: string; subtitle: string; tagline: string; tag: string }[] = [
     { value: 'PRIVATE', icon: <Lock size={18} />, title: 'Just me', subtitle: 'A quiet build', tagline: "Your logs stay completely private. Best for personal goals or when you're not ready to share yet.", tag: 'Most chosen' },
@@ -631,6 +662,7 @@ function Step3Visibility({
 
   return (
     <div className="flex-1 flex flex-col">
+      {onBack && <BackButton onClick={onBack} />}
       <StepLabel step={3} label="Your audience" />
       <Heading>Who's in your corner?</Heading>
       <Subtext>
@@ -693,7 +725,7 @@ function Step3Visibility({
 }
 
 /* ============ STEP 4 ============ */
-function Step4Preview({ goal, onBegin, submitting, submitError, aiTasks, wasVague, generatingPlan, onUpdateTasks, pastReflection, extraContext, hasUsedExtraContext, onRegenerateWithContext }: { goal: string; onBegin: () => void; submitting?: boolean; submitError?: string; aiTasks?: GeneratedTask[]; wasVague?: boolean; generatingPlan?: boolean; onUpdateTasks?: (tasks: GeneratedTask[]) => void; pastReflection?: string; extraContext?: string; hasUsedExtraContext?: boolean; onRegenerateWithContext?: (text: string) => void }) {
+function Step4Preview({ goal, onBegin, submitting, submitError, aiTasks, wasVague, generatingPlan, onUpdateTasks, pastReflection, extraContext, hasUsedExtraContext, onRegenerateWithContext, onBack }: { goal: string; onBegin: () => void; submitting?: boolean; submitError?: string; aiTasks?: GeneratedTask[]; wasVague?: boolean; generatingPlan?: boolean; onUpdateTasks?: (tasks: GeneratedTask[]) => void; pastReflection?: string; extraContext?: string; hasUsedExtraContext?: boolean; onRegenerateWithContext?: (text: string) => void; onBack?: () => void }) {
   const [contextOpen, setContextOpen] = useState(false)
   const [contextDraft, setContextDraft] = useState('')
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
@@ -768,6 +800,7 @@ function Step4Preview({ goal, onBegin, submitting, submitError, aiTasks, wasVagu
 
   return (
     <div className="flex-1 flex flex-col">
+      {onBack && <BackButton onClick={onBack} />}
       <StepLabel step={4} label="Your plan" />
       <Heading>Here's your first 5 days</Heading>
       <Subtext>
