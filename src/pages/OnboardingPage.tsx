@@ -625,7 +625,7 @@ function Step3Visibility({
 }) {
   const options: { value: Visibility; icon: React.ReactNode; title: string; subtitle: string; tagline: string; tag: string }[] = [
     { value: 'PRIVATE', icon: <Lock size={18} />, title: 'Just me', subtitle: 'A quiet build', tagline: "Your logs stay completely private. Best for personal goals or when you're not ready to share yet.", tag: 'Most chosen' },
-    { value: 'COHORT', icon: <Users size={18} />, title: 'My sprint group', subtitle: 'Build alongside others', tagline: 'A small group going through the same 30 days. You see their logs, they see yours — gentle accountability.', tag: 'Best for momentum' },
+    { value: 'COHORT', icon: <Users size={18} />, title: 'My Cohort', subtitle: 'Build alongside others', tagline: 'A small group going through the same 30 days. You see their logs, they see yours — gentle accountability.', tag: 'Best for momentum' },
     { value: 'PUBLIC', icon: <Globe size={18} />, title: 'Build in public', subtitle: 'Open to the world', tagline: 'Anyone with the link can see your Sprint Record. Best when your goal benefits from an audience.', tag: 'Highest stakes' },
   ]
 
@@ -664,7 +664,7 @@ function Step3Visibility({
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontFamily: 'var(--font-heading)', fontSize: '17px', fontWeight: 600, color: '#1A3028', margin: 0, letterSpacing: '-0.01em', lineHeight: 1.2 }}>{opt.title}</p>
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: isSelected ? '#5A9A3A' : '#6B9E8A', margin: '2px 0 0' }}>{opt.subtitle}</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: isSelected ? '#5A9A3A' : '#6B9E8A', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{opt.subtitle}</p>
                 </div>
                 <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', letterSpacing: '0.06em', textTransform: 'uppercase', color: isSelected ? '#FFFFFF' : '#5A9A3A', backgroundColor: isSelected ? '#6BB048' : 'rgba(107,176,72,0.10)', borderRadius: '9999px', padding: '3px 9px', fontWeight: 600, flexShrink: 0, alignSelf: 'flex-start', whiteSpace: 'nowrap' }}>
                   {opt.tag}
