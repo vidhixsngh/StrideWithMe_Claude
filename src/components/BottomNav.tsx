@@ -44,15 +44,13 @@ export default function BottomNav() {
     >
       {NAV_ITEMS.map((item, i) => {
         if (i === 2) {
-          // Center + button
+          // Center + button — absolute-anchored to bar top edge so the lift is
+          // identical regardless of safe-area inset on iPhones.
           return (
             <div
               key="plus"
               style={{
                 flex: 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
                 position: 'relative',
               }}
             >
@@ -60,21 +58,24 @@ export default function BottomNav() {
                 onClick={() => navigate('/log')}
                 aria-label="Log today"
                 style={{
-                  width: '52px',
-                  height: '52px',
+                  position: 'absolute',
+                  top: '-16px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: '54px',
+                  height: '54px',
                   borderRadius: '50%',
                   background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)',
-                  border: 'none',
+                  border: '3px solid #FFFFFF',
                   cursor: 'pointer',
-                  boxShadow: '0 8px 24px rgba(107,176,72,0.32), 0 4px 12px rgba(107,176,72,0.18)',
+                  boxShadow: '0 6px 20px rgba(107,176,72,0.36), 0 2px 6px rgba(107,176,72,0.18)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  transform: 'translateY(-10px)',
                   padding: 0,
                 }}
               >
-                <Plus size={24} color="#FFFFFF" />
+                <Plus size={24} color="#FFFFFF" strokeWidth={2.5} />
               </button>
             </div>
           )
