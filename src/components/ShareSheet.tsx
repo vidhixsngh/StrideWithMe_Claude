@@ -115,34 +115,38 @@ export default function ShareSheet({ open, onClose, message, url }: Props) {
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Drag handle area */}
+        {/* Drag zone — covers handle + header (full ~90px target, easier to grab) */}
         <div
-          style={{ padding: '12px 20px 0', touchAction: 'none' }}
+          style={{ padding: '14px 20px 14px', touchAction: 'none', cursor: 'grab' }}
           onTouchStart={(e) => { dragStartRef.current = e.touches[0].clientY }}
           onTouchMove={(e) => {
             if (dragStartRef.current === null) return
             const d = e.touches[0].clientY - dragStartRef.current
-            if (d > 0) setDragY(d)
+            if (d > 0) { setDragY(d); e.preventDefault() }
           }}
           onTouchEnd={() => {
             if (dragY > 90) { onClose(); setDragY(0); dragStartRef.current = null; return }
             setDragY(0); dragStartRef.current = null
           }}
+          onTouchCancel={() => { setDragY(0); dragStartRef.current = null }}
         >
-          <div style={{ width: '44px', height: '5px', backgroundColor: '#D0D0D0', borderRadius: '3px', margin: '0 auto 16px' }} />
-        </div>
-
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '0 20px 14px' }}>
-          <div>
-            <p style={{ fontFamily: 'var(--font-heading)', fontSize: '18px', fontWeight: 600, color: '#1A3028', margin: 0 }}>Share StrideWithMe</p>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A', margin: '2px 0 0', letterSpacing: '0.01em' }}>
-              Bring a friend along for the sprint.
-            </p>
+          <div style={{ width: '44px', height: '5px', backgroundColor: '#D0D0D0', borderRadius: '3px', margin: '0 auto 14px' }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <p style={{ fontFamily: 'var(--font-heading)', fontSize: '18px', fontWeight: 600, color: '#1A3028', margin: 0 }}>Share StrideWithMe</p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A', margin: '2px 0 0', letterSpacing: '0.01em' }}>
+                Bring a friend along for the sprint.
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              onTouchStart={(e) => e.stopPropagation()}
+              aria-label="Close"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+            >
+              <X size={20} color="#9BBFB2" />
+            </button>
           </div>
-          <button onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
-            <X size={20} color="#9BBFB2" />
-          </button>
         </div>
 
         {/* Preview message */}

@@ -90,40 +90,44 @@ export default function FeedbackSheet({ open, onClose, onWantsToShare }: Props) 
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Drag handle */}
+        {/* Drag zone — handle + header form one ~90px drop target */}
         <div
-          style={{ padding: '12px 20px 0', touchAction: 'none' }}
+          style={{ padding: '14px 20px 14px', touchAction: 'none', cursor: 'grab' }}
           onTouchStart={(e) => { dragStartRef.current = e.touches[0].clientY }}
           onTouchMove={(e) => {
             if (dragStartRef.current === null) return
             const d = e.touches[0].clientY - dragStartRef.current
-            if (d > 0) setDragY(d)
+            if (d > 0) { setDragY(d); e.preventDefault() }
           }}
           onTouchEnd={() => {
             if (dragY > 90) { onClose(); setDragY(0); dragStartRef.current = null; return }
             setDragY(0); dragStartRef.current = null
           }}
+          onTouchCancel={() => { setDragY(0); dragStartRef.current = null }}
         >
-          <div style={{ width: '44px', height: '5px', backgroundColor: '#D0D0D0', borderRadius: '3px', margin: '0 auto 16px' }} />
-        </div>
-
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '0 20px 14px' }}>
-          <div>
-            <p style={{ fontFamily: 'var(--font-heading)', fontSize: '18px', fontWeight: 600, color: '#1A3028', margin: 0 }}>
-              {step === 'rate' && 'Help us improve'}
-              {step === 'detail' && (isPromoter ? 'Glad to hear it 🌱' : "We're listening")}
-              {step === 'thanks' && 'Thank you 🌻'}
-            </p>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A', margin: '2px 0 0', letterSpacing: '0.01em' }}>
-              {step === 'rate' && 'How is StrideWithMe treating you?'}
-              {step === 'detail' && (isPromoter ? 'Anything you want to add?' : "What's not working? Be honest — it helps.")}
-              {step === 'thanks' && 'Your feedback shapes what we build next.'}
-            </p>
+          <div style={{ width: '44px', height: '5px', backgroundColor: '#D0D0D0', borderRadius: '3px', margin: '0 auto 14px' }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <p style={{ fontFamily: 'var(--font-heading)', fontSize: '18px', fontWeight: 600, color: '#1A3028', margin: 0 }}>
+                {step === 'rate' && 'Help us improve'}
+                {step === 'detail' && (isPromoter ? 'Glad to hear it 🌱' : "We're listening")}
+                {step === 'thanks' && 'Thank you 🌻'}
+              </p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A', margin: '2px 0 0', letterSpacing: '0.01em' }}>
+                {step === 'rate' && 'How is StrideWithMe treating you?'}
+                {step === 'detail' && (isPromoter ? 'Anything you want to add?' : "What's not working? Be honest — it helps.")}
+                {step === 'thanks' && 'Your feedback shapes what we build next.'}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              onTouchStart={(e) => e.stopPropagation()}
+              aria-label="Close"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+            >
+              <X size={20} color="#9BBFB2" />
+            </button>
           </div>
-          <button onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
-            <X size={20} color="#9BBFB2" />
-          </button>
         </div>
 
         {/* Body */}
