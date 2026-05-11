@@ -1088,68 +1088,71 @@ function Step5Reminder({
         We'll remind you to log if you haven't by this time each day. You can change it later from Profile.
       </Subtext>
 
-      {/* Time picker */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginTop: '24px', marginBottom: '14px' }}>
-        <input
-          type="time"
-          value={time}
-          onChange={(e) => setTime(e.target.value)}
-          style={{
-            fontFamily: 'var(--font-heading)',
-            fontSize: '32px',
-            fontWeight: 600,
-            color: '#1A3028',
-            background: '#F5FAF7',
-            border: '1.5px solid #B8D9CC',
-            borderRadius: '14px',
-            padding: '12px 18px',
-            outline: 'none',
-            letterSpacing: '0.02em',
-            textAlign: 'center',
-          }}
-        />
-      </div>
+      {/* Centered content block — fills available vertical space between subtext and CTA */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', paddingTop: '20px', paddingBottom: '20px' }}>
+        {/* Time picker with sprout-green selected border */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '18px' }}>
+          <input
+            type="time"
+            value={time}
+            onChange={(e) => setTime(e.target.value)}
+            style={{
+              fontFamily: 'var(--font-heading)',
+              fontSize: '32px',
+              fontWeight: 600,
+              color: '#1A3028',
+              background: 'linear-gradient(135deg, rgba(118,197,72,0.10) 0%, rgba(118,197,72,0.04) 100%)',
+              border: '2px solid #6BB048',
+              borderRadius: '14px',
+              padding: '12px 18px',
+              outline: 'none',
+              letterSpacing: '0.02em',
+              textAlign: 'center',
+              boxShadow: '0 4px 16px rgba(107,176,72,0.18)',
+            }}
+          />
+        </div>
 
-      {/* Quick presets */}
-      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '14px', flexWrap: 'wrap' }}>
-        {[
-          { label: '8 AM', value: '08:00' },
-          { label: '1 PM', value: '13:00' },
-          { label: '6 PM', value: '18:00' },
-          { label: '8 PM', value: '20:00' },
-          { label: '10 PM', value: '22:00' },
-        ].map((p) => {
-          const active = time === p.value
-          return (
-            <button
-              key={p.value}
-              onClick={() => setTime(p.value)}
-              style={{
-                padding: '7px 14px',
-                borderRadius: '9999px',
-                border: active ? 'none' : '1px solid #E8F0EC',
-                background: active ? 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)' : 'rgba(255,255,255,0.85)',
-                color: active ? '#FFFFFF' : '#3D5949',
-                fontFamily: 'var(--font-body)',
-                fontSize: '12px',
-                fontWeight: 500,
-                cursor: 'pointer',
-                boxShadow: active ? '0 4px 12px rgba(107,176,72,0.25)' : 'none',
-              }}
-            >
-              {p.label}
-            </button>
-          )
-        })}
-      </div>
+        {/* Quick presets */}
+        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '14px', flexWrap: 'wrap' }}>
+          {[
+            { label: '8 AM', value: '08:00' },
+            { label: '1 PM', value: '13:00' },
+            { label: '6 PM', value: '18:00' },
+            { label: '8 PM', value: '20:00' },
+            { label: '10 PM', value: '22:00' },
+          ].map((p) => {
+            const active = time === p.value
+            return (
+              <button
+                key={p.value}
+                onClick={() => setTime(p.value)}
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: '9999px',
+                  border: active ? 'none' : '1px solid #E8F0EC',
+                  background: active ? 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)' : 'rgba(255,255,255,0.85)',
+                  color: active ? '#FFFFFF' : '#3D5949',
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  boxShadow: active ? '0 4px 12px rgba(107,176,72,0.25)' : 'none',
+                }}
+              >
+                {p.label}
+              </button>
+            )
+          })}
+        </div>
 
-      <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', textAlign: 'center', margin: '0 0 14px' }}>
-        Detected timezone: {TZ}
-      </p>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', textAlign: 'center', margin: '0 0 14px' }}>
+          Detected timezone: {TZ}
+        </p>
 
-      {/* iOS install card — only when iOS Safari + not standalone */}
-      {needsIosInstall && (
-        <div style={{ padding: '14px 16px', background: 'linear-gradient(135deg, rgba(118,197,72,0.10) 0%, rgba(245,213,71,0.06) 100%)', border: '1.5px solid rgba(107,176,72,0.30)', borderRadius: '14px', marginBottom: '14px' }}>
+        {/* iOS install card — only when iOS Safari + not standalone */}
+        {needsIosInstall && (
+          <div style={{ padding: '14px 16px', background: 'linear-gradient(135deg, rgba(118,197,72,0.10) 0%, rgba(245,213,71,0.06) 100%)', border: '1.5px solid rgba(107,176,72,0.30)', borderRadius: '14px', marginBottom: '0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
             <span style={{ fontSize: '15px' }}>📲</span>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#5A9A3A', margin: 0, fontWeight: 700 }}>Required on iPhone</p>
@@ -1179,12 +1182,13 @@ function Step5Reminder({
       )}
 
       {error && (
-        <div style={{ backgroundColor: '#FEF3E8', border: '1px solid #F5D5A8', borderRadius: '10px', padding: '8px 12px', marginBottom: '10px' }}>
+        <div style={{ backgroundColor: '#FEF3E8', border: '1px solid #F5D5A8', borderRadius: '10px', padding: '8px 12px', marginTop: '10px' }}>
           <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#D97706', margin: 0 }}>{error}</p>
         </div>
       )}
+      </div>
 
-      <div className="mt-auto" style={{ paddingTop: '24px', paddingBottom: '32px' }}>
+      <div style={{ paddingTop: '8px', paddingBottom: '32px' }}>
         <CTAButton
           label={(savingAndStarting || submitting) ? 'Starting your sprint…' : 'Begin my Day 1 →'}
           disabled={savingAndStarting || submitting}
