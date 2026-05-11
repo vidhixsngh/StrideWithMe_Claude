@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { Lock, Users, Globe, Sprout, ChevronLeft } from 'lucide-react'
 import PlanGeneratingScreen from '../components/PlanGeneratingScreen'
 import { useAuth } from '../context/AuthContext'
-import { createSprint, createTasks, calculateEndDate } from '../lib/db'
+import { createSprint, createTasks, calculateEndDate, updateReminderSettings } from '../lib/db'
+import { enablePush, isPushSupported, isStandaloneInstalled, isIOS } from '../lib/push'
 import { supabase } from '../lib/supabase'
 import { generateSprintPlan } from '../lib/gemini'
 import type { GeneratedTask } from '../lib/gemini'
@@ -167,7 +168,7 @@ export default function OnboardingPage() {
     >
       {/* Progress Bar */}
       <div className="w-full max-w-[430px] px-6 pt-4 flex" style={{ gap: '4px' }}>
-        {[1, 2, 3, 4].map((s) => (
+        {[1, 2, 3, 4, 5].map((s) => (
           <div
             key={s}
             className="flex-1"
@@ -189,7 +190,8 @@ export default function OnboardingPage() {
         {step === 3 && (
           <Step3Visibility visibility={visibility} setVisibility={setVisibility} onNext={handleGoToStep4} generatingPlan={generatingPlan} onBack={() => goToStep(2)} />
         )}
-        {step === 4 && <Step4Preview goal={goal} onBegin={handleBeginDay1} submitting={submitting} submitError={submitError} aiTasks={aiTasks} wasVague={wasVague} generatingPlan={generatingPlan} onUpdateTasks={setAiTasks} pastReflection={pastReflection} extraContext={extraContext} hasUsedExtraContext={hasUsedExtraContext} onRegenerateWithContext={handleRegenerateWithContext} onBack={() => goToStep(3)} />}
+        {step === 4 && <Step4Preview goal={goal} onBegin={() => goToStep(5)} submitting={false} submitError={undefined} aiTasks={aiTasks} wasVague={wasVague} generatingPlan={generatingPlan} onUpdateTasks={setAiTasks} pastReflection={pastReflection} extraContext={extraContext} hasUsedExtraContext={hasUsedExtraContext} onRegenerateWithContext={handleRegenerateWithContext} onBack={() => goToStep(3)} />}
+        {step === 5 && <Step5Reminder onBeginDay1={handleBeginDay1} submitting={submitting} submitError={submitError} onBack={() => goToStep(4)} />}
       </div>
 
       {generatingPlan && (
@@ -212,7 +214,7 @@ function StepLabel({ step, label }: { step: number; label: string }) {
         letterSpacing: '0.01em',
       }}
     >
-      Step {step} of 4 — {label}
+      Step {step} of 5 — {label}
     </p>
   )
 }
@@ -725,7 +727,7 @@ function Step3Visibility({
 }
 
 /* ============ STEP 4 ============ */
-function Step4Preview({ goal, onBegin, submitting, submitError, aiTasks, wasVague, generatingPlan, onUpdateTasks, pastReflection, extraContext, hasUsedExtraContext, onRegenerateWithContext, onBack }: { goal: string; onBegin: () => void; submitting?: boolean; submitError?: string; aiTasks?: GeneratedTask[]; wasVague?: boolean; generatingPlan?: boolean; onUpdateTasks?: (tasks: GeneratedTask[]) => void; pastReflection?: string; extraContext?: string; hasUsedExtraContext?: boolean; onRegenerateWithContext?: (text: string) => void; onBack?: () => void }) {
+function Step4Preview({ goal, onBegin, submitError, aiTasks, wasVague, generatingPlan, onUpdateTasks, pastReflection, extraContext, hasUsedExtraContext, onRegenerateWithContext, onBack }: { goal: string; onBegin: () => void; submitting?: boolean; submitError?: string; aiTasks?: GeneratedTask[]; wasVague?: boolean; generatingPlan?: boolean; onUpdateTasks?: (tasks: GeneratedTask[]) => void; pastReflection?: string; extraContext?: string; hasUsedExtraContext?: boolean; onRegenerateWithContext?: (text: string) => void; onBack?: () => void }) {
   const [contextOpen, setContextOpen] = useState(false)
   const [contextDraft, setContextDraft] = useState('')
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
@@ -1011,7 +1013,190 @@ function Step4Preview({ goal, onBegin, submitting, submitError, aiTasks, wasVagu
       </div>
 
       <div className="mt-auto" style={{ paddingBottom: '32px' }}>
-        <CTAButton label={submitting ? "Setting up your sprint..." : "I'm ready. Begin Day 1 →"} disabled={submitting} onClick={onBegin} />
+        <CTAButton label="Set my daily reminder →" disabled={false} onClick={onBegin} />
+        {submitError && (
+          <div style={{ backgroundColor: '#FEF3E8', border: '1px solid #F5D5A8', borderRadius: '10px', padding: '10px 14px', marginTop: '8px' }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#D97706', margin: 0 }}>{submitError}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ============ STEP 5 ============ */
+function Step5Reminder({
+  onBeginDay1,
+  submitting,
+  submitError,
+  onBack,
+}: {
+  onBeginDay1: () => Promise<void> | void
+  submitting?: boolean
+  submitError?: string
+  onBack?: () => void
+}) {
+  const { user } = useAuth()
+  const [time, setTime] = useState('20:00')
+  const [savingAndStarting, setSavingAndStarting] = useState(false)
+  const [error, setError] = useState('')
+  const needsIosInstall = isIOS() && !isStandaloneInstalled()
+
+  const TZ = typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC'
+
+  const handleSetAndBegin = async () => {
+    if (!user) return
+    setSavingAndStarting(true)
+    setError('')
+
+    // Save reminder (best-effort; don't block sprint start)
+    const result = await updateReminderSettings(user.id, {
+      reminder_time: `${time}:00`,
+      reminder_timezone: TZ,
+      reminder_enabled: true,
+    })
+    if (!result.ok) {
+      setError(`Couldn't save reminder: ${result.error ?? 'unknown'}. We'll still start your sprint.`)
+    } else {
+      track(Events.ReminderEnabled, { time, timezone: TZ, source: 'onboarding' })
+      setPeople({ reminder_time: time, reminder_timezone: TZ, reminder_enabled: true, reminder_set_during_onboarding: true })
+      // Fire push subscription in background (non-blocking)
+      if (isPushSupported()) {
+        track(Events.PushPermissionRequested)
+        enablePush(user.id).then((r) => {
+          if (r.ok) { track(Events.PushPermissionGranted); setPeople({ push_subscribed: true }) }
+          else if (r.reason === 'denied') track(Events.PushPermissionDenied)
+        }).catch((e) => console.warn('enablePush:', e))
+      }
+    }
+    // Always continue to start the sprint, save or not
+    await onBeginDay1()
+  }
+
+  const handleSkip = async () => {
+    track(Events.ReminderSkippedDuringOnboarding, { source: 'onboarding' })
+    setPeople({ reminder_set_during_onboarding: false })
+    await onBeginDay1()
+  }
+
+  return (
+    <div className="flex-1 flex flex-col">
+      {onBack && <BackButton onClick={onBack} />}
+      <StepLabel step={5} label="Your nudge" />
+      <Heading>When should we nudge you?</Heading>
+      <Subtext>
+        We'll remind you to log if you haven't by this time each day. You can change it later from Profile.
+      </Subtext>
+
+      {/* Time picker */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: '24px', marginBottom: '14px' }}>
+        <input
+          type="time"
+          value={time}
+          onChange={(e) => setTime(e.target.value)}
+          style={{
+            fontFamily: 'var(--font-heading)',
+            fontSize: '32px',
+            fontWeight: 600,
+            color: '#1A3028',
+            background: '#F5FAF7',
+            border: '1.5px solid #B8D9CC',
+            borderRadius: '14px',
+            padding: '12px 18px',
+            outline: 'none',
+            letterSpacing: '0.02em',
+            textAlign: 'center',
+          }}
+        />
+      </div>
+
+      {/* Quick presets */}
+      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '14px', flexWrap: 'wrap' }}>
+        {[
+          { label: '8 AM', value: '08:00' },
+          { label: '1 PM', value: '13:00' },
+          { label: '6 PM', value: '18:00' },
+          { label: '8 PM', value: '20:00' },
+          { label: '10 PM', value: '22:00' },
+        ].map((p) => {
+          const active = time === p.value
+          return (
+            <button
+              key={p.value}
+              onClick={() => setTime(p.value)}
+              style={{
+                padding: '7px 14px',
+                borderRadius: '9999px',
+                border: active ? 'none' : '1px solid #E8F0EC',
+                background: active ? 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)' : 'rgba(255,255,255,0.85)',
+                color: active ? '#FFFFFF' : '#3D5949',
+                fontFamily: 'var(--font-body)',
+                fontSize: '12px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                boxShadow: active ? '0 4px 12px rgba(107,176,72,0.25)' : 'none',
+              }}
+            >
+              {p.label}
+            </button>
+          )
+        })}
+      </div>
+
+      <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', textAlign: 'center', margin: '0 0 14px' }}>
+        Detected timezone: {TZ}
+      </p>
+
+      {/* iOS install card — only when iOS Safari + not standalone */}
+      {needsIosInstall && (
+        <div style={{ padding: '14px 16px', background: 'linear-gradient(135deg, rgba(118,197,72,0.10) 0%, rgba(245,213,71,0.06) 100%)', border: '1.5px solid rgba(107,176,72,0.30)', borderRadius: '14px', marginBottom: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+            <span style={{ fontSize: '15px' }}>📲</span>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#5A9A3A', margin: 0, fontWeight: 700 }}>Required on iPhone</p>
+          </div>
+          <p style={{ fontFamily: 'var(--font-heading)', fontSize: '14px', fontWeight: 600, color: '#1A3028', margin: '0 0 4px', lineHeight: 1.4 }}>
+            Add StrideWithMe to your Home Screen
+          </p>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', margin: '0 0 10px', lineHeight: 1.55 }}>
+            iOS only delivers notifications when the app lives on your home screen.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {[
+              { n: '1', t: 'Tap the Share icon', sub: 'Bottom-center of Safari.' },
+              { n: '2', t: 'Tap "Add to Home Screen"', sub: 'Scroll the share sheet if needed.' },
+              { n: '3', t: 'Open the app from there', sub: 'Reminders start arriving.' },
+            ].map((s) => (
+              <div key={s.n} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                <div style={{ width: '20px', height: '20px', flexShrink: 0, borderRadius: '50%', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 700 }}>{s.n}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 600, color: '#1A3028', margin: 0, lineHeight: 1.35 }}>{s.t}</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2', margin: '1px 0 0', lineHeight: 1.4 }}>{s.sub}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div style={{ backgroundColor: '#FEF3E8', border: '1px solid #F5D5A8', borderRadius: '10px', padding: '8px 12px', marginBottom: '10px' }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#D97706', margin: 0 }}>{error}</p>
+        </div>
+      )}
+
+      <div className="mt-auto" style={{ paddingTop: '24px', paddingBottom: '32px' }}>
+        <CTAButton
+          label={(savingAndStarting || submitting) ? 'Starting your sprint…' : 'Begin my Day 1 →'}
+          disabled={savingAndStarting || submitting}
+          onClick={handleSetAndBegin}
+        />
+        <button
+          onClick={handleSkip}
+          disabled={savingAndStarting || submitting}
+          style={{ width: '100%', marginTop: '10px', background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#9BBFB2', cursor: (savingAndStarting || submitting) ? 'wait' : 'pointer', padding: '6px' }}
+        >
+          Skip for now — I'll set it later
+        </button>
         {submitError && (
           <div style={{ backgroundColor: '#FEF3E8', border: '1px solid #F5D5A8', borderRadius: '10px', padding: '10px 14px', marginTop: '8px' }}>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#D97706', margin: 0 }}>{submitError}</p>

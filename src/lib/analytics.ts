@@ -104,6 +104,7 @@ export const Events = {
   ReminderEnabled: 'Reminder Enabled',
   ReminderDisabled: 'Reminder Disabled',
   ReminderTimeChanged: 'Reminder Time Changed',
+  ReminderSkippedDuringOnboarding: 'Reminder Skipped During Onboarding',
   PushPermissionRequested: 'Push Permission Requested',
   PushPermissionGranted: 'Push Permission Granted',
   PushPermissionDenied: 'Push Permission Denied',
