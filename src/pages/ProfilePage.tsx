@@ -536,58 +536,44 @@ export default function ProfilePage() {
                     reminder_enabled: true,
                   })
 
-                  // 2. Try to subscribe to push (best-effort, email is the fallback)
-                  let pushOk = false
-                  let pushErrorDetail = ''
-                  if (isPushSupported()) {
-                    track(Events.PushPermissionRequested)
-                    const result = await enablePush(user.id)
-                    pushOk = result.ok
-                    if (result.ok) track(Events.PushPermissionGranted)
-                    else {
-                      pushErrorDetail = `${result.reason}${result.detail ? ` — ${result.detail}` : ''}`
-                      if (result.reason === 'denied') {
-                        track(Events.PushPermissionDenied)
-                        setReminderError("Notification permission was blocked — we'll email instead.")
-                      } else if (result.reason === 'no-vapid') {
-                        setReminderError('Push not configured (VITE_VAPID_PUBLIC_KEY missing in Vercel). Email fallback only.')
-                      } else if (result.reason === 'save-failed') {
-                        setReminderError(`Push subscription save failed: ${result.detail ?? 'check push_subscriptions table exists'}`)
-                      } else if (result.reason === 'subscribe-failed') {
-                        setReminderError(`Browser couldn't subscribe: ${result.detail ?? 'unknown'}`)
-                      } else if (result.reason === 'unsupported') {
-                        setReminderError('Push not supported on this browser — we will email at reminder time.')
-                      }
-                    }
-                  }
-
                   setSavingReminder(false)
                   if (!saveResult.ok) {
-                    setReminderError(`Save failed: ${saveResult.error ?? 'unknown'}${pushErrorDetail ? ` · push: ${pushErrorDetail}` : ''}`)
-                    return
+                    setReminderError(`Save failed: ${saveResult.error ?? 'unknown'}`)
+                    return // stay open on save failure so user sees the error
                   }
 
+                  // Save succeeded — update UI, track, close the sheet immediately
                   setProfile({
                     ...(profile ?? {} as Profile),
                     reminder_time: `${reminderDraft}:00`,
                     reminder_timezone: tz,
                     reminder_enabled: true,
                   })
+                  track(Events.ReminderEnabled, { time: reminderDraft, timezone: tz })
+                  setPeople({ reminder_time: reminderDraft, reminder_timezone: tz, reminder_enabled: true })
 
-                  track(Events.ReminderEnabled, { time: reminderDraft, timezone: tz, push_subscribed: pushOk })
-                  setPeople({ reminder_time: reminderDraft, reminder_timezone: tz, reminder_enabled: true, push_subscribed: pushOk })
-
-                  // 3. iOS nudge — push only works after Add to Home Screen
+                  // iOS user without home-screen install → show nudge ON TOP of closed sheet
                   if (isIOS() && !isStandaloneInstalled()) {
                     track(Events.IosInstallNudgeShown)
+                    setReminderEditor(false)
                     setShowInstallNudge(true)
-                    return // keep the sheet conceptually closed, but nudge shows
+                    return
                   }
 
+                  // Close the sheet immediately; push subscription runs in the background
                   setReminderEditor(false)
-                  // Quietly: if we couldn't subscribe to push but saved time, the email cron will catch them
-                  if (!pushOk && !isPushSupported()) {
-                    // browser doesn't support push at all — email fallback path
+
+                  // 2. Fire push subscription request AFTER sheet closes — non-blocking
+                  if (isPushSupported()) {
+                    track(Events.PushPermissionRequested)
+                    enablePush(user.id).then((result) => {
+                      if (result.ok) {
+                        track(Events.PushPermissionGranted)
+                        setPeople({ push_subscribed: true })
+                      } else if (result.reason === 'denied') {
+                        track(Events.PushPermissionDenied)
+                      }
+                    }).catch((e) => console.warn('enablePush:', e))
                   }
                 }}
                 style={{ flex: 2, height: '44px', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', border: 'none', borderRadius: '9999px', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 500, cursor: 'pointer', opacity: savingReminder ? 0.6 : 1, boxShadow: '0 4px 12px rgba(107,176,72,0.25)' }}
