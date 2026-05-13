@@ -6,7 +6,8 @@ console.log('Claude key loaded:', CLAUDE_API_KEY ? 'YES — starts with: ' + CLA
 async function callGemini(
   prompt: string,
   images?: Array<{ base64: string; mimeType: string }>,
-  useHighQuality?: boolean
+  useHighQuality?: boolean,
+  maxTokens: number = 2048
 ): Promise<string> {
   const model = useHighQuality ? 'claude-sonnet-4-6' : 'claude-haiku-4-5-20251001'
 
@@ -18,7 +19,7 @@ async function callGemini(
   }
   content.push({ type: 'text', text: prompt })
 
-  console.log('Calling Claude API...', { model, hasImages: !!images?.length })
+  console.log('Calling Claude API...', { model, hasImages: !!images?.length, maxTokens })
 
   const response = await fetch(CLAUDE_URL, {
     method: 'POST',
@@ -28,7 +29,7 @@ async function callGemini(
       'anthropic-version': '2023-06-01',
       'anthropic-dangerous-direct-browser-access': 'true',
     },
-    body: JSON.stringify({ model, max_tokens: 2048, messages: [{ role: 'user', content }] })
+    body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: 'user', content }] })
   })
 
   console.log('Claude response status:', response.status)
@@ -45,12 +46,31 @@ async function callGemini(
 }
 
 function safeParseJSON<T>(text: string, fallback: T): T {
+  const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim()
   try {
-    const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim()
-    const result = JSON.parse(cleaned)
-    return result
+    return JSON.parse(cleaned)
   } catch (e) {
-    console.error('[safeParseJSON] Failed to parse:', e, 'Input was:', text.slice(0, 300))
+    // Truncation salvage: when the response was cut mid-output, try to recover the
+    // largest valid prefix. Useful for plan generation where some tasks > no tasks.
+    try {
+      // Try to close the JSON at the last complete object/array boundary
+      const lastValidObject = cleaned.lastIndexOf('},')
+      const lastValidArray = cleaned.lastIndexOf('],')
+      const cutAt = Math.max(lastValidObject, lastValidArray)
+      if (cutAt > 0) {
+        // Close any open brackets to make valid JSON
+        let salvage = cleaned.slice(0, cutAt + 1)
+        // Count remaining open brackets and close them
+        const openBraces = (salvage.match(/\{/g) ?? []).length - (salvage.match(/\}/g) ?? []).length
+        const openSquares = (salvage.match(/\[/g) ?? []).length - (salvage.match(/\]/g) ?? []).length
+        for (let i = 0; i < openSquares; i++) salvage += ']'
+        for (let i = 0; i < openBraces; i++) salvage += '}'
+        const partial = JSON.parse(salvage)
+        console.warn('[safeParseJSON] Salvaged partial JSON after truncation')
+        return partial
+      }
+    } catch { /* salvage failed, fall through to fallback */ }
+    console.error('[safeParseJSON] Failed to parse:', e, 'Input was:', cleaned.slice(0, 300), '... length:', cleaned.length)
     return fallback
   }
 }
@@ -107,7 +127,8 @@ Output STRICTLY this JSON shape — no markdown, no commentary:
 }
 `
   try {
-    const raw = await callGemini(prompt)
+    // Scope check output is tiny (~3 fields, <500 tokens) — keep budget small for fast response
+    const raw = await callGemini(prompt, undefined, false, 1024)
     const parsed = safeParseJSON<ScopeAssessment>(raw, { scope: 'realistic', message: '' })
     if (parsed.scope !== 'realistic' && parsed.scope !== 'ambitious' && parsed.scope !== 'unrealistic') {
       return { scope: 'realistic', message: '' }
@@ -236,7 +257,10 @@ Generate exactly ${sprintLength} tasks, one per day. Day numbers run 1 to ${spri
 
   try {
     console.log('[AI-1] Sending goal to Gemini:', goalText)
-    const raw = await callGemini(prompt)
+    // Plan output is large: 30 tasks × (task_text + ongoing_habits[] + rationale)
+    // ≈ 6-9k tokens of structured JSON. Need headroom or the response truncates mid-day.
+    const planMaxTokens = sprintLength <= 7 ? 4096 : sprintLength <= 15 ? 8192 : 12288
+    const raw = await callGemini(prompt, undefined, false, planMaxTokens)
     console.log('[AI-1] Raw Gemini response:', raw.slice(0, 500))
     const parsed = safeParseJSON<{ wasVague: boolean; tasks: GeneratedTask[] }>(raw, { wasVague: false, tasks: [] })
     console.log('[AI-1] Parsed tasks count:', parsed.tasks?.length ?? 0)
@@ -426,7 +450,8 @@ OUTPUT FORMAT (strict JSON array):
 `
 
   try {
-    const raw = await callGemini(prompt)
+    // Replan can also be many days — give it generous headroom
+    const raw = await callGemini(prompt, undefined, false, 8192)
     const parsed = safeParseJSON<GeneratedTask[]>(raw, [])
     if (!parsed || parsed.length === 0) {
       return getFallbackTasks(daysRemaining).map((t, i) => ({ ...t, day: currentDay + 1 + i }))
