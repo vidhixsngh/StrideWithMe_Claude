@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Lock, Users, Globe, Sprout, ChevronLeft } from 'lucide-react'
 import PlanGeneratingScreen from '../components/PlanGeneratingScreen'
@@ -6,8 +6,8 @@ import { useAuth } from '../context/AuthContext'
 import { createSprint, createTasks, calculateEndDate, updateReminderSettings } from '../lib/db'
 import { enablePush, isPushSupported, isStandaloneInstalled, isIOS } from '../lib/push'
 import { supabase } from '../lib/supabase'
-import { generateSprintPlan } from '../lib/gemini'
-import type { GeneratedTask } from '../lib/gemini'
+import { generateSprintPlan, assessGoalScope } from '../lib/gemini'
+import type { GeneratedTask, ScopeAssessment } from '../lib/gemini'
 import { track, Events, setPeople, incrementPeople } from '../lib/analytics'
 
 type Visibility = 'PRIVATE' | 'COHORT' | 'PUBLIC'
@@ -45,6 +45,9 @@ export default function OnboardingPage() {
   const [, setPlanGenerated] = useState(false)
   const [extraContext, setExtraContext] = useState('')
   const [hasUsedExtraContext, setHasUsedExtraContext] = useState(false)
+  const [scopeAssessment, setScopeAssessment] = useState<ScopeAssessment | null>(null)
+  const [scopeModalState, setScopeModalState] = useState<'closed' | 'unrealistic'>('closed')
+  const [assessingScope, setAssessingScope] = useState(false)
 
   const goToStep = (next: number) => {
     setDirection('out')
@@ -95,6 +98,8 @@ export default function OnboardingPage() {
         day_number: index + 1,
         task_text: t.task_text,
         task_type: t.task_type ?? 'build',
+        ongoing_habits: t.ongoing_habits ?? [],
+        rationale: t.rationale ?? null,
       }))
 
       console.log('[Onboarding] Inserting tasks:', tasksToSave.length)
@@ -119,16 +124,32 @@ export default function OnboardingPage() {
     }
   }
 
+  // Pass 1: assess scope. If unrealistic, pause for user input.
+  // Pass 2 (proceedToPlanGeneration): generate full plan and advance to Step 4.
   const handleGoToStep4 = async () => {
+    setAssessingScope(true)
+    const assessment = await assessGoalScope(goal, sprintLength ?? 30)
+    setAssessingScope(false)
+    setScopeAssessment(assessment)
+
+    if (assessment.scope === 'unrealistic') {
+      setScopeModalState('unrealistic')
+      return // pause — wait for user to accept reframe / revise / override
+    }
+    await proceedToPlanGeneration(goal)
+  }
+
+  const proceedToPlanGeneration = async (effectiveGoal: string) => {
     setGeneratingPlan(true)
     track(Events.PlanGenerated, {
       sprint_length: sprintLength,
       visibility,
-      goal_length: goal.length,
+      goal_length: effectiveGoal.length,
       has_past_reflection: !!pastReflection?.trim(),
       has_extra_context: !!extraContext?.trim(),
+      scope: scopeAssessment?.scope ?? 'realistic',
     })
-    const result = await generateSprintPlan(goal, sprintLength ?? 30, 'general', pastReflection, extraContext)
+    const result = await generateSprintPlan(effectiveGoal, sprintLength ?? 30, 'general', pastReflection, extraContext)
     setAiTasks(result.tasks)
     setWasVague(result.wasVague)
     setPlanGenerated(true)
@@ -190,9 +211,68 @@ export default function OnboardingPage() {
         {step === 3 && (
           <Step3Visibility visibility={visibility} setVisibility={setVisibility} onNext={handleGoToStep4} generatingPlan={generatingPlan} onBack={() => goToStep(2)} />
         )}
-        {step === 4 && <Step4Preview goal={goal} onBegin={() => goToStep(5)} submitting={false} submitError={undefined} aiTasks={aiTasks} wasVague={wasVague} generatingPlan={generatingPlan} onUpdateTasks={setAiTasks} pastReflection={pastReflection} extraContext={extraContext} hasUsedExtraContext={hasUsedExtraContext} onRegenerateWithContext={handleRegenerateWithContext} onBack={() => goToStep(3)} />}
+        {step === 4 && <Step4Preview goal={goal} sprintLength={sprintLength ?? 30} onBegin={() => goToStep(5)} submitError={undefined} aiTasks={aiTasks} wasVague={wasVague} generatingPlan={generatingPlan} pastReflection={pastReflection} extraContext={extraContext} hasUsedExtraContext={hasUsedExtraContext} onRegenerateWithContext={handleRegenerateWithContext} onBack={() => goToStep(3)} scopeAssessment={scopeAssessment} />}
         {step === 5 && <Step5Reminder onBeginDay1={handleBeginDay1} submitting={submitting} submitError={submitError} onBack={() => goToStep(4)} />}
       </div>
+
+      {/* Unrealistic-scope modal — pause flow before plan generation */}
+      {scopeModalState === 'unrealistic' && scopeAssessment && (
+        <>
+          <div onClick={() => setScopeModalState('closed')} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 9998 }} />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 'calc(100% - 40px)', maxWidth: '380px', zIndex: 9999, background: '#FFFFFF', borderRadius: '24px', padding: '24px', boxShadow: '0 24px 64px rgba(28,61,48,0.22)' }}>
+            <div style={{ width: '52px', height: '52px', margin: '0 auto 14px', borderRadius: '50%', background: 'linear-gradient(135deg, #FEF3E8 0%, #F5D5A8 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>🪞</div>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', letterSpacing: '0.12em', color: '#D97706', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 700, textAlign: 'center' }}>An honest take</p>
+            <p style={{ fontFamily: 'var(--font-heading)', fontSize: '18px', fontWeight: 600, color: '#1A3028', margin: '0 0 10px', letterSpacing: '-0.01em', textAlign: 'center', lineHeight: 1.3 }}>
+              {sprintLength} days isn't enough for this goal
+            </p>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: '#3D5949', margin: '0 0 14px', lineHeight: 1.55, textAlign: 'center' }}>
+              {scopeAssessment.message}
+            </p>
+            {scopeAssessment.reframed_goal && (
+              <div style={{ background: 'linear-gradient(135deg, rgba(118,197,72,0.10) 0%, rgba(118,197,72,0.04) 100%)', border: '1.5px solid rgba(107,176,72,0.30)', borderRadius: '14px', padding: '12px 14px', marginBottom: '16px' }}>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#5A9A3A', margin: '0 0 4px', fontWeight: 700 }}>🌱 Reframed goal</p>
+                <p style={{ fontFamily: 'var(--font-heading)', fontSize: '14px', fontStyle: 'italic', color: '#1A3028', margin: 0, lineHeight: 1.5 }}>
+                  "{scopeAssessment.reframed_goal}"
+                </p>
+              </div>
+            )}
+            <button
+              onClick={async () => {
+                if (!scopeAssessment.reframed_goal) return
+                setGoal(scopeAssessment.reframed_goal)
+                setScopeModalState('closed')
+                await proceedToPlanGeneration(scopeAssessment.reframed_goal)
+              }}
+              style={{ width: '100%', height: '46px', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', border: 'none', borderRadius: '9999px', fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 500, cursor: 'pointer', boxShadow: '0 4px 12px rgba(107,176,72,0.25)', marginBottom: '8px' }}
+            >
+              Use the reframed goal →
+            </button>
+            <button
+              onClick={() => { setScopeModalState('closed'); goToStep(1) }}
+              style={{ width: '100%', height: '40px', background: '#FFFFFF', border: '1px solid #D4EDE3', color: '#3D7A5F', borderRadius: '9999px', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, cursor: 'pointer', marginBottom: '8px' }}
+            >
+              Edit my goal
+            </button>
+            <button
+              onClick={async () => {
+                setScopeModalState('closed')
+                await proceedToPlanGeneration(goal)
+              }}
+              style={{ width: '100%', background: 'none', border: 'none', color: '#9BBFB2', fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', cursor: 'pointer', padding: '6px' }}
+            >
+              I understand — generate the plan anyway
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Quick scope assessment loader */}
+      {assessingScope && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'linear-gradient(180deg, #EAF5F0 0%, #F0F7F4 50%, #F5F0E8 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '14px' }}>
+          <div style={{ width: '36px', height: '36px', border: '3px solid #D4EDE3', borderTopColor: '#3D7A5F', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', color: '#6B9E8A', textAlign: 'center', margin: 0 }}>Checking if your goal fits the timeframe…</p>
+        </div>
+      )}
 
       {generatingPlan && (
         <PlanGeneratingScreen sprintLength={sprintLength ?? 30} goalText={goal} />
@@ -728,90 +808,41 @@ function Step3Visibility({
 }
 
 /* ============ STEP 4 ============ */
-function Step4Preview({ goal, onBegin, submitError, aiTasks, wasVague, generatingPlan, onUpdateTasks, pastReflection, extraContext, hasUsedExtraContext, onRegenerateWithContext, onBack }: { goal: string; onBegin: () => void; submitting?: boolean; submitError?: string; aiTasks?: GeneratedTask[]; wasVague?: boolean; generatingPlan?: boolean; onUpdateTasks?: (tasks: GeneratedTask[]) => void; pastReflection?: string; extraContext?: string; hasUsedExtraContext?: boolean; onRegenerateWithContext?: (text: string) => void; onBack?: () => void }) {
+function getPhases(total: number): Array<{ name: string; tag: string; from: number; to: number; emoji: string; color: string }> {
+  const F = Math.max(1, Math.round(total * 0.2))
+  const B = Math.max(F + 1, Math.round(total * 0.67))
+  const P = Math.max(B + 1, Math.round(total * 0.93))
+  return [
+    { name: 'Foundation', tag: 'Habits installed', from: 1, to: F, emoji: '🌱', color: '#6BB048' },
+    { name: 'Build', tag: 'Output compounds', from: F + 1, to: B, emoji: '🌿', color: '#3D7A5F' },
+    { name: 'Peak', tag: 'Push hardest', from: B + 1, to: P, emoji: '⚡', color: '#D97706' },
+    { name: 'Finish', tag: 'Ship & measure', from: P + 1, to: total, emoji: '🌻', color: '#7B6FA0' },
+  ]
+}
+
+function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVague, generatingPlan, pastReflection, extraContext, hasUsedExtraContext, onRegenerateWithContext, onBack, scopeAssessment }: { goal: string; sprintLength: number; onBegin: () => void; submitting?: boolean; submitError?: string; aiTasks?: GeneratedTask[]; wasVague?: boolean; generatingPlan?: boolean; pastReflection?: string; extraContext?: string; hasUsedExtraContext?: boolean; onRegenerateWithContext?: (text: string) => void; onBack?: () => void; scopeAssessment?: ScopeAssessment | null }) {
   const [contextOpen, setContextOpen] = useState(false)
   const [contextDraft, setContextDraft] = useState('')
-  const [editingIndex, setEditingIndex] = useState<number | null>(null)
-  const [editText, setEditText] = useState('')
-  const [dragIndex, setDragIndex] = useState<number | null>(null)
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
-  const dragStartY = useRef(0)
-  const dragItemRef = useRef<number | null>(null)
+  const [expandedDay, setExpandedDay] = useState<number | null>(null)
 
   const tasks = aiTasks && aiTasks.length > 0
-    ? aiTasks.slice(0, 5)
-    : PLACEHOLDER_TASKS.map((t, i) => ({ day: i + 1, task_text: t, task_type: 'build' as const }))
+    ? aiTasks
+    : PLACEHOLDER_TASKS.map((t, i) => ({ day: i + 1, task_text: t, task_type: 'build' as const, ongoing_habits: [], rationale: '' }))
 
-  const handleEdit = (index: number) => {
-    setEditingIndex(index)
-    setEditText(tasks[index].task_text)
-  }
-
-  const handleSaveEdit = () => {
-    if (editingIndex === null || !onUpdateTasks || !aiTasks) return
-    const updated = [...aiTasks]
-    updated[editingIndex] = { ...updated[editingIndex], task_text: editText.trim() || updated[editingIndex].task_text }
-    onUpdateTasks(updated)
-    setEditingIndex(null)
-    setEditText('')
-  }
-
-  const handleDelete = (index: number) => {
-    if (!onUpdateTasks || !aiTasks || aiTasks.length <= 1) return
-    const updated = aiTasks.filter((_, i) => i !== index).map((t, i) => ({ ...t, day: i + 1 }))
-    onUpdateTasks(updated)
-  }
-
-
-
-
-  const handleDragDrop = (fromIndex: number, toIndex: number) => {
-    if (!onUpdateTasks || !aiTasks || fromIndex === toIndex) return
-    const updated = [...aiTasks]
-    const [moved] = updated.splice(fromIndex, 1)
-    updated.splice(toIndex, 0, moved)
-    onUpdateTasks(updated.map((t, i) => ({ ...t, day: i + 1 })))
-  }
-
-  const onTouchStart = (index: number, e: React.TouchEvent) => {
-    if (editingIndex !== null) return
-    dragItemRef.current = index
-    dragStartY.current = e.touches[0].clientY
-    setDragIndex(index)
-  }
-
-  const onTouchMove = (e: React.TouchEvent) => {
-    if (dragItemRef.current === null) return
-    const y = e.touches[0].clientY
-    const cards = document.querySelectorAll('[data-task-card]')
-    let overIdx = dragItemRef.current
-    cards.forEach((card, i) => {
-      const rect = card.getBoundingClientRect()
-      if (y > rect.top && y < rect.bottom) overIdx = i
-    })
-    setDragOverIndex(overIdx)
-  }
-
-  const onTouchEnd = () => {
-    if (dragItemRef.current !== null && dragOverIndex !== null) {
-      handleDragDrop(dragItemRef.current, dragOverIndex)
-    }
-    dragItemRef.current = null
-    setDragIndex(null)
-    setDragOverIndex(null)
-  }
+  const phases = getPhases(sprintLength)
+  const isAmbitious = scopeAssessment?.scope === 'ambitious'
 
   return (
     <div className="flex-1 flex flex-col">
       {onBack && <BackButton onClick={onBack} />}
       <StepLabel step={4} label="Your plan" />
-      <Heading>Here's your first 5 days</Heading>
+      <Heading>Your {sprintLength}-day plan</Heading>
       <Subtext>
-        I've mapped this out based on your goal. Tap any task to edit it.
+        Tap any day to see why it matters. The habits you build carry forward — every day stacks on what came before.
       </Subtext>
 
-      {/* Goal card — sprout green theme */}
-      <div style={{ background: 'linear-gradient(135deg, rgba(118,197,72,0.10) 0%, rgba(107,176,72,0.06) 100%)', border: '1.5px solid rgba(107,176,72,0.35)', borderRadius: '20px', padding: '14px 16px', marginTop: '24px', marginBottom: '16px', position: 'relative' }}>
+      {/* Goal card */}
+      <div style={{ background: 'linear-gradient(135deg, rgba(118,197,72,0.10) 0%, rgba(107,176,72,0.06) 100%)', border: '1.5px solid rgba(107,176,72,0.35)', borderRadius: '20px', padding: '14px 16px', marginTop: '24px', marginBottom: '14px', position: 'relative' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
           <span style={{ fontSize: '12px' }}>🌱</span>
           <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', letterSpacing: '0.1em', color: '#5A9A3A', margin: 0, textTransform: 'uppercase', fontWeight: 600 }}>
@@ -823,9 +854,24 @@ function Step4Preview({ goal, onBegin, submitError, aiTasks, wasVague, generatin
         </p>
       </div>
 
-      {/* Reflection-tailored badge — only when user shared past reflection */}
+      {/* Ambitious scope banner */}
+      {isAmbitious && scopeAssessment?.message && (
+        <div style={{ background: 'linear-gradient(135deg, rgba(245,158,74,0.10) 0%, rgba(245,158,74,0.04) 100%)', border: '1.5px solid rgba(245,158,74,0.40)', borderRadius: '14px', padding: '12px 14px', marginBottom: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+            <span style={{ fontSize: '13px' }}>⚡</span>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', letterSpacing: '0.1em', color: '#D97706', margin: 0, textTransform: 'uppercase', fontWeight: 700 }}>
+              Ambitious — daily compliance required
+            </p>
+          </div>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', color: '#3D5949', margin: 0, lineHeight: 1.5 }}>
+            {scopeAssessment.message}
+          </p>
+        </div>
+      )}
+
+      {/* Reflection-tailored badge */}
       {pastReflection && pastReflection.trim().length > 0 && (
-        <div style={{ background: 'linear-gradient(135deg, rgba(123,111,160,0.10) 0%, rgba(118,197,72,0.06) 100%)', border: '1px solid rgba(123,111,160,0.30)', borderRadius: '14px', padding: '12px 14px', marginBottom: '12px' }}>
+        <div style={{ background: 'linear-gradient(135deg, rgba(123,111,160,0.10) 0%, rgba(118,197,72,0.06) 100%)', border: '1px solid rgba(123,111,160,0.30)', borderRadius: '14px', padding: '12px 14px', marginBottom: '14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
             <span style={{ fontSize: '13px' }}>🪞</span>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', letterSpacing: '0.1em', color: '#7B6FA0', margin: 0, textTransform: 'uppercase', fontWeight: 600 }}>
@@ -841,82 +887,96 @@ function Step4Preview({ goal, onBegin, submitError, aiTasks, wasVague, generatin
         </div>
       )}
 
-      {/* Editable hint (always shown) */}
-      <div style={{ backgroundColor: '#FEF3E8', border: '1px solid #F5D5A8', borderRadius: '12px', padding: '10px 14px', marginBottom: '12px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-        <span style={{ fontSize: '12px', flexShrink: 0, marginTop: '1px' }}>💡</span>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#D97706', margin: 0, lineHeight: 1.5 }}>
-          {wasVague ? "We made some assumptions. Edit any task below to match your actual plan." : 'Tasks are fully editable. Tap any one to refine it before you begin.'}
-        </p>
-      </div>
+      {wasVague && (
+        <div style={{ backgroundColor: '#FEF3E8', border: '1px solid #F5D5A8', borderRadius: '12px', padding: '10px 14px', marginBottom: '12px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+          <span style={{ fontSize: '12px', flexShrink: 0, marginTop: '1px' }}>💡</span>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#D97706', margin: 0, lineHeight: 1.5 }}>
+            We made some assumptions — tap "Missed something?" below to refine.
+          </p>
+        </div>
+      )}
 
-      {/* Section label with hint */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', letterSpacing: '0.1em', color: '#5A9A3A', margin: 0, textTransform: 'uppercase', fontWeight: 600 }}>
-          Your first 5 days
-        </p>
-        <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2' }}>Tap to edit · drag to reorder</span>
-      </div>
-
-      {/* Day cards — minimal, sprout green */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
-        {tasks.map((task, i) => {
-          const isEditing = editingIndex === i
-          const isDragOver = dragOverIndex === i && dragIndex !== i
+      {/* All days, grouped by phase */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '14px' }}>
+        {phases.map((phase) => {
+          const phaseTasks = tasks.filter((t) => {
+            const day = t.day
+            return day >= phase.from && day <= phase.to
+          })
+          if (phaseTasks.length === 0) return null
           return (
-            <div
-              key={i}
-              data-task-card
-              onTouchStart={(e) => onTouchStart(i, e)}
-              style={{
-                background: isDragOver ? 'rgba(118,197,72,0.10)' : 'rgba(255,255,255,0.85)',
-                border: isDragOver ? '1.5px solid #6BB048' : '1px solid #E8F0EC',
-                borderRadius: '14px',
-                padding: '10px 12px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                opacity: dragIndex === i ? 0.5 : 1,
-                transition: 'all 0.15s ease',
-                touchAction: editingIndex !== null ? 'auto' : 'none',
-                boxShadow: '0 1px 3px rgba(28,61,48,0.04)',
-              }}
-            >
-              {/* Day badge */}
-              <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', fontFamily: 'var(--font-heading)', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 6px rgba(107,176,72,0.25)' }}>
-                {i + 1}
-              </div>
-
-              {/* Content */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                {isEditing ? (
-                  <input
-                    value={editText}
-                    onChange={(e) => setEditText(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleSaveEdit(); if (e.key === 'Escape') setEditingIndex(null) }}
-                    autoFocus
-                    style={{ width: '100%', border: '1.5px solid #6BB048', borderRadius: '8px', padding: '5px 8px', fontFamily: 'var(--font-body)', fontSize: '13px', color: '#1A3028', outline: 'none', boxSizing: 'border-box', background: '#FFFFFF' }}
-                  />
-                ) : (
-                  <p onClick={() => handleEdit(i)} style={{ fontFamily: 'var(--font-body)', fontSize: '13px', lineHeight: 1.45, color: '#2D4A3E', margin: 0, cursor: 'pointer' }}>
-                    {task.task_text}
+            <div key={phase.name}>
+              {/* Phase header */}
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '8px', paddingLeft: '2px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '13px' }}>{phase.emoji}</span>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', letterSpacing: '0.1em', color: phase.color, margin: 0, textTransform: 'uppercase', fontWeight: 700 }}>
+                    {phase.name}
                   </p>
-                )}
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2' }}>
+                    · Day {phase.from}{phase.from !== phase.to ? `–${phase.to}` : ''}
+                  </span>
+                </div>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2' }}>{phase.tag}</span>
               </div>
 
-              {/* Actions */}
-              {isEditing ? (
-                <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                  <button onClick={handleSaveEdit} style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: 600, color: '#FFFFFF', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', border: 'none', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer' }}>Save</button>
-                  <button onClick={() => setEditingIndex(null)} style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#9BBFB2', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px' }}>✕</button>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
-                  <span style={{ fontSize: '11px', color: '#B8D9CC', cursor: 'grab', userSelect: 'none', padding: '0 4px' }}>⠿</span>
-                  {tasks.length > 1 && (
-                    <button onClick={() => handleDelete(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#C8DDD5', padding: '4px 6px', lineHeight: 1 }}>✕</button>
-                  )}
-                </div>
-              )}
+              {/* Day cards within this phase */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {phaseTasks.map((task) => {
+                  const day = task.day
+                  const expanded = expandedDay === day
+                  const habits = task.ongoing_habits ?? []
+                  return (
+                    <button
+                      key={day}
+                      onClick={() => setExpandedDay(expanded ? null : day)}
+                      style={{
+                        textAlign: 'left',
+                        width: '100%',
+                        background: 'rgba(255,255,255,0.85)',
+                        border: expanded ? `1.5px solid ${phase.color}` : '1px solid #E8F0EC',
+                        borderRadius: '14px',
+                        padding: '10px 12px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px',
+                        cursor: 'pointer',
+                        boxShadow: '0 1px 3px rgba(28,61,48,0.04)',
+                        transition: 'border 0.15s ease, background 0.15s ease',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: `linear-gradient(135deg, ${phase.color}, ${phase.color}dd)`, color: '#FFFFFF', fontFamily: 'var(--font-heading)', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: `0 2px 6px ${phase.color}40` }}>
+                          {day}
+                        </div>
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', lineHeight: 1.45, color: '#2D4A3E', margin: 0, flex: 1, fontWeight: 500 }}>
+                          {task.task_text}
+                        </p>
+                        <span style={{ fontSize: '10px', color: '#9BBFB2', transition: 'transform 0.15s ease', transform: expanded ? 'rotate(180deg)' : 'rotate(0)' }}>▾</span>
+                      </div>
+
+                      {habits.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', paddingLeft: '38px' }}>
+                          <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2', alignSelf: 'center' }}>🔁</span>
+                          {habits.map((h, k) => (
+                            <span key={k} style={{ fontFamily: 'var(--font-body)', fontSize: '10px', color: '#5A9A3A', background: 'rgba(118,197,72,0.10)', border: '1px solid rgba(107,176,72,0.18)', borderRadius: '9999px', padding: '2px 8px', whiteSpace: 'nowrap' }}>
+                              {h}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {expanded && task.rationale && (
+                        <div style={{ paddingLeft: '38px', paddingTop: '4px' }}>
+                          <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', margin: 0, lineHeight: 1.55, borderLeft: `2px solid ${phase.color}`, paddingLeft: '10px' }}>
+                            {task.rationale}
+                          </p>
+                        </div>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           )
         })}

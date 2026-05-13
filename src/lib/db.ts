@@ -22,6 +22,8 @@ export interface Task {
   task_type: 'build' | 'research' | 'review'
   is_completed: boolean
   is_revised: boolean
+  ongoing_habits?: string[]
+  rationale?: string | null
 }
 
 export interface DailyLog {

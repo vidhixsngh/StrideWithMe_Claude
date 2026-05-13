@@ -63,6 +63,60 @@ export interface GeneratedTask {
   day: number
   task_text: string
   task_type: 'build' | 'research' | 'review'
+  ongoing_habits?: string[]
+  rationale?: string
+}
+
+export type GoalScope = 'realistic' | 'ambitious' | 'unrealistic'
+
+export interface ScopeAssessment {
+  scope: GoalScope
+  message: string
+  reframed_goal?: string
+}
+
+/**
+ * Pre-flight scope check. Run before generateSprintPlan to detect impossible asks
+ * (e.g. "lose 20 kg in 30 days", "learn Mandarin fluently in 14 days") so the user
+ * can adjust before committing to a plan they can't actually follow.
+ */
+export async function assessGoalScope(goalText: string, sprintLength: number): Promise<ScopeAssessment> {
+  const prompt = `
+You are a brutally honest, kind sprint coach assessing whether a user's goal is achievable in their chosen timeframe.
+
+GOAL: "${goalText}"
+SPRINT LENGTH: ${sprintLength} days
+
+Classify the scope as exactly ONE of:
+- "realistic": The goal can be achieved in ${sprintLength} days with daily effort. No warning needed.
+- "ambitious": The goal is at the upper edge of what's possible. It demands daily compliance and a bit of luck. Warn the user but still proceed.
+- "unrealistic": The goal cannot be achieved in ${sprintLength} days by any reasonable interpretation. Either the timeframe is too short, the outcome depends on factors outside daily action (luck, external decisions), or it violates physical/economic reality (e.g. "make $1M in 30 days", "lose 20 kg in 30 days", "become fluent in a language in 14 days").
+
+If "unrealistic", you MUST provide a "reframed_goal" — a tight, achievable version that uses the same ${sprintLength} days to BUILD THE FOUNDATION for the bigger ambition. Examples:
+- "Lose 15 kg in 30 days" → reframe to "Lose 5 kg + lock in a daily routine that gets you the rest in months 2–3"
+- "Make $1M in 30 days" → reframe to "Set up the system + acquire your first 10 paying customers"
+- "Become fluent in Mandarin in 14 days" → reframe to "Build a daily 30-min practice habit + reach HSK-1 vocabulary"
+
+The "message" field should be 1–2 sentences directly to the user, in second person ("You're...", "This is..."). For realistic, a warm acknowledgement. For ambitious, naming the stakes. For unrealistic, an honest coach-level pushback explaining why and pointing at the reframe.
+
+Output STRICTLY this JSON shape — no markdown, no commentary:
+{
+  "scope": "realistic" | "ambitious" | "unrealistic",
+  "message": "...",
+  "reframed_goal": "..."  // ONLY when scope is "unrealistic"
+}
+`
+  try {
+    const raw = await callGemini(prompt)
+    const parsed = safeParseJSON<ScopeAssessment>(raw, { scope: 'realistic', message: '' })
+    if (parsed.scope !== 'realistic' && parsed.scope !== 'ambitious' && parsed.scope !== 'unrealistic') {
+      return { scope: 'realistic', message: '' }
+    }
+    return parsed
+  } catch (err) {
+    console.error('[AI scope] error:', err)
+    return { scope: 'realistic', message: '' }
+  }
 }
 
 export async function generateSprintPlan(
@@ -120,36 +174,64 @@ A user has set this goal:
 Sprint length: ${sprintLength} days
 Goal category: ${goalCategory}
 ${reflectionBlock}${extraContextBlock}
-TASK:
-Generate a daily task plan SPECIFICALLY for this exact goal. Every task must directly contribute to achieving "${goalText}". Do NOT generate generic productivity tasks.
+YOUR ROLE:
+You are a sprint coach — like a personal trainer, mentor, or shipping partner — building a daily plan that a real human would follow with discipline. This is not a generic productivity list. This is THE plan that determines whether they succeed at "${goalText}" in ${sprintLength} days.
 
-RULES:
-1. Output ONLY a valid JSON object. No explanation, no markdown.
-2. Each task must be completable in 1-3 hours.
-3. Tasks must be SPECIFIC to the user's goal — reference their exact domain, deliverables, and milestones.
-4. Tasks must escalate in complexity:
-   - First 30% of days: research, planning, and foundation tasks specific to this goal
-   - Middle 50% of days: build and execution tasks that create real deliverables toward this goal
-   - Last 20% of days: review, refine, ship, and validate progress toward this goal
-5. Each task_text must be under 80 characters.
-6. task_type must be exactly: "build", "research", or "review"
-7. If the goal is vague or lacks specificity, set wasVague: true.
-   A goal is vague if it lacks: what specifically, by when, or measurable outcome.
-   Even if vague, still generate the BEST tasks you can infer from the goal.
-8. If the goal contains unrealistic financial targets (eg. make $100k in 30 days), extreme physical goals, or interpersonal manipulation — reframe it as a skill-building goal in your task generation. Still generate tasks but make them realistic.
-9. Goal text must be in English. If not, generate tasks in English anyway.
-10. NEVER generate filler tasks like "reflect on progress" or "review your notes" in the first 80% of the sprint. Every task should produce a tangible output.
+UNIVERSAL COACHING PRINCIPLES (apply to EVERY goal, fitness/build/career/learning/creative/mindset/anything):
+
+1. PHASE STRUCTURE — divide the ${sprintLength} days into 4 phases:
+   ${sprintLength >= 30
+      ? '- Foundation (Days 1–6): tiny wins, daily habit installation, no big swings\n   - Build (Days 7–20): compound and escalate, real output starts\n   - Peak (Days 21–28): hardest, most ambitious tasks, the actual push\n   - Finish (Days 29–30): ship, measure, share, lock-in'
+      : sprintLength >= 14
+      ? '- Foundation (Days 1–3): tiny wins, daily habit installation\n   - Build (Days 4–' + Math.floor(sprintLength * 0.6) + '): compound and escalate, real output starts\n   - Peak (Days ' + (Math.floor(sprintLength * 0.6) + 1) + '–' + (sprintLength - 2) + '): hardest, most ambitious tasks\n   - Finish (Days ' + (sprintLength - 1) + '–' + sprintLength + '): ship, measure, share, lock-in'
+      : '- Foundation (Days 1–2): tiny wins, fast habit installation\n   - Build (Days 3–' + Math.max(3, sprintLength - 3) + '): real output, compound\n   - Peak (Day ' + (sprintLength - 1) + '): hardest task\n   - Finish (Day ' + sprintLength + '): ship/measure/share'
+   }
+
+2. HABIT CONTINUITY — every habit introduced on Day N must appear in "ongoing_habits" on Day N+1, N+2, …, until the sprint ends. The user's effort COMPOUNDS, it does not vanish. If Day 1 task is "log all meals", Day 2's ongoing_habits MUST include "Log all meals (from Day 1)". Same for any daily ritual the goal requires.
+
+3. EACH DAY = ONE NEW ACTION + CARRIED HABITS — task_text is the SINGLE NEW thing for today. ongoing_habits is the cumulative list of established daily commitments. Do not stuff multiple new actions into one task_text.
+
+4. NO FAKE MILESTONES — you may NOT use words like "halfway", "midpoint", "final push", "almost there" unless the day_number is mathematically near that point. Halfway = Day ${Math.round(sprintLength / 2)}. Final = last 2 days.
+
+5. NO PREMATURE REST in Foundation phase. Rest/light-review days only legal in Peak phase (or weekly recovery if sprint is ≥21 days, on Day 7 / 14 / 21).
+
+6. DOMAIN VOCABULARY — use the user's own language. For weight loss: "calorie deficit, log meals, walk, weigh in". For shipping a SaaS: "user research, prototype, deploy, demo". For learning German: "vocabulary, comprehension, conversation". Generic productivity speak ("review notes", "plan next steps") is BANNED.
+
+7. RATIONALE — for each day, write a 1-sentence "rationale" explaining why this specific task today, in the context of the phase. Examples:
+   - "Day 1 starts with the smallest viable habit so you build a streak before willpower runs out."
+   - "Day 14 introduces resistance because by now the baseline is automatic — time to make it harder."
+   - "Day 28 is a pre-ship rehearsal so the final two days don't surprise you."
+
+OUTPUT REQUIREMENTS:
+- Output ONLY a valid JSON object. No markdown, no commentary.
+- Each task_text must be under 100 characters.
+- task_type must be exactly "build", "research", or "review".
+- ongoing_habits is an array of strings (≤ 5 items per day). Each string is short, declarative, in second person ("Stay in deficit", "Continue daily walk", "Keep 30-min practice block"). For Day 1, ongoing_habits should be empty array [].
+- rationale is one sentence, under 140 characters.
+- wasVague: true ONLY if the goal lacks any specificity (e.g. just "be better"). For most user inputs, false.
 
 OUTPUT FORMAT (strict JSON):
 {
   "wasVague": false,
   "tasks": [
-    { "day": 1, "task_text": "...", "task_type": "research" },
-    { "day": 2, "task_text": "...", "task_type": "research" }
+    {
+      "day": 1,
+      "task_text": "Pick your tracking method and set up the app or notebook",
+      "task_type": "research",
+      "ongoing_habits": [],
+      "rationale": "Day 1 is about removing friction from tomorrow — when the work begins, the tool is ready."
+    },
+    {
+      "day": 2,
+      "task_text": "Log every meal in your tracker — no calorie target yet, just the data",
+      "task_type": "build",
+      "ongoing_habits": ["Use the tracker daily (from Day 1)"],
+      "rationale": "Visibility before intervention — you can't change what you don't measure."
+    }
   ]
 }
 
-Generate exactly ${sprintLength} tasks, one per day.
+Generate exactly ${sprintLength} tasks, one per day. Day numbers run 1 to ${sprintLength} sequentially.
 `
 
   try {
@@ -188,6 +270,8 @@ function getFallbackTasks(sprintLength: number): GeneratedTask[] {
     day: i + 1,
     task_text: base[i % base.length].task_text,
     task_type: base[i % base.length].task_type,
+    ongoing_habits: i === 0 ? [] : ['Stay consistent with daily action'],
+    rationale: 'Fallback plan — could not reach the AI service. Edit your goal to retry.',
   }))
 }
 
