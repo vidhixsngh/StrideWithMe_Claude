@@ -409,7 +409,8 @@ function Step1Goal({
 
       <textarea
         value={goal}
-        onChange={(e) => setGoal(e.target.value)}
+        onChange={(e) => setGoal(e.target.value.slice(0, 800))}
+        maxLength={800}
         placeholder="e.g. I want to land my first freelance client in 30 days. I've been putting it off and I'm ready to actually do it."
         className="w-full p-4 resize-none outline-none"
         style={{
@@ -1069,14 +1070,16 @@ function Step5Reminder({
         }).catch((e) => console.warn('enablePush:', e))
       }
     }
-    // Always continue to start the sprint, save or not
-    await onBeginDay1()
+    // Always continue to start the sprint, save or not.
+    // If creation fails, the parent will set submitError — reset the spinner so user can retry.
+    try { await onBeginDay1() } finally { setSavingAndStarting(false) }
   }
 
   const handleSkip = async () => {
+    setSavingAndStarting(true)
     track(Events.ReminderSkippedDuringOnboarding, { source: 'onboarding' })
     setPeople({ reminder_set_during_onboarding: false })
-    await onBeginDay1()
+    try { await onBeginDay1() } finally { setSavingAndStarting(false) }
   }
 
   return (
