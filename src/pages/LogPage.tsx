@@ -151,7 +151,7 @@ export default function LogPage() {
     if (sprint.sprint_length < 14) return // 7-day sprints: full plan already exists
     const boundaries = getPhaseBoundaries(sprint.sprint_length)
     const currentPhase = getPhaseForDay(dayNumber, sprint.sprint_length)
-    const nextPhase = nextPhaseAfter(currentPhase)
+    const nextPhase = nextPhaseAfter(currentPhase, sprint.sprint_length)
     if (!nextPhase || nextPhase === 'foundation') return // Foundation is generated at onboarding
     if (boundaries[currentPhase].to !== dayNumber) return // not last day of phase
     if (sprint.last_generated_phase === nextPhase || sprint.last_generated_phase === 'finish') return // already generated

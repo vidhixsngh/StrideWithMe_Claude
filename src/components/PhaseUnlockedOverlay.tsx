@@ -9,9 +9,9 @@ interface Props {
 }
 
 const PHASE_VISUAL: Record<Props['phase'], { emoji: string; title: string; color: string; bg: string }> = {
-  build: { emoji: '🌿', title: 'Build phase unlocked', color: '#3D7A5F', bg: 'linear-gradient(180deg, #EAF5F0 0%, #D4EDE3 60%, #B8D9CC 100%)' },
-  peak: { emoji: '⚡', title: 'Peak phase unlocked', color: '#D97706', bg: 'linear-gradient(180deg, #FEF8F0 0%, #FEF3E8 60%, #F5D5A8 100%)' },
-  finish: { emoji: '🌻', title: 'Finish phase unlocked', color: '#7B6FA0', bg: 'linear-gradient(180deg, #F5F2EC 0%, #EAE4D6 60%, #D4CBB8 100%)' },
+  build: { emoji: '🌿', title: 'Build phase unlocked', color: '#10B981', bg: 'linear-gradient(180deg, #ECFDF5 0%, #D1FAE5 60%, #A7F3D0 100%)' },
+  peak: { emoji: '⚡', title: 'Peak phase unlocked', color: '#F59E0B', bg: 'linear-gradient(180deg, #FFFBEB 0%, #FEF3C7 60%, #FDE68A 100%)' },
+  finish: { emoji: '🌻', title: 'Finish phase unlocked', color: '#8B5CF6', bg: 'linear-gradient(180deg, #F5F3FF 0%, #EDE9FE 60%, #DDD6FE 100%)' },
 }
 
 export default function PhaseUnlockedOverlay({ phase, theme, status, firstTaskText, onContinue }: Props) {

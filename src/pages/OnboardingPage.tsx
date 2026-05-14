@@ -819,15 +819,25 @@ function Step3Visibility({
 }
 
 /* ============ STEP 4 ============ */
-function getPhases(total: number): Array<{ name: string; tag: string; from: number; to: number; emoji: string; color: string }> {
+function getPhases(total: number): Array<{ name: string; tag: string; from: number; to: number; emoji: string; color: string; accent: string }> {
+  // Mirrors db.ts getPhaseBoundaries — keep in sync.
+  if (total < 10) {
+    const F = Math.max(1, Math.round(total * 0.3))
+    const B = Math.max(F + 1, Math.round(total * 0.75))
+    return [
+      { name: 'Foundation', tag: 'Plant the roots', from: 1, to: F, emoji: '🌱', color: '#22C55E', accent: '#86EFAC' },
+      { name: 'Build', tag: 'Stack the wins', from: F + 1, to: B, emoji: '🌿', color: '#10B981', accent: '#6EE7B7' },
+      { name: 'Finish', tag: 'Land it', from: B + 1, to: total, emoji: '🌻', color: '#8B5CF6', accent: '#C4B5FD' },
+    ]
+  }
   const F = Math.max(1, Math.round(total * 0.2))
-  const B = Math.max(F + 1, Math.round(total * 0.67))
-  const P = Math.max(B + 1, Math.round(total * 0.93))
+  const B = Math.max(F + 1, Math.round(total * 0.6))
+  const P = Math.max(B + 1, Math.round(total * 0.85))
   return [
-    { name: 'Foundation', tag: 'Habits installed', from: 1, to: F, emoji: '🌱', color: '#6BB048' },
-    { name: 'Build', tag: 'Output compounds', from: F + 1, to: B, emoji: '🌿', color: '#3D7A5F' },
-    { name: 'Peak', tag: 'Push hardest', from: B + 1, to: P, emoji: '⚡', color: '#D97706' },
-    { name: 'Finish', tag: 'Ship & measure', from: P + 1, to: total, emoji: '🌻', color: '#7B6FA0' },
+    { name: 'Foundation', tag: 'Plant the roots', from: 1, to: F, emoji: '🌱', color: '#22C55E', accent: '#86EFAC' },
+    { name: 'Build', tag: 'Stack the wins', from: F + 1, to: B, emoji: '🌿', color: '#10B981', accent: '#6EE7B7' },
+    { name: 'Peak', tag: 'Send it', from: B + 1, to: P, emoji: '⚡', color: '#F59E0B', accent: '#FCD34D' },
+    { name: 'Finish', tag: 'Land it', from: P + 1, to: total, emoji: '🌻', color: '#8B5CF6', accent: '#C4B5FD' },
   ]
 }
 
@@ -928,31 +938,62 @@ function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVa
         </div>
       )}
 
-      {/* Phase timeline bar — 4-segment colored visualization */}
-      <div style={{ marginBottom: '12px' }}>
-        <div style={{ display: 'flex', gap: '3px', height: '8px', borderRadius: '9999px', overflow: 'hidden' }}>
-          {phases.map((phase) => {
-            const span = phase.to - phase.from + 1
-            return (
-              <div
-                key={phase.name}
-                style={{ flex: span, background: `linear-gradient(90deg, ${phase.color}, ${phase.color}cc)`, opacity: phase.name === 'Foundation' ? 1 : 0.55 }}
-              />
-            )
-          })}
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px', padding: '0 2px' }}>
-          {phases.map((phase) => (
-            <span key={phase.name} style={{ fontFamily: 'var(--font-body)', fontSize: '9px', letterSpacing: '0.06em', color: phase.name === 'Foundation' ? phase.color : '#9BBFB2', textTransform: 'uppercase', fontWeight: 600 }}>
-              {phase.from}{phase.from !== phase.to ? `–${phase.to}` : ''}
-            </span>
-          ))}
+      {/* Phase timeline bar — colored segments with emoji checkpoints sitting ON the bar */}
+      <div style={{ marginBottom: '20px', padding: '0 12px', position: 'relative' }}>
+        <div style={{ position: 'relative', height: '32px' }}>
+          {/* Bar */}
+          <div style={{ position: 'absolute', top: '12px', left: 0, right: 0, display: 'flex', gap: '2px', height: '8px', borderRadius: '9999px', overflow: 'hidden' }}>
+            {phases.map((phase) => {
+              const span = phase.to - phase.from + 1
+              const isFoundation = phase.name === 'Foundation'
+              return (
+                <div
+                  key={phase.name}
+                  style={{
+                    flex: span,
+                    background: isFoundation
+                      ? `linear-gradient(90deg, ${phase.color}, ${phase.accent})`
+                      : `linear-gradient(90deg, ${phase.color}99, ${phase.accent}88)`,
+                    opacity: isFoundation ? 1 : 0.75,
+                  }}
+                />
+              )
+            })}
+          </div>
+          {/* Emoji checkpoints sitting on the bar */}
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '32px', display: 'flex' }}>
+            {phases.map((phase, i) => {
+              const span = phase.to - phase.from + 1
+              const isFoundation = phase.name === 'Foundation'
+              return (
+                <div key={phase.name} style={{ flex: span, display: 'flex', justifyContent: i === 0 ? 'flex-start' : i === phases.length - 1 ? 'flex-end' : 'center', alignItems: 'center' }}>
+                  <div
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      background: isFoundation ? `linear-gradient(135deg, ${phase.color}, ${phase.accent})` : '#FFFFFF',
+                      border: isFoundation ? 'none' : `2px solid ${phase.color}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '16px',
+                      boxShadow: isFoundation ? `0 4px 12px ${phase.color}55` : '0 2px 6px rgba(28,61,48,0.08)',
+                      filter: isFoundation ? 'none' : 'saturate(0.7)',
+                    }}
+                  >
+                    {phase.emoji}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       </div>
 
-      {/* Phases — collapsible. Foundation expanded by default; Build/Peak/Finish collapsed with theme card. */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
-        {phases.map((phase) => {
+      {/* Phases — journey/stage-map layout: vertical connector line + colored medallions */}
+      <div style={{ display: 'flex', flexDirection: 'column', marginBottom: '14px', position: 'relative' }}>
+        {phases.map((phase, idx) => {
           const phaseTasks = tasks.filter((t) => t.day >= phase.from && t.day <= phase.to)
           const isExpanded = expandedPhases[phase.name] ?? false
           const phaseKey = phase.name.toLowerCase()
@@ -960,58 +1001,111 @@ function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVa
           const hasTasks = phaseTasks.length > 0
           const isFoundation = phase.name === 'Foundation'
           const isLocked = !hasTasks
+          const isLast = idx === phases.length - 1
           return (
-            <div
-              key={phase.name}
-              style={{
-                background: isFoundation ? 'linear-gradient(135deg, rgba(118,197,72,0.08) 0%, rgba(255,255,255,0.85) 100%)' : 'rgba(255,255,255,0.55)',
-                border: isFoundation ? '1.5px solid rgba(107,176,72,0.35)' : '1px solid #E8F0EC',
-                borderRadius: '16px',
-                overflow: 'hidden',
-                opacity: isLocked ? 0.72 : 1,
-                boxShadow: isFoundation ? '0 4px 14px rgba(107,176,72,0.10)' : 'none',
-              }}
-            >
-              {/* Phase header — tap to toggle */}
-              <button
-                onClick={() => setExpandedPhases({ ...expandedPhases, [phase.name]: !isExpanded })}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+            <div key={phase.name} style={{ display: 'flex', gap: '14px', position: 'relative', paddingBottom: isLast ? 0 : '10px' }}>
+              {/* Left rail: medallion + connector line */}
+              <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', width: '44px', flexShrink: 0 }}>
+                <div
+                  style={{
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '50%',
+                    background: isFoundation
+                      ? `linear-gradient(135deg, ${phase.color}, ${phase.accent})`
+                      : isLocked
+                      ? `linear-gradient(135deg, #FFFFFF, #F0F4F1)`
+                      : `linear-gradient(135deg, ${phase.color}, ${phase.accent})`,
+                    border: isLocked && !isFoundation ? `2px dashed ${phase.color}88` : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '22px',
+                    boxShadow: isFoundation
+                      ? `0 6px 18px ${phase.color}66, 0 0 0 4px ${phase.color}22`
+                      : isLocked
+                      ? `0 2px 8px rgba(28,61,48,0.06)`
+                      : `0 4px 14px ${phase.color}44`,
+                    filter: isLocked ? 'saturate(0.65)' : 'none',
+                    flexShrink: 0,
+                    zIndex: 2,
+                    position: 'relative',
+                  }}
+                >
+                  {phase.emoji}
+                  {isLocked && (
+                    <span style={{ position: 'absolute', bottom: '-2px', right: '-2px', width: '18px', height: '18px', borderRadius: '50%', background: '#FFFFFF', border: `2px solid ${phase.color}`, fontSize: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>🔒</span>
+                  )}
+                </div>
+                {!isLast && (
+                  <div style={{ flex: 1, width: '2px', minHeight: '24px', background: `linear-gradient(180deg, ${phase.accent}88, ${phases[idx + 1].accent}88)`, marginTop: '4px', borderRadius: '1px', opacity: 0.55 }} />
+                )}
+              </div>
+
+              {/* Right column: phase card */}
+              <div
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  background: isFoundation
+                    ? `linear-gradient(135deg, ${phase.color}1A 0%, ${phase.accent}10 100%)`
+                    : isLocked
+                    ? 'rgba(255,255,255,0.5)'
+                    : `linear-gradient(135deg, ${phase.color}10 0%, ${phase.accent}06 100%)`,
+                  border: isFoundation
+                    ? `2px solid ${phase.color}55`
+                    : isLocked
+                    ? '1px dashed #D4DDD7'
+                    : `1px solid ${phase.color}33`,
+                  borderRadius: '18px',
+                  overflow: 'hidden',
+                  boxShadow: isFoundation ? `0 6px 18px ${phase.color}22` : 'none',
+                }}
               >
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flex: 1, minWidth: 0 }}>
-                  <span style={{ fontSize: '24px', lineHeight: 1, filter: isLocked ? 'saturate(0.55)' : 'none', flexShrink: 0 }}>{phase.emoji}</span>
+                {/* Phase header — tap to toggle */}
+                <button
+                  onClick={() => setExpandedPhases({ ...expandedPhases, [phase.name]: !isExpanded })}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                >
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                      {isLocked && <span style={{ fontSize: '11px', color: '#9BBFB2' }}>🔒</span>}
-                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', letterSpacing: '0.08em', color: phase.color, margin: 0, textTransform: 'uppercase', fontWeight: 700 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '3px' }}>
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', letterSpacing: '0.1em', color: phase.color, margin: 0, textTransform: 'uppercase', fontWeight: 800 }}>
                         {phase.name}
                       </p>
-                      <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2' }}>
-                        · Day {phase.from}{phase.from !== phase.to ? `–${phase.to}` : ''}
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', color: isLocked ? '#9BBFB2' : `${phase.color}cc`, fontWeight: 600, background: isLocked ? 'rgba(155,191,178,0.12)' : `${phase.color}15`, padding: '2px 8px', borderRadius: '9999px' }}>
+                        Day {phase.from}{phase.from !== phase.to ? `–${phase.to}` : ''}
                       </span>
+                      {isFoundation && (
+                        <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', letterSpacing: '0.08em', color: '#FFFFFF', background: phase.color, padding: '2px 7px', borderRadius: '9999px', fontWeight: 700, textTransform: 'uppercase' }}>Live</span>
+                      )}
                     </div>
-                    <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A', margin: '4px 0 0', lineHeight: 1.45 }}>
-                      {hasTasks ? phase.tag : (themeForPhase ?? phase.tag)}
+                    <p style={{ fontFamily: 'var(--font-heading)', fontSize: '15px', fontWeight: 600, color: '#1A3028', margin: 0, lineHeight: 1.3, letterSpacing: '-0.01em' }}>
+                      {phase.tag}
                     </p>
+                    {(themeForPhase || (!hasTasks && !themeForPhase)) && (
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A', margin: '4px 0 0', lineHeight: 1.45 }}>
+                        {themeForPhase ?? 'Tasks generated when you reach this phase'}
+                      </p>
+                    )}
                   </div>
-                </div>
-                <span style={{ fontSize: '12px', color: '#9BBFB2', transition: 'transform 0.15s ease', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0)', marginLeft: '8px', flexShrink: 0 }}>▾</span>
-              </button>
+                  <span style={{ fontSize: '12px', color: phase.color, transition: 'transform 0.15s ease', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0)', marginLeft: '8px', flexShrink: 0, opacity: 0.7 }}>▾</span>
+                </button>
 
-              {/* Expanded content */}
-              {isExpanded && (
-                <div style={{ padding: '0 12px 12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {isFoundation && day1Task && (
-                    <div style={{ background: 'linear-gradient(135deg, rgba(118,197,72,0.12) 0%, rgba(107,176,72,0.06) 100%)', border: '1px solid rgba(107,176,72,0.30)', borderRadius: '12px', padding: '10px 12px', marginBottom: '4px' }}>
-                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '9px', letterSpacing: '0.12em', color: '#5A9A3A', margin: '0 0 4px', textTransform: 'uppercase', fontWeight: 700 }}>
-                        Your Day 1 starts with
-                      </p>
-                      <p style={{ fontFamily: 'var(--font-heading)', fontSize: '13px', fontWeight: 500, color: '#1A3028', margin: 0, lineHeight: 1.45 }}>
-                        {day1Task.task_text}
-                      </p>
-                    </div>
-                  )}
-                  {hasTasks ? (
-                    phaseTasks.map((task) => {
+                {/* Expanded content */}
+                {isExpanded && (
+                  <div style={{ padding: '0 12px 12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {isFoundation && day1Task && (
+                      <div style={{ background: `linear-gradient(135deg, ${phase.color}22, ${phase.accent}15)`, border: `1.5px solid ${phase.color}55`, borderRadius: '12px', padding: '10px 12px', marginBottom: '4px', position: 'relative' }}>
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '9px', letterSpacing: '0.12em', color: phase.color, margin: '0 0 4px', textTransform: 'uppercase', fontWeight: 800 }}>
+                          ★ Day 1 quest
+                        </p>
+                        <p style={{ fontFamily: 'var(--font-heading)', fontSize: '13px', fontWeight: 500, color: '#1A3028', margin: 0, lineHeight: 1.45 }}>
+                          {day1Task.task_text}
+                        </p>
+                      </div>
+                    )}
+                    {hasTasks ? (
+                      phaseTasks.map((task) => {
                       const day = task.day
                       const expanded = expandedDay === day
                       const habits = task.ongoing_habits ?? []
@@ -1047,19 +1141,20 @@ function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVa
                         </button>
                       )
                     })
-                  ) : (
-                    <div style={{ padding: '10px 12px', background: `linear-gradient(135deg, ${phase.color}15, ${phase.color}08)`, border: `1px dashed ${phase.color}55`, borderRadius: '12px' }}>
-                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', letterSpacing: '0.1em', textTransform: 'uppercase', color: phase.color, margin: '0 0 4px', fontWeight: 700 }}>🔒 Unlocks on Day {phase.from}</p>
-                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', color: '#3D5949', margin: '0 0 6px', lineHeight: 1.5 }}>
-                        {themeForPhase ?? phase.tag}
-                      </p>
-                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2', margin: 0, lineHeight: 1.5 }}>
-                        Tasks for these days will be generated when you reach Day {phase.from} — using your actual progress from Foundation.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
+                    ) : (
+                      <div style={{ padding: '10px 12px', background: `linear-gradient(135deg, ${phase.color}15, ${phase.accent}10)`, border: `1px dashed ${phase.color}55`, borderRadius: '12px' }}>
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', letterSpacing: '0.1em', textTransform: 'uppercase', color: phase.color, margin: '0 0 4px', fontWeight: 800 }}>🔒 Unlocks on Day {phase.from}</p>
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', color: '#3D5949', margin: '0 0 6px', lineHeight: 1.5 }}>
+                          {themeForPhase ?? phase.tag}
+                        </p>
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2', margin: 0, lineHeight: 1.5 }}>
+                          Tasks generated when you reach Day {phase.from} — using your actual Foundation progress.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )
         })}
