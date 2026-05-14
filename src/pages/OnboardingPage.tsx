@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Lock, Users, Globe, Sprout, ChevronLeft } from 'lucide-react'
 import PlanGeneratingScreen from '../components/PlanGeneratingScreen'
+import SignupSheet from '../components/SignupSheet'
 import { useAuth } from '../context/AuthContext'
 import { createSprint, createTasks, calculateEndDate, updateReminderSettings, setSprintPhaseThemes } from '../lib/db'
 import { enablePush, isPushSupported, isStandaloneInstalled, isIOS } from '../lib/push'
@@ -9,6 +10,7 @@ import { supabase } from '../lib/supabase'
 import { generateSprintPlan, assessGoalScope } from '../lib/gemini'
 import type { GeneratedTask, ScopeAssessment } from '../lib/gemini'
 import { track, Events, setPeople, incrementPeople } from '../lib/analytics'
+import { saveOnboardingStash, loadOnboardingStash, clearOnboardingStash } from '../lib/onboardingStash'
 
 type Visibility = 'PRIVATE' | 'COHORT' | 'PUBLIC'
 
@@ -29,6 +31,7 @@ const CARD_STYLE: React.CSSProperties = {
 
 export default function OnboardingPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { user } = useAuth()
   const [step, setStep] = useState(1)
   const [goal, setGoal] = useState('')
@@ -49,6 +52,103 @@ export default function OnboardingPage() {
   const [scopeModalState, setScopeModalState] = useState<'closed' | 'unrealistic'>('closed')
   const [assessingScope, setAssessingScope] = useState(false)
   const [phaseThemes, setPhaseThemes] = useState<Record<string, string> | undefined>(undefined)
+  const [signupSheetOpen, setSignupSheetOpen] = useState(false)
+  const hasAutoResumed = useRef(false)
+
+  // Resume flow: when user lands here with ?resume=1 after auth (Google/magic link),
+  // restore the saved onboarding state and auto-create the sprint.
+  useEffect(() => {
+    if (hasAutoResumed.current) return
+    if (!user) return
+    const shouldResume = searchParams.get('resume') === '1'
+    const stash = loadOnboardingStash()
+    if (!shouldResume || !stash) return
+    hasAutoResumed.current = true
+
+    // Restore all state
+    setGoal(stash.goal)
+    setSprintLength(stash.sprintLength)
+    setVisibility(stash.visibility)
+    setPastReflection(stash.pastReflection)
+    setExtraContext(stash.extraContext)
+    setHasUsedExtraContext(stash.hasUsedExtraContext)
+    setAiTasks(stash.aiTasks)
+    setScopeAssessment(stash.scopeAssessment)
+    setPhaseThemes(stash.phaseThemes ?? undefined)
+    setStep(5)
+    // Defer one tick so state has flushed before sprint creation
+    setTimeout(() => { void createSprintFromStash(stash) }, 0)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user])
+
+  const createSprintFromStash = async (stash: ReturnType<typeof loadOnboardingStash>) => {
+    if (!user || !stash) return
+    setSubmitting(true)
+    setSubmitError('')
+    try {
+      const { data: existingProfile } = await supabase.from('profiles').select('id').eq('id', user.id).maybeSingle()
+      if (!existingProfile) {
+        await supabase.from('profiles').upsert({ id: user.id, display_name: user.user_metadata?.full_name ?? user.email ?? '' })
+      }
+      const today = new Date().toISOString().split('T')[0]
+      const endDate = calculateEndDate(today, stash.sprintLength)
+      const sprint = await createSprint({
+        user_id: user.id,
+        goal_text: stash.goal,
+        goal_category: 'general',
+        sprint_length: stash.sprintLength,
+        visibility: stash.visibility,
+        start_date: today,
+        end_date: endDate,
+      })
+      if (!sprint) throw new Error('createSprint returned null')
+      const tasksToSave = stash.aiTasks.map((t, index) => ({
+        sprint_id: sprint.id,
+        day_number: index + 1,
+        task_text: t.task_text,
+        task_type: t.task_type ?? 'build',
+        ongoing_habits: t.ongoing_habits ?? [],
+        rationale: t.rationale ?? null,
+      }))
+      await createTasks(tasksToSave)
+      if (stash.phaseThemes) await setSprintPhaseThemes(sprint.id, stash.phaseThemes)
+      if (stash.reminderTime) {
+        const TZ = typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC'
+        await updateReminderSettings(user.id, { reminder_time: stash.reminderTime, reminder_timezone: TZ, reminder_enabled: true })
+      }
+      track(Events.SprintStarted, {
+        sprint_id: sprint.id,
+        sprint_length: stash.sprintLength,
+        visibility: stash.visibility,
+        had_past_reflection: !!stash.pastReflection?.trim(),
+        had_extra_context: !!stash.extraContext?.trim(),
+        signed_up_at_end: true,
+      })
+      setPeople({ has_active_sprint: true, last_sprint_started_at: new Date().toISOString() })
+      incrementPeople('total_sprints_started', 1)
+      clearOnboardingStash()
+      navigate('/dashboard', { replace: true })
+    } catch (err) {
+      console.error('createSprintFromStash:', err)
+      setSubmitError('Something went wrong restoring your plan. Please try again.')
+      setSubmitting(false)
+    }
+  }
+
+  const buildStash = (reminderTime: string | null = null, reminderChannel: 'push' | 'email' | null = null) => ({
+    goal,
+    sprintLength: sprintLength!,
+    visibility,
+    pastReflection,
+    extraContext,
+    hasUsedExtraContext,
+    aiTasks,
+    scopeAssessment,
+    phaseThemes: phaseThemes ?? null,
+    reminderTime,
+    reminderChannel,
+    savedAt: new Date().toISOString(),
+  })
 
   const goToStep = (next: number) => {
     setDirection('out')
@@ -61,8 +161,16 @@ export default function OnboardingPage() {
     }, 200)
   }
 
-  const handleBeginDay1 = async () => {
-    if (!user || !sprintLength) return
+  const handleBeginDay1 = async (reminderTime?: string | null) => {
+    if (!sprintLength) return
+
+    // No user yet? Stash everything and prompt signup.
+    if (!user) {
+      saveOnboardingStash(buildStash(reminderTime ?? null, 'push'))
+      setSignupSheetOpen(true)
+      return
+    }
+
     setSubmitting(true)
     setSubmitError('')
 
@@ -76,7 +184,6 @@ export default function OnboardingPage() {
       const today = new Date().toISOString().split('T')[0]
       const endDate = calculateEndDate(today, sprintLength)
 
-      console.log('[Onboarding] Creating sprint:', { userId: user.id, goal, sprintLength, visibility, today, endDate })
       const sprint = await createSprint({
         user_id: user.id,
         goal_text: goal,
@@ -87,7 +194,6 @@ export default function OnboardingPage() {
         end_date: endDate,
       })
 
-      console.log('[Onboarding] Sprint result:', sprint)
       if (!sprint) {
         setSubmitError('Failed to create sprint. Check console for details.')
         setSubmitting(false)
@@ -103,11 +209,8 @@ export default function OnboardingPage() {
         rationale: t.rationale ?? null,
       }))
 
-      console.log('[Onboarding] Inserting tasks:', tasksToSave.length)
-      const tasksOk = await createTasks(tasksToSave)
-      console.log('[Onboarding] Tasks result:', tasksOk)
+      await createTasks(tasksToSave)
 
-      // Persist phase themes (only present in 15/30-day Foundation-mode generation)
       if (phaseThemes) {
         await setSprintPhaseThemes(sprint.id, phaseThemes)
       }
@@ -122,6 +225,7 @@ export default function OnboardingPage() {
       setPeople({ has_active_sprint: true, last_sprint_started_at: new Date().toISOString() })
       incrementPeople('total_sprints_started', 1)
 
+      clearOnboardingStash()
       navigate('/dashboard', { replace: true })
     } catch (err) {
       console.error('Sprint creation error:', err)
@@ -283,6 +387,21 @@ export default function OnboardingPage() {
       {generatingPlan && (
         <PlanGeneratingScreen sprintLength={sprintLength ?? 30} goalText={goal} />
       )}
+
+      {/* Signup prompt at the end of onboarding (only if user not yet authed) */}
+      <SignupSheet
+        open={signupSheetOpen}
+        onClose={() => setSignupSheetOpen(false)}
+        goalPreview={goal}
+        onBeforeAuthAction={() => saveOnboardingStash(buildStash())}
+        onSignedIn={() => {
+          setSignupSheetOpen(false)
+          // The useEffect resume hook will pick this up once `user` is populated,
+          // but trigger an explicit retry as a safety net.
+          const stash = loadOnboardingStash()
+          if (stash) setTimeout(() => { void createSprintFromStash(stash) }, 100)
+        }}
+      />
     </div>
   )
 }
@@ -815,26 +934,12 @@ function Step3Visibility({
 
 /* ============ STEP 4 ============ */
 function ScopeCheckLoader() {
-  const phrases = [
-    'Reading your goal carefully…',
-    'Checking how much time this realistically takes…',
-    'Comparing against similar sprints…',
-    'Mapping it onto your timeline…',
-    'Almost done — running the numbers…',
-  ]
-  const [idx, setIdx] = useState(0)
-  useEffect(() => {
-    const id = setInterval(() => setIdx((v) => (v + 1) % phrases.length), 1800)
-    return () => clearInterval(id)
-  }, [phrases.length])
-
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'linear-gradient(180deg, #EAF5F0 0%, #F0F7F4 50%, #F5F0E8 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '28px', padding: '32px' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'linear-gradient(180deg, #EAF5F0 0%, #F0F7F4 50%, #F5F0E8 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '24px', padding: '32px' }}>
       <style>{`
         @keyframes coach-paper-flip { 0%, 18%, 100% { transform: rotate(-3deg) translateY(0); } 25%, 43% { transform: rotate(2deg) translateY(-2px); } 50%, 68% { transform: rotate(-2deg) translateY(0); } 75%, 93% { transform: rotate(3deg) translateY(-1px); } }
         @keyframes coach-magnifier-sweep { 0% { transform: translate(-8px, 6px) rotate(-12deg); } 25% { transform: translate(8px, -4px) rotate(8deg); } 50% { transform: translate(12px, 6px) rotate(-6deg); } 75% { transform: translate(-4px, -2px) rotate(10deg); } 100% { transform: translate(-8px, 6px) rotate(-12deg); } }
         @keyframes coach-sparkle { 0%, 100% { opacity: 0; transform: scale(0.6); } 50% { opacity: 1; transform: scale(1.1); } }
-        @keyframes coach-fade { 0% { opacity: 0; transform: translateY(4px); } 12%, 88% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-4px); } }
         @keyframes coach-dot { 0%, 60%, 100% { opacity: 0.25; } 30% { opacity: 1; } }
       `}</style>
 
@@ -870,21 +975,13 @@ function ScopeCheckLoader() {
         </div>
       </div>
 
-      {/* Rotating coach phrase */}
-      <div style={{ height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '260px' }}>
-        <p
-          key={idx}
-          style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: '13px',
-            fontStyle: 'italic',
-            color: '#3D5949',
-            textAlign: 'center',
-            margin: 0,
-            animation: 'coach-fade 1.8s ease-in-out',
-          }}
-        >
-          {phrases[idx]}
+      {/* Single persistent coach line — always readable */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', minWidth: '260px', maxWidth: '300px' }}>
+        <p style={{ fontFamily: 'var(--font-heading)', fontSize: '15px', fontWeight: 600, color: '#1A3028', textAlign: 'center', margin: 0, letterSpacing: '-0.01em' }}>
+          Matching your goal to your timeline
+        </p>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A', textAlign: 'center', margin: 0, lineHeight: 1.5 }}>
+          Reading what you wrote, sizing it against what's realistic in your sprint length.
         </p>
       </div>
 
@@ -1041,31 +1138,39 @@ function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVa
               boxShadow: '0 2px 8px rgba(28,61,48,0.06)',
             }}
           />
-          {/* Emoji checkpoints — vertically centered, soft glow, sit ON the line */}
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex' }}>
-            {phases.map((phase, i) => {
-              const span = phase.to - phase.from + 1
-              const isFoundation = phase.name === 'Foundation'
-              const justify = i === 0 ? 'flex-start' : i === phases.length - 1 ? 'flex-end' : 'flex-start'
-              return (
-                <div key={phase.name} style={{ flex: span, display: 'flex', justifyContent: justify, alignItems: 'center' }}>
-                  <span
-                    style={{
-                      fontSize: '22px',
-                      lineHeight: 1,
-                      filter: isFoundation
-                        ? `drop-shadow(0 2px 8px ${phase.color}aa) drop-shadow(0 0 14px ${phase.color}66)`
-                        : `drop-shadow(0 2px 6px ${phase.color}66) drop-shadow(0 0 10px ${phase.color}33)`,
-                      opacity: isFoundation ? 1 : 0.95,
-                      transform: i === phases.length - 1 ? 'translateX(2px)' : i === 0 ? 'translateX(-2px)' : 'none',
-                    }}
-                  >
-                    {phase.emoji}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
+          {/* Emoji checkpoints — absolute positioning at phase start boundaries */}
+          {phases.map((phase, i) => {
+            const isFoundation = phase.name === 'Foundation'
+            const isFirst = i === 0
+            const isLast = i === phases.length - 1
+            const totalDays = phases.reduce((acc, q) => acc + (q.to - q.from + 1), 0)
+            const cumulativeStart = phases.slice(0, i).reduce((acc, q) => acc + (q.to - q.from + 1), 0)
+            const startPct = (cumulativeStart / totalDays) * 100
+            // First emoji anchors to left edge; last anchors to right edge; middles center on phase-start boundary
+            const positionStyle: React.CSSProperties = isFirst
+              ? { left: 0, transform: 'translateY(-50%)' }
+              : isLast
+              ? { right: 0, transform: 'translateY(-50%)' }
+              : { left: `${startPct}%`, transform: 'translate(-50%, -50%)' }
+            return (
+              <span
+                key={phase.name}
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  fontSize: '22px',
+                  lineHeight: 1,
+                  filter: isFoundation
+                    ? `drop-shadow(0 2px 8px ${phase.color}aa) drop-shadow(0 0 14px ${phase.color}66)`
+                    : `drop-shadow(0 2px 6px ${phase.color}66) drop-shadow(0 0 10px ${phase.color}33)`,
+                  opacity: isFoundation ? 1 : 0.95,
+                  ...positionStyle,
+                }}
+              >
+                {phase.emoji}
+              </span>
+            )
+          })}
         </div>
       </div>
 
@@ -1196,8 +1301,8 @@ function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVa
                             </p>
                           )}
                           {hasRationale && !expanded && (
-                            <span style={{ position: 'absolute', bottom: '8px', right: '10px', fontFamily: 'var(--font-body)', fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: phase.color, background: `${phase.color}14`, border: `1px solid ${phase.color}44`, borderRadius: '9999px', padding: '2px 8px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                              <span style={{ fontSize: '10px' }}>ⓘ</span> Why
+                            <span style={{ position: 'absolute', bottom: '8px', right: '10px', fontFamily: 'var(--font-body)', fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: phase.color, background: `${phase.color}14`, border: `1px solid ${phase.color}44`, borderRadius: '9999px', padding: '3px 9px' }}>
+                              Why
                             </span>
                           )}
                         </button>
@@ -1347,7 +1452,7 @@ function Step5Reminder({
   submitError,
   onBack,
 }: {
-  onBeginDay1: () => Promise<void> | void
+  onBeginDay1: (reminderTime: string | null) => Promise<void> | void
   submitting?: boolean
   submitError?: string
   onBack?: () => void
@@ -1361,40 +1466,39 @@ function Step5Reminder({
   const TZ = typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC'
 
   const handleSetAndBegin = async () => {
-    if (!user) return
     setSavingAndStarting(true)
     setError('')
 
-    // Save reminder (best-effort; don't block sprint start)
-    const result = await updateReminderSettings(user.id, {
-      reminder_time: `${time}:00`,
-      reminder_timezone: TZ,
-      reminder_enabled: true,
-    })
-    if (!result.ok) {
-      setError(`Couldn't save reminder: ${result.error ?? 'unknown'}. We'll still start your sprint.`)
-    } else {
-      track(Events.ReminderEnabled, { time, timezone: TZ, source: 'onboarding' })
-      setPeople({ reminder_time: time, reminder_timezone: TZ, reminder_enabled: true, reminder_set_during_onboarding: true })
-      // Fire push subscription in background (non-blocking)
-      if (isPushSupported()) {
-        track(Events.PushPermissionRequested)
-        enablePush(user.id).then((r) => {
-          if (r.ok) { track(Events.PushPermissionGranted); setPeople({ push_subscribed: true }) }
-          else if (r.reason === 'denied') track(Events.PushPermissionDenied)
-        }).catch((e) => console.warn('enablePush:', e))
+    if (user) {
+      // Already authed — save reminder + push subscription, then begin
+      const result = await updateReminderSettings(user.id, {
+        reminder_time: `${time}:00`,
+        reminder_timezone: TZ,
+        reminder_enabled: true,
+      })
+      if (!result.ok) {
+        setError(`Couldn't save reminder: ${result.error ?? 'unknown'}. We'll still start your sprint.`)
+      } else {
+        track(Events.ReminderEnabled, { time, timezone: TZ, source: 'onboarding' })
+        setPeople({ reminder_time: time, reminder_timezone: TZ, reminder_enabled: true, reminder_set_during_onboarding: true })
+        if (isPushSupported()) {
+          track(Events.PushPermissionRequested)
+          enablePush(user.id).then((r) => {
+            if (r.ok) { track(Events.PushPermissionGranted); setPeople({ push_subscribed: true }) }
+            else if (r.reason === 'denied') track(Events.PushPermissionDenied)
+          }).catch((e) => console.warn('enablePush:', e))
+        }
       }
     }
-    // Always continue to start the sprint, save or not.
-    // If creation fails, the parent will set submitError — reset the spinner so user can retry.
-    try { await onBeginDay1() } finally { setSavingAndStarting(false) }
+    // Pass time up either way; parent decides between create-sprint and prompt-signup
+    try { await onBeginDay1(`${time}:00`) } finally { setSavingAndStarting(false) }
   }
 
   const handleSkip = async () => {
     setSavingAndStarting(true)
     track(Events.ReminderSkippedDuringOnboarding, { source: 'onboarding' })
-    setPeople({ reminder_set_during_onboarding: false })
-    try { await onBeginDay1() } finally { setSavingAndStarting(false) }
+    if (user) setPeople({ reminder_set_during_onboarding: false })
+    try { await onBeginDay1(null) } finally { setSavingAndStarting(false) }
   }
 
   return (

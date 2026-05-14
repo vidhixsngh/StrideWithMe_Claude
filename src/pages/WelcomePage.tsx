@@ -452,9 +452,15 @@ export default function WelcomePage() {
 
         {/* Primary CTA — at the edge of the first fold */}
         <div style={{ padding: '20px 24px 0', position: 'relative', zIndex: 2 }}>
-          <button onClick={() => { track(Events.WelcomeCtaClicked, { location: 'hero' }); navigate('/auth') }} style={{ width: '100%', height: '54px', background: 'linear-gradient(180deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', borderRadius: '9999px', border: 'none', fontFamily: 'var(--font-heading)', fontSize: '16px', fontWeight: 500, cursor: 'pointer', boxShadow: '0 8px 24px rgba(107,176,72,0.32), 0 4px 12px rgba(107,176,72,0.18)', letterSpacing: '0.015em' }}>
+          <button onClick={() => { track(Events.WelcomeCtaClicked, { location: 'hero' }); navigate('/onboarding') }} style={{ width: '100%', height: '54px', background: 'linear-gradient(180deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', borderRadius: '9999px', border: 'none', fontFamily: 'var(--font-heading)', fontSize: '16px', fontWeight: 500, cursor: 'pointer', boxShadow: '0 8px 24px rgba(107,176,72,0.32), 0 4px 12px rgba(107,176,72,0.18)', letterSpacing: '0.015em' }}>
             Begin your journey today →
           </button>
+          <p style={{ textAlign: 'center', margin: '10px 0 0', fontFamily: 'var(--font-body)', fontSize: '12px', color: '#6B9E8A' }}>
+            Already have an account?{' '}
+            <button onClick={() => navigate('/auth')} style={{ background: 'none', border: 'none', color: '#3D7A5F', fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 600, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>
+              Sign in
+            </button>
+          </p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '14px' }}>
             {['Free to start', 'Private by default', '2 minutes'].map((t) => (
               <div key={t} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -602,7 +608,7 @@ export default function WelcomePage() {
             <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', color: 'rgba(255,255,255,0.85)', lineHeight: 1.6, marginBottom: '28px' }}>
               30 days. One goal. Daily verification. A Sprint Record that proves you showed up.
             </p>
-            <button onClick={() => { track(Events.WelcomeCtaClicked, { location: 'closing' }); navigate('/auth') }} style={{ backgroundColor: '#FFFFFF', color: '#3D7A5F', fontFamily: 'var(--font-heading)', fontSize: '15px', fontWeight: 600, borderRadius: '9999px', border: 'none', height: '50px', width: '100%', maxWidth: '300px', margin: '0 auto', display: 'block', cursor: 'pointer', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}>
+            <button onClick={() => { track(Events.WelcomeCtaClicked, { location: 'closing' }); navigate('/onboarding') }} style={{ backgroundColor: '#FFFFFF', color: '#3D7A5F', fontFamily: 'var(--font-heading)', fontSize: '15px', fontWeight: 600, borderRadius: '9999px', border: 'none', height: '50px', width: '100%', maxWidth: '300px', margin: '0 auto', display: 'block', cursor: 'pointer', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}>
               Start my 30-day sprint →
             </button>
             <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '20px' }}>
@@ -626,7 +632,7 @@ export default function WelcomePage() {
                 </div>
                 <button onClick={() => setPreviewOpen(false)} style={{ background: 'none', border: 'none', fontSize: '20px', color: '#9BBFB2', cursor: 'pointer', padding: 0 }}>✕</button>
               </div>
-              <ExampleRecordContent onCTA={() => { setPreviewOpen(false); navigate('/auth') }} ctaLabel="Start your sprint to earn this →" />
+              <ExampleRecordContent onCTA={() => { setPreviewOpen(false); navigate('/onboarding') }} ctaLabel="Start your sprint to earn this →" />
             </div>
           </>
         )}
