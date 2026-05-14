@@ -835,6 +835,7 @@ function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVa
   const [contextOpen, setContextOpen] = useState(false)
   const [contextDraft, setContextDraft] = useState('')
   const [expandedDay, setExpandedDay] = useState<number | null>(null)
+  const [ambitiousOpen, setAmbitiousOpen] = useState(false)
   // Phases collapsed by default except Foundation
   const [expandedPhases, setExpandedPhases] = useState<Record<string, boolean>>({ Foundation: true, Build: false, Peak: false, Finish: false })
 
@@ -845,41 +846,62 @@ function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVa
   const phases = getPhases(sprintLength)
   const isAmbitious = scopeAssessment?.scope === 'ambitious'
 
+  // Date anchor for "Day 1 starts today" line — uses local time.
+  const today = new Date()
+  const dayName = today.toLocaleDateString(undefined, { weekday: 'long' })
+  const dateStr = today.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+
+  // Foundation Day 1 task — for the inline hero preview inside the Foundation card.
+  const day1Task = tasks.find((t) => t.day === 1)
+
   return (
     <div className="flex-1 flex flex-col">
       {onBack && <BackButton onClick={onBack} />}
       <StepLabel step={4} label="Your plan" />
       <Heading>Your {sprintLength}-day plan</Heading>
       <Subtext>
-        Tap any day to see why it matters. The habits you build carry forward — every day stacks on what came before.
+        Your plan in 4 phases. Foundation unlocks first.
       </Subtext>
 
-      {/* Goal card */}
-      <div style={{ background: 'linear-gradient(135deg, rgba(118,197,72,0.10) 0%, rgba(107,176,72,0.06) 100%)', border: '1.5px solid rgba(107,176,72,0.35)', borderRadius: '20px', padding: '14px 16px', marginTop: '24px', marginBottom: '14px', position: 'relative' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-          <span style={{ fontSize: '12px' }}>🌱</span>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', letterSpacing: '0.1em', color: '#5A9A3A', margin: 0, textTransform: 'uppercase', fontWeight: 600 }}>
+      {/* Goal card — heroed */}
+      <div style={{ background: 'linear-gradient(135deg, rgba(118,197,72,0.12) 0%, rgba(107,176,72,0.07) 100%)', border: '2px solid rgba(107,176,72,0.45)', borderRadius: '22px', padding: '18px 20px', marginTop: '24px', marginBottom: '10px', position: 'relative', boxShadow: '0 4px 16px rgba(107,176,72,0.10)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+          <span style={{ fontSize: '13px' }}>🌱</span>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', letterSpacing: '0.12em', color: '#5A9A3A', margin: 0, textTransform: 'uppercase', fontWeight: 700 }}>
             Your commitment
           </p>
         </div>
-        <p style={{ fontFamily: 'var(--font-heading)', fontSize: '15px', fontStyle: 'italic', color: '#1A3028', margin: 0, lineHeight: 1.4 }}>
+        <p style={{ fontFamily: 'var(--font-heading)', fontSize: '20px', fontStyle: 'italic', fontWeight: 600, color: '#1A3028', margin: 0, lineHeight: 1.35, letterSpacing: '-0.01em' }}>
           {goal}
         </p>
       </div>
 
-      {/* Ambitious scope banner */}
+      {/* Day 1 anchor */}
+      <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', margin: '0 0 18px', textAlign: 'center', letterSpacing: '0.02em' }}>
+        Day 1 starts today · {dayName}, {dateStr}
+      </p>
+
+      {/* Ambitious scope banner — collapsible */}
       {isAmbitious && scopeAssessment?.message && (
-        <div style={{ background: 'linear-gradient(135deg, rgba(245,158,74,0.10) 0%, rgba(245,158,74,0.04) 100%)', border: '1.5px solid rgba(245,158,74,0.40)', borderRadius: '14px', padding: '12px 14px', marginBottom: '14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-            <span style={{ fontSize: '13px' }}>⚡</span>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', letterSpacing: '0.1em', color: '#D97706', margin: 0, textTransform: 'uppercase', fontWeight: 700 }}>
-              Ambitious — daily compliance required
-            </p>
+        <button
+          onClick={() => setAmbitiousOpen(!ambitiousOpen)}
+          style={{ background: 'linear-gradient(135deg, rgba(245,158,74,0.10) 0%, rgba(245,158,74,0.04) 100%)', border: '1.5px solid rgba(245,158,74,0.40)', borderRadius: '14px', padding: '10px 14px', marginBottom: '14px', cursor: 'pointer', textAlign: 'left', width: '100%' }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '13px' }}>⚡</span>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', letterSpacing: '0.1em', color: '#D97706', margin: 0, textTransform: 'uppercase', fontWeight: 700 }}>
+                Ambitious — daily compliance required
+              </p>
+            </div>
+            <span style={{ fontSize: '11px', color: '#D97706', transform: ambitiousOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.15s ease' }}>▾</span>
           </div>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', color: '#3D5949', margin: 0, lineHeight: 1.5 }}>
-            {scopeAssessment.message}
-          </p>
-        </div>
+          {ambitiousOpen && (
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', color: '#3D5949', margin: '6px 0 0', lineHeight: 1.5 }}>
+              {scopeAssessment.message}
+            </p>
+          )}
+        </button>
       )}
 
       {/* Reflection-tailored badge */}
@@ -891,11 +913,8 @@ function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVa
               Tailored to what tripped you up
             </p>
           </div>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', margin: '0 0 6px', lineHeight: 1.5 }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', margin: 0, lineHeight: 1.5 }}>
             "{pastReflection.trim().length > 110 ? pastReflection.trim().slice(0, 110) + '…' : pastReflection.trim()}"
-          </p>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#3D5949', margin: 0, lineHeight: 1.5 }}>
-            We've shaped the early days of your plan to defuse this exact pattern.
           </p>
         </div>
       )}
@@ -909,6 +928,28 @@ function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVa
         </div>
       )}
 
+      {/* Phase timeline bar — 4-segment colored visualization */}
+      <div style={{ marginBottom: '12px' }}>
+        <div style={{ display: 'flex', gap: '3px', height: '8px', borderRadius: '9999px', overflow: 'hidden' }}>
+          {phases.map((phase) => {
+            const span = phase.to - phase.from + 1
+            return (
+              <div
+                key={phase.name}
+                style={{ flex: span, background: `linear-gradient(90deg, ${phase.color}, ${phase.color}cc)`, opacity: phase.name === 'Foundation' ? 1 : 0.55 }}
+              />
+            )
+          })}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px', padding: '0 2px' }}>
+          {phases.map((phase) => (
+            <span key={phase.name} style={{ fontFamily: 'var(--font-body)', fontSize: '9px', letterSpacing: '0.06em', color: phase.name === 'Foundation' ? phase.color : '#9BBFB2', textTransform: 'uppercase', fontWeight: 600 }}>
+              {phase.from}{phase.from !== phase.to ? `–${phase.to}` : ''}
+            </span>
+          ))}
+        </div>
+      </div>
+
       {/* Phases — collapsible. Foundation expanded by default; Build/Peak/Finish collapsed with theme card. */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
         {phases.map((phase) => {
@@ -917,17 +958,30 @@ function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVa
           const phaseKey = phase.name.toLowerCase()
           const themeForPhase = phaseThemes?.[phaseKey]
           const hasTasks = phaseTasks.length > 0
+          const isFoundation = phase.name === 'Foundation'
+          const isLocked = !hasTasks
           return (
-            <div key={phase.name} style={{ background: 'rgba(255,255,255,0.6)', border: '1px solid #E8F0EC', borderRadius: '16px', overflow: 'hidden' }}>
+            <div
+              key={phase.name}
+              style={{
+                background: isFoundation ? 'linear-gradient(135deg, rgba(118,197,72,0.08) 0%, rgba(255,255,255,0.85) 100%)' : 'rgba(255,255,255,0.55)',
+                border: isFoundation ? '1.5px solid rgba(107,176,72,0.35)' : '1px solid #E8F0EC',
+                borderRadius: '16px',
+                overflow: 'hidden',
+                opacity: isLocked ? 0.72 : 1,
+                boxShadow: isFoundation ? '0 4px 14px rgba(107,176,72,0.10)' : 'none',
+              }}
+            >
               {/* Phase header — tap to toggle */}
               <button
                 onClick={() => setExpandedPhases({ ...expandedPhases, [phase.name]: !isExpanded })}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
-                  <span style={{ fontSize: '16px' }}>{phase.emoji}</span>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: '24px', lineHeight: 1, filter: isLocked ? 'saturate(0.55)' : 'none', flexShrink: 0 }}>{phase.emoji}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                      {isLocked && <span style={{ fontSize: '11px', color: '#9BBFB2' }}>🔒</span>}
                       <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', letterSpacing: '0.08em', color: phase.color, margin: 0, textTransform: 'uppercase', fontWeight: 700 }}>
                         {phase.name}
                       </p>
@@ -935,17 +989,27 @@ function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVa
                         · Day {phase.from}{phase.from !== phase.to ? `–${phase.to}` : ''}
                       </span>
                     </div>
-                    <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', margin: '2px 0 0', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A', margin: '4px 0 0', lineHeight: 1.45 }}>
                       {hasTasks ? phase.tag : (themeForPhase ?? phase.tag)}
                     </p>
                   </div>
                 </div>
-                <span style={{ fontSize: '12px', color: '#9BBFB2', transition: 'transform 0.15s ease', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0)', marginLeft: '8px' }}>▾</span>
+                <span style={{ fontSize: '12px', color: '#9BBFB2', transition: 'transform 0.15s ease', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0)', marginLeft: '8px', flexShrink: 0 }}>▾</span>
               </button>
 
               {/* Expanded content */}
               {isExpanded && (
                 <div style={{ padding: '0 12px 12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {isFoundation && day1Task && (
+                    <div style={{ background: 'linear-gradient(135deg, rgba(118,197,72,0.12) 0%, rgba(107,176,72,0.06) 100%)', border: '1px solid rgba(107,176,72,0.30)', borderRadius: '12px', padding: '10px 12px', marginBottom: '4px' }}>
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '9px', letterSpacing: '0.12em', color: '#5A9A3A', margin: '0 0 4px', textTransform: 'uppercase', fontWeight: 700 }}>
+                        Your Day 1 starts with
+                      </p>
+                      <p style={{ fontFamily: 'var(--font-heading)', fontSize: '13px', fontWeight: 500, color: '#1A3028', margin: 0, lineHeight: 1.45 }}>
+                        {day1Task.task_text}
+                      </p>
+                    </div>
+                  )}
                   {hasTasks ? (
                     phaseTasks.map((task) => {
                       const day = task.day
@@ -1092,7 +1156,23 @@ function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVa
         </p>
       </div>
 
-      <div className="mt-auto" style={{ paddingBottom: '32px' }}>
+      <div
+        className="mt-auto"
+        style={{
+          position: 'sticky',
+          bottom: 0,
+          paddingTop: '12px',
+          paddingBottom: '20px',
+          marginLeft: '-24px',
+          marginRight: '-24px',
+          paddingLeft: '24px',
+          paddingRight: '24px',
+          background: 'linear-gradient(180deg, rgba(245,240,232,0) 0%, rgba(245,240,232,0.88) 30%, rgba(245,240,232,1) 60%)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          zIndex: 50,
+        }}
+      >
         <CTAButton label="Set my daily reminder →" disabled={false} onClick={onBegin} />
         {submitError && (
           <div style={{ backgroundColor: '#FEF3E8', border: '1px solid #F5D5A8', borderRadius: '10px', padding: '10px 14px', marginTop: '8px' }}>
