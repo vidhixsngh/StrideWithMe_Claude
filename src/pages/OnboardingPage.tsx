@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Lock, Users, Globe, Sprout, ChevronLeft } from 'lucide-react'
 import PlanGeneratingScreen from '../components/PlanGeneratingScreen'
@@ -277,13 +277,8 @@ export default function OnboardingPage() {
         </>
       )}
 
-      {/* Quick scope assessment loader */}
-      {assessingScope && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'linear-gradient(180deg, #EAF5F0 0%, #F0F7F4 50%, #F5F0E8 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '14px' }}>
-          <div style={{ width: '36px', height: '36px', border: '3px solid #D4EDE3', borderTopColor: '#3D7A5F', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', color: '#6B9E8A', textAlign: 'center', margin: 0 }}>Checking if your goal fits the timeframe…</p>
-        </div>
-      )}
+      {/* Quick scope assessment loader — coach reading your goal */}
+      {assessingScope && <ScopeCheckLoader />}
 
       {generatingPlan && (
         <PlanGeneratingScreen sprintLength={sprintLength ?? 30} goalText={goal} />
@@ -819,14 +814,98 @@ function Step3Visibility({
 }
 
 /* ============ STEP 4 ============ */
+function ScopeCheckLoader() {
+  const phrases = [
+    'Reading your goal carefully…',
+    'Checking how much time this realistically takes…',
+    'Comparing against similar sprints…',
+    'Mapping it onto your timeline…',
+    'Almost done — running the numbers…',
+  ]
+  const [idx, setIdx] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setIdx((v) => (v + 1) % phrases.length), 1800)
+    return () => clearInterval(id)
+  }, [phrases.length])
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'linear-gradient(180deg, #EAF5F0 0%, #F0F7F4 50%, #F5F0E8 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '28px', padding: '32px' }}>
+      <style>{`
+        @keyframes coach-paper-flip { 0%, 18%, 100% { transform: rotate(-3deg) translateY(0); } 25%, 43% { transform: rotate(2deg) translateY(-2px); } 50%, 68% { transform: rotate(-2deg) translateY(0); } 75%, 93% { transform: rotate(3deg) translateY(-1px); } }
+        @keyframes coach-magnifier-sweep { 0% { transform: translate(-8px, 6px) rotate(-12deg); } 25% { transform: translate(8px, -4px) rotate(8deg); } 50% { transform: translate(12px, 6px) rotate(-6deg); } 75% { transform: translate(-4px, -2px) rotate(10deg); } 100% { transform: translate(-8px, 6px) rotate(-12deg); } }
+        @keyframes coach-sparkle { 0%, 100% { opacity: 0; transform: scale(0.6); } 50% { opacity: 1; transform: scale(1.1); } }
+        @keyframes coach-fade { 0% { opacity: 0; transform: translateY(4px); } 12%, 88% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-4px); } }
+        @keyframes coach-dot { 0%, 60%, 100% { opacity: 0.25; } 30% { opacity: 1; } }
+      `}</style>
+
+      {/* Stage: paper + magnifier + sparkles */}
+      <div style={{ position: 'relative', width: '180px', height: '160px' }}>
+        {/* Drifting sparkles */}
+        <span style={{ position: 'absolute', top: '6px', left: '24px', fontSize: '16px', animation: 'coach-sparkle 2.2s ease-in-out infinite', animationDelay: '0s' }}>✨</span>
+        <span style={{ position: 'absolute', top: '12px', right: '20px', fontSize: '14px', animation: 'coach-sparkle 2.4s ease-in-out infinite', animationDelay: '0.7s' }}>✨</span>
+        <span style={{ position: 'absolute', bottom: '14px', left: '14px', fontSize: '12px', animation: 'coach-sparkle 2.8s ease-in-out infinite', animationDelay: '1.4s' }}>💭</span>
+
+        {/* Paper stack — gently flipping */}
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ position: 'relative', transformOrigin: 'center', animation: 'coach-paper-flip 3.6s ease-in-out infinite' }}>
+            {/* Back papers (offset for depth) */}
+            <div style={{ position: 'absolute', top: '-8px', left: '-10px', width: '88px', height: '110px', background: '#FFFFFF', borderRadius: '6px', border: '1px solid #D4EDE3', boxShadow: '0 4px 12px rgba(28,61,48,0.08)', transform: 'rotate(-6deg)' }} />
+            <div style={{ position: 'absolute', top: '-4px', left: '6px', width: '88px', height: '110px', background: '#FFFFFF', borderRadius: '6px', border: '1px solid #D4EDE3', boxShadow: '0 4px 12px rgba(28,61,48,0.08)', transform: 'rotate(4deg)' }} />
+            {/* Front paper with goal hint lines */}
+            <div style={{ position: 'relative', width: '88px', height: '110px', background: '#FFFFFF', borderRadius: '6px', border: '1px solid #B8D9CC', boxShadow: '0 8px 20px rgba(28,61,48,0.12)', padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+              <div style={{ width: '55%', height: '4px', background: '#65D454', borderRadius: '2px', opacity: 0.7 }} />
+              <div style={{ width: '85%', height: '3px', background: '#D4EDE3', borderRadius: '2px' }} />
+              <div style={{ width: '70%', height: '3px', background: '#D4EDE3', borderRadius: '2px' }} />
+              <div style={{ width: '90%', height: '3px', background: '#D4EDE3', borderRadius: '2px' }} />
+              <div style={{ width: '60%', height: '3px', background: '#D4EDE3', borderRadius: '2px' }} />
+              <div style={{ width: '40%', height: '4px', background: '#F59E0B', borderRadius: '2px', opacity: 0.6, marginTop: '4px' }} />
+              <div style={{ width: '75%', height: '3px', background: '#D4EDE3', borderRadius: '2px' }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Magnifier sweeping over papers */}
+        <div style={{ position: 'absolute', top: '50%', left: '50%', marginTop: '-12px', marginLeft: '-12px', fontSize: '44px', filter: 'drop-shadow(0 4px 8px rgba(28,61,48,0.18))', animation: 'coach-magnifier-sweep 3s ease-in-out infinite' }}>
+          🔍
+        </div>
+      </div>
+
+      {/* Rotating coach phrase */}
+      <div style={{ height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '260px' }}>
+        <p
+          key={idx}
+          style={{
+            fontFamily: 'var(--font-body)',
+            fontSize: '13px',
+            fontStyle: 'italic',
+            color: '#3D5949',
+            textAlign: 'center',
+            margin: 0,
+            animation: 'coach-fade 1.8s ease-in-out',
+          }}
+        >
+          {phrases[idx]}
+        </p>
+      </div>
+
+      {/* Bouncing dots */}
+      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+        {[0, 1, 2].map((i) => (
+          <span key={i} style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#65D454', animation: 'coach-dot 1.4s ease-in-out infinite', animationDelay: `${i * 0.2}s` }} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function getPhases(total: number): Array<{ name: string; tag: string; from: number; to: number; emoji: string; color: string; accent: string }> {
   // Mirrors db.ts getPhaseBoundaries — keep in sync.
   if (total < 10) {
     const F = Math.max(1, Math.round(total * 0.3))
     const B = Math.max(F + 1, Math.round(total * 0.75))
     return [
-      { name: 'Foundation', tag: 'Plant the roots', from: 1, to: F, emoji: '🌱', color: '#22C55E', accent: '#86EFAC' },
-      { name: 'Build', tag: 'Stack the wins', from: F + 1, to: B, emoji: '🌿', color: '#10B981', accent: '#6EE7B7' },
+      { name: 'Foundation', tag: 'Plant the roots', from: 1, to: F, emoji: '🌱', color: '#65D454', accent: '#A7F3A0' },
+      { name: 'Build', tag: 'Stack the wins', from: F + 1, to: B, emoji: '🌿', color: '#14B8A6', accent: '#5EEAD4' },
       { name: 'Finish', tag: 'Land it', from: B + 1, to: total, emoji: '🌻', color: '#8B5CF6', accent: '#C4B5FD' },
     ]
   }
@@ -834,8 +913,8 @@ function getPhases(total: number): Array<{ name: string; tag: string; from: numb
   const B = Math.max(F + 1, Math.round(total * 0.6))
   const P = Math.max(B + 1, Math.round(total * 0.85))
   return [
-    { name: 'Foundation', tag: 'Plant the roots', from: 1, to: F, emoji: '🌱', color: '#22C55E', accent: '#86EFAC' },
-    { name: 'Build', tag: 'Stack the wins', from: F + 1, to: B, emoji: '🌿', color: '#10B981', accent: '#6EE7B7' },
+    { name: 'Foundation', tag: 'Plant the roots', from: 1, to: F, emoji: '🌱', color: '#65D454', accent: '#A7F3A0' },
+    { name: 'Build', tag: 'Stack the wins', from: F + 1, to: B, emoji: '🌿', color: '#14B8A6', accent: '#5EEAD4' },
     { name: 'Peak', tag: 'Send it', from: B + 1, to: P, emoji: '⚡', color: '#F59E0B', accent: '#FCD34D' },
     { name: 'Finish', tag: 'Land it', from: P + 1, to: total, emoji: '🌻', color: '#8B5CF6', accent: '#C4B5FD' },
   ]
@@ -938,39 +1017,15 @@ function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVa
         </div>
       )}
 
-      {/* Phase timeline — soft gradient bar with emojis floating ABOVE the line (no circles) */}
-      <div style={{ marginBottom: '22px', padding: '0 4px' }}>
-        <div style={{ position: 'relative', height: '40px' }}>
-          {/* Emoji checkpoints — soft glow, no circle, on top of the line */}
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '28px', display: 'flex' }}>
-            {phases.map((phase, i) => {
-              const span = phase.to - phase.from + 1
-              const isFoundation = phase.name === 'Foundation'
-              const justify = i === 0 ? 'flex-start' : i === phases.length - 1 ? 'flex-end' : 'flex-start'
-              return (
-                <div key={phase.name} style={{ flex: span, display: 'flex', justifyContent: justify, alignItems: 'flex-end' }}>
-                  <span
-                    style={{
-                      fontSize: '22px',
-                      lineHeight: 1,
-                      filter: isFoundation
-                        ? `drop-shadow(0 2px 8px ${phase.color}aa) drop-shadow(0 0 14px ${phase.color}66)`
-                        : `drop-shadow(0 2px 6px ${phase.color}66) drop-shadow(0 0 10px ${phase.color}33)`,
-                      opacity: isFoundation ? 1 : 0.92,
-                      transform: i === phases.length - 1 ? 'translateX(2px)' : i === 0 ? 'translateX(-2px)' : 'none',
-                    }}
-                  >
-                    {phase.emoji}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-          {/* The line itself — soft pastel gradient sweep */}
+      {/* Phase timeline — emojis sit ON the line, centered through their vertical midpoint */}
+      <div style={{ marginBottom: '24px', padding: '0 4px' }}>
+        <div style={{ position: 'relative', height: '32px' }}>
+          {/* The line — passes through the vertical center */}
           <div
             style={{
               position: 'absolute',
-              bottom: '4px',
+              top: '50%',
+              transform: 'translateY(-50%)',
               left: 0,
               right: 0,
               height: '4px',
@@ -982,10 +1037,35 @@ function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVa
                 const endPct = ((cumulativeStart + (p.to - p.from + 1)) / total) * 100
                 return `${p.accent} ${startPct}%, ${p.accent} ${endPct}%`
               }).join(', ')})`,
-              opacity: 0.85,
+              opacity: 0.9,
               boxShadow: '0 2px 8px rgba(28,61,48,0.06)',
             }}
           />
+          {/* Emoji checkpoints — vertically centered, soft glow, sit ON the line */}
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex' }}>
+            {phases.map((phase, i) => {
+              const span = phase.to - phase.from + 1
+              const isFoundation = phase.name === 'Foundation'
+              const justify = i === 0 ? 'flex-start' : i === phases.length - 1 ? 'flex-end' : 'flex-start'
+              return (
+                <div key={phase.name} style={{ flex: span, display: 'flex', justifyContent: justify, alignItems: 'center' }}>
+                  <span
+                    style={{
+                      fontSize: '22px',
+                      lineHeight: 1,
+                      filter: isFoundation
+                        ? `drop-shadow(0 2px 8px ${phase.color}aa) drop-shadow(0 0 14px ${phase.color}66)`
+                        : `drop-shadow(0 2px 6px ${phase.color}66) drop-shadow(0 0 10px ${phase.color}33)`,
+                      opacity: isFoundation ? 1 : 0.95,
+                      transform: i === phases.length - 1 ? 'translateX(2px)' : i === 0 ? 'translateX(-2px)' : 'none',
+                    }}
+                  >
+                    {phase.emoji}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
         </div>
       </div>
 
@@ -1085,17 +1165,18 @@ function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVa
                       const day = task.day
                       const expanded = expandedDay === day
                       const habits = task.ongoing_habits ?? []
+                      const hasRationale = Boolean(task.rationale && task.rationale.trim().length > 0)
                       return (
                         <button
                           key={day}
                           onClick={(e) => { e.stopPropagation(); setExpandedDay(expanded ? null : day) }}
-                          style={{ textAlign: 'left', width: '100%', background: 'rgba(255,255,255,0.95)', border: expanded ? `1.5px solid ${phase.color}` : '1px solid #E8F0EC', borderRadius: '12px', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '6px', cursor: 'pointer', boxShadow: '0 1px 2px rgba(28,61,48,0.04)' }}
+                          style={{ textAlign: 'left', width: '100%', background: 'rgba(255,255,255,0.95)', border: expanded ? `1.5px solid ${phase.color}` : '1px solid #E8F0EC', borderRadius: '12px', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '6px', cursor: 'pointer', boxShadow: '0 1px 2px rgba(28,61,48,0.04)', position: 'relative' }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: `linear-gradient(135deg, ${phase.color}, ${phase.color}dd)`, color: '#FFFFFF', fontFamily: 'var(--font-heading)', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                               {day}
                             </div>
-                            <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', lineHeight: 1.45, color: '#2D4A3E', margin: 0, flex: 1, fontWeight: 500 }}>
+                            <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', lineHeight: 1.45, color: '#2D4A3E', margin: 0, flex: 1, fontWeight: 500, paddingRight: hasRationale ? '52px' : 0 }}>
                               {task.task_text}
                             </p>
                           </div>
@@ -1113,6 +1194,11 @@ function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVa
                             <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', margin: '0 0 0 38px', lineHeight: 1.55, borderLeft: `2px solid ${phase.color}`, paddingLeft: '10px' }}>
                               {task.rationale}
                             </p>
+                          )}
+                          {hasRationale && !expanded && (
+                            <span style={{ position: 'absolute', bottom: '8px', right: '10px', fontFamily: 'var(--font-body)', fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: phase.color, background: `${phase.color}14`, border: `1px solid ${phase.color}44`, borderRadius: '9999px', padding: '2px 8px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                              <span style={{ fontSize: '10px' }}>ⓘ</span> Why
+                            </span>
                           )}
                         </button>
                       )
