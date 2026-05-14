@@ -1,8 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Lock, Users, Globe, Sprout, ChevronLeft } from 'lucide-react'
 import PlanGeneratingScreen from '../components/PlanGeneratingScreen'
-import SignupSheet from '../components/SignupSheet'
 import { useAuth } from '../context/AuthContext'
 import { createSprint, createTasks, calculateEndDate, updateReminderSettings, setSprintPhaseThemes } from '../lib/db'
 import { enablePush, isPushSupported, isStandaloneInstalled, isIOS } from '../lib/push'
@@ -10,7 +9,6 @@ import { supabase } from '../lib/supabase'
 import { generateSprintPlan, assessGoalScope } from '../lib/gemini'
 import type { GeneratedTask, ScopeAssessment } from '../lib/gemini'
 import { track, Events, setPeople, incrementPeople } from '../lib/analytics'
-import { saveOnboardingStash, loadOnboardingStash, clearOnboardingStash } from '../lib/onboardingStash'
 
 type Visibility = 'PRIVATE' | 'COHORT' | 'PUBLIC'
 
@@ -31,7 +29,6 @@ const CARD_STYLE: React.CSSProperties = {
 
 export default function OnboardingPage() {
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
   const { user } = useAuth()
   const [step, setStep] = useState(1)
   const [goal, setGoal] = useState('')
@@ -52,103 +49,6 @@ export default function OnboardingPage() {
   const [scopeModalState, setScopeModalState] = useState<'closed' | 'unrealistic'>('closed')
   const [assessingScope, setAssessingScope] = useState(false)
   const [phaseThemes, setPhaseThemes] = useState<Record<string, string> | undefined>(undefined)
-  const [signupSheetOpen, setSignupSheetOpen] = useState(false)
-  const hasAutoResumed = useRef(false)
-
-  // Resume flow: when user lands here with ?resume=1 after auth (Google/magic link),
-  // restore the saved onboarding state and auto-create the sprint.
-  useEffect(() => {
-    if (hasAutoResumed.current) return
-    if (!user) return
-    const shouldResume = searchParams.get('resume') === '1'
-    const stash = loadOnboardingStash()
-    if (!shouldResume || !stash) return
-    hasAutoResumed.current = true
-
-    // Restore all state
-    setGoal(stash.goal)
-    setSprintLength(stash.sprintLength)
-    setVisibility(stash.visibility)
-    setPastReflection(stash.pastReflection)
-    setExtraContext(stash.extraContext)
-    setHasUsedExtraContext(stash.hasUsedExtraContext)
-    setAiTasks(stash.aiTasks)
-    setScopeAssessment(stash.scopeAssessment)
-    setPhaseThemes(stash.phaseThemes ?? undefined)
-    setStep(5)
-    // Defer one tick so state has flushed before sprint creation
-    setTimeout(() => { void createSprintFromStash(stash) }, 0)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user])
-
-  const createSprintFromStash = async (stash: ReturnType<typeof loadOnboardingStash>) => {
-    if (!user || !stash) return
-    setSubmitting(true)
-    setSubmitError('')
-    try {
-      const { data: existingProfile } = await supabase.from('profiles').select('id').eq('id', user.id).maybeSingle()
-      if (!existingProfile) {
-        await supabase.from('profiles').upsert({ id: user.id, display_name: user.user_metadata?.full_name ?? user.email ?? '' })
-      }
-      const today = new Date().toISOString().split('T')[0]
-      const endDate = calculateEndDate(today, stash.sprintLength)
-      const sprint = await createSprint({
-        user_id: user.id,
-        goal_text: stash.goal,
-        goal_category: 'general',
-        sprint_length: stash.sprintLength,
-        visibility: stash.visibility,
-        start_date: today,
-        end_date: endDate,
-      })
-      if (!sprint) throw new Error('createSprint returned null')
-      const tasksToSave = stash.aiTasks.map((t, index) => ({
-        sprint_id: sprint.id,
-        day_number: index + 1,
-        task_text: t.task_text,
-        task_type: t.task_type ?? 'build',
-        ongoing_habits: t.ongoing_habits ?? [],
-        rationale: t.rationale ?? null,
-      }))
-      await createTasks(tasksToSave)
-      if (stash.phaseThemes) await setSprintPhaseThemes(sprint.id, stash.phaseThemes)
-      if (stash.reminderTime) {
-        const TZ = typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC'
-        await updateReminderSettings(user.id, { reminder_time: stash.reminderTime, reminder_timezone: TZ, reminder_enabled: true })
-      }
-      track(Events.SprintStarted, {
-        sprint_id: sprint.id,
-        sprint_length: stash.sprintLength,
-        visibility: stash.visibility,
-        had_past_reflection: !!stash.pastReflection?.trim(),
-        had_extra_context: !!stash.extraContext?.trim(),
-        signed_up_at_end: true,
-      })
-      setPeople({ has_active_sprint: true, last_sprint_started_at: new Date().toISOString() })
-      incrementPeople('total_sprints_started', 1)
-      clearOnboardingStash()
-      navigate('/dashboard', { replace: true })
-    } catch (err) {
-      console.error('createSprintFromStash:', err)
-      setSubmitError('Something went wrong restoring your plan. Please try again.')
-      setSubmitting(false)
-    }
-  }
-
-  const buildStash = (reminderTime: string | null = null, reminderChannel: 'push' | 'email' | null = null) => ({
-    goal,
-    sprintLength: sprintLength!,
-    visibility,
-    pastReflection,
-    extraContext,
-    hasUsedExtraContext,
-    aiTasks,
-    scopeAssessment,
-    phaseThemes: phaseThemes ?? null,
-    reminderTime,
-    reminderChannel,
-    savedAt: new Date().toISOString(),
-  })
 
   const goToStep = (next: number) => {
     setDirection('out')
@@ -161,16 +61,8 @@ export default function OnboardingPage() {
     }, 200)
   }
 
-  const handleBeginDay1 = async (reminderTime?: string | null) => {
-    if (!sprintLength) return
-
-    // No user yet? Stash everything and prompt signup.
-    if (!user) {
-      saveOnboardingStash(buildStash(reminderTime ?? null, 'push'))
-      setSignupSheetOpen(true)
-      return
-    }
-
+  const handleBeginDay1 = async () => {
+    if (!user || !sprintLength) return
     setSubmitting(true)
     setSubmitError('')
 
@@ -225,7 +117,6 @@ export default function OnboardingPage() {
       setPeople({ has_active_sprint: true, last_sprint_started_at: new Date().toISOString() })
       incrementPeople('total_sprints_started', 1)
 
-      clearOnboardingStash()
       navigate('/dashboard', { replace: true })
     } catch (err) {
       console.error('Sprint creation error:', err)
@@ -387,21 +278,6 @@ export default function OnboardingPage() {
       {generatingPlan && (
         <PlanGeneratingScreen sprintLength={sprintLength ?? 30} goalText={goal} />
       )}
-
-      {/* Signup prompt at the end of onboarding (only if user not yet authed) */}
-      <SignupSheet
-        open={signupSheetOpen}
-        onClose={() => setSignupSheetOpen(false)}
-        goalPreview={goal}
-        onBeforeAuthAction={() => saveOnboardingStash(buildStash())}
-        onSignedIn={() => {
-          setSignupSheetOpen(false)
-          // The useEffect resume hook will pick this up once `user` is populated,
-          // but trigger an explicit retry as a safety net.
-          const stash = loadOnboardingStash()
-          if (stash) setTimeout(() => { void createSprintFromStash(stash) }, 100)
-        }}
-      />
     </div>
   )
 }
@@ -1452,7 +1328,7 @@ function Step5Reminder({
   submitError,
   onBack,
 }: {
-  onBeginDay1: (reminderTime: string | null) => Promise<void> | void
+  onBeginDay1: () => Promise<void> | void
   submitting?: boolean
   submitError?: string
   onBack?: () => void
@@ -1466,39 +1342,37 @@ function Step5Reminder({
   const TZ = typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC'
 
   const handleSetAndBegin = async () => {
+    if (!user) return
     setSavingAndStarting(true)
     setError('')
 
-    if (user) {
-      // Already authed — save reminder + push subscription, then begin
-      const result = await updateReminderSettings(user.id, {
-        reminder_time: `${time}:00`,
-        reminder_timezone: TZ,
-        reminder_enabled: true,
-      })
-      if (!result.ok) {
-        setError(`Couldn't save reminder: ${result.error ?? 'unknown'}. We'll still start your sprint.`)
-      } else {
-        track(Events.ReminderEnabled, { time, timezone: TZ, source: 'onboarding' })
-        setPeople({ reminder_time: time, reminder_timezone: TZ, reminder_enabled: true, reminder_set_during_onboarding: true })
-        if (isPushSupported()) {
-          track(Events.PushPermissionRequested)
-          enablePush(user.id).then((r) => {
-            if (r.ok) { track(Events.PushPermissionGranted); setPeople({ push_subscribed: true }) }
-            else if (r.reason === 'denied') track(Events.PushPermissionDenied)
-          }).catch((e) => console.warn('enablePush:', e))
-        }
+    // Save reminder (best-effort; don't block sprint start)
+    const result = await updateReminderSettings(user.id, {
+      reminder_time: `${time}:00`,
+      reminder_timezone: TZ,
+      reminder_enabled: true,
+    })
+    if (!result.ok) {
+      setError(`Couldn't save reminder: ${result.error ?? 'unknown'}. We'll still start your sprint.`)
+    } else {
+      track(Events.ReminderEnabled, { time, timezone: TZ, source: 'onboarding' })
+      setPeople({ reminder_time: time, reminder_timezone: TZ, reminder_enabled: true, reminder_set_during_onboarding: true })
+      if (isPushSupported()) {
+        track(Events.PushPermissionRequested)
+        enablePush(user.id).then((r) => {
+          if (r.ok) { track(Events.PushPermissionGranted); setPeople({ push_subscribed: true }) }
+          else if (r.reason === 'denied') track(Events.PushPermissionDenied)
+        }).catch((e) => console.warn('enablePush:', e))
       }
     }
-    // Pass time up either way; parent decides between create-sprint and prompt-signup
-    try { await onBeginDay1(`${time}:00`) } finally { setSavingAndStarting(false) }
+    try { await onBeginDay1() } finally { setSavingAndStarting(false) }
   }
 
   const handleSkip = async () => {
     setSavingAndStarting(true)
     track(Events.ReminderSkippedDuringOnboarding, { source: 'onboarding' })
-    if (user) setPeople({ reminder_set_during_onboarding: false })
-    try { await onBeginDay1(null) } finally { setSavingAndStarting(false) }
+    setPeople({ reminder_set_during_onboarding: false })
+    try { await onBeginDay1() } finally { setSavingAndStarting(false) }
   }
 
   return (
