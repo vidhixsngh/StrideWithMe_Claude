@@ -140,13 +140,20 @@ Output STRICTLY this JSON shape — no markdown, no commentary:
   }
 }
 
+/**
+ * Generation mode:
+ *  - 'full': all sprintLength tasks at once (used for 7-day sprints — short enough to see end-to-end)
+ *  - 'foundation': only the Foundation phase tasks + 3 short theme strings for Build/Peak/Finish
+ *    (used for 15/30-day sprints — later phases generated mid-sprint with user's logs as context)
+ */
 export async function generateSprintPlan(
   goalText: string,
   sprintLength: number,
   goalCategory: string,
   pastReflection?: string,
-  extraContext?: string
-): Promise<{ tasks: GeneratedTask[], wasVague: boolean }> {
+  extraContext?: string,
+  mode: 'full' | 'foundation' = 'full'
+): Promise<{ tasks: GeneratedTask[], wasVague: boolean, phase_themes?: Record<string, string> }> {
   const extraContextBlock = extraContext && extraContext.trim().length > 0
     ? `
 
@@ -231,6 +238,34 @@ OUTPUT REQUIREMENTS:
 - rationale is one sentence, under 140 characters.
 - wasVague: true ONLY if the goal lacks any specificity (e.g. just "be better"). For most user inputs, false.
 
+${mode === 'foundation' ? `
+GENERATION MODE: FOUNDATION-ONLY
+
+You are generating ONLY the Foundation phase tasks (Days 1 through ${Math.max(1, Math.round(sprintLength * 0.2))}). DO NOT generate Build/Peak/Finish tasks — those will be created later, mid-sprint, using the user's accumulated logs as context.
+
+You MUST also return a "phase_themes" object with three short (≤ 100 chars each) theme strings — one per upcoming phase. Each theme should describe in the user's goal vocabulary what that phase is about. These will be shown to the user as placeholders until the actual tasks are generated.
+
+OUTPUT FORMAT (strict JSON):
+{
+  "wasVague": false,
+  "tasks": [
+    {
+      "day": 1,
+      "task_text": "Pick your tracking method and set up the app or notebook",
+      "task_type": "research",
+      "ongoing_habits": [],
+      "rationale": "Day 1 is about removing friction from tomorrow — when the work begins, the tool is ready."
+    }
+  ],
+  "phase_themes": {
+    "build": "Output compounds — your tracking routine becomes effortless; we add a small calorie target.",
+    "peak": "Push hardest — the most ambitious calorie deficit + intensity block of the sprint.",
+    "finish": "Lock it in — measure progress, share with one accountability person, plan next 30 days."
+  }
+}
+
+Generate exactly ${Math.max(1, Math.round(sprintLength * 0.2))} Foundation tasks (Days 1 to ${Math.max(1, Math.round(sprintLength * 0.2))}), nothing more.
+` : `
 OUTPUT FORMAT (strict JSON):
 {
   "wasVague": false,
@@ -253,30 +288,108 @@ OUTPUT FORMAT (strict JSON):
 }
 
 Generate exactly ${sprintLength} tasks, one per day. Day numbers run 1 to ${sprintLength} sequentially.
+`}
 `
 
   try {
-    console.log('[AI-1] Sending goal to Gemini:', goalText)
-    // Plan output is large: 30 tasks × (task_text + ongoing_habits[] + rationale)
-    // ≈ 6-9k tokens of structured JSON. Need headroom or the response truncates mid-day.
-    const planMaxTokens = sprintLength <= 7 ? 4096 : sprintLength <= 15 ? 8192 : 12288
+    console.log('[AI-1] Sending goal to Gemini:', goalText, 'mode:', mode)
+    // Foundation-only mode is much smaller (6 tasks + 3 themes ≈ 1500 tokens)
+    const planMaxTokens = mode === 'foundation'
+      ? 3072
+      : sprintLength <= 7 ? 4096 : sprintLength <= 15 ? 8192 : 12288
     const raw = await callGemini(prompt, undefined, false, planMaxTokens)
     console.log('[AI-1] Raw Gemini response:', raw.slice(0, 500))
-    const parsed = safeParseJSON<{ wasVague: boolean; tasks: GeneratedTask[] }>(raw, { wasVague: false, tasks: [] })
+    const parsed = safeParseJSON<{ wasVague: boolean; tasks: GeneratedTask[]; phase_themes?: Record<string, string> }>(raw, { wasVague: false, tasks: [] })
     console.log('[AI-1] Parsed tasks count:', parsed.tasks?.length ?? 0)
 
     if (!parsed.tasks || parsed.tasks.length === 0) {
       console.warn('[AI-1] No tasks parsed — using fallback. Raw was:', raw.slice(0, 300))
-      return { tasks: getFallbackTasks(sprintLength), wasVague: false }
+      return { tasks: getFallbackTasks(mode === 'foundation' ? Math.max(1, Math.round(sprintLength * 0.2)) : sprintLength), wasVague: false }
     }
 
+    const expectedCount = mode === 'foundation' ? Math.max(1, Math.round(sprintLength * 0.2)) : sprintLength
     return {
-      tasks: parsed.tasks.slice(0, sprintLength),
-      wasVague: parsed.wasVague ?? false
+      tasks: parsed.tasks.slice(0, expectedCount),
+      wasVague: parsed.wasVague ?? false,
+      phase_themes: parsed.phase_themes,
     }
   } catch (err) {
     console.error('[AI-1] Error:', err)
     return { tasks: getFallbackTasks(sprintLength), wasVague: false }
+  }
+}
+
+/**
+ * Generate tasks for a specific mid-sprint phase using the user's accumulated logs +
+ * already-completed tasks as context. Called when the user verifies the last day of
+ * the prior phase. Result is way smarter than upfront generation could be — it knows
+ * what habits stuck, what was hard, what worked.
+ */
+export async function generatePhaseTasks(params: {
+  goalText: string
+  sprintLength: number
+  phase: 'build' | 'peak' | 'finish'
+  fromDay: number
+  toDay: number
+  phaseTheme: string
+  completedTasks: Array<{ day_number: number; task_text: string }>
+  recentLogs: Array<{ day_number: number; log_type: string; log_text: string | null }>
+}): Promise<GeneratedTask[]> {
+  const { goalText, sprintLength, phase, fromDay, toDay, phaseTheme, completedTasks, recentLogs } = params
+  const count = toDay - fromDay + 1
+  const phaseGuidance = {
+    build: 'BUILD phase: the habit is set. Now compound it. Increase intensity, scope, and complexity. Tasks produce real output, not just maintenance.',
+    peak: 'PEAK phase: this is the hardest, most ambitious stretch. The boldest moves happen here. Push the user past comfortable.',
+    finish: 'FINISH phase: ship, measure, share. Tasks produce the deliverable, validate the outcome, and lock in next-30-days planning.',
+  }[phase]
+
+  const prompt = `
+You are a sprint coach generating the ${phase.toUpperCase()} phase tasks for a user mid-sprint. You have their actual progress data — use it.
+
+USER'S GOAL: "${goalText}"
+SPRINT LENGTH: ${sprintLength} days total
+THIS PHASE: ${phase.toUpperCase()} (Days ${fromDay} to ${toDay}, ${count} days)
+PHASE THEME (set at onboarding): "${phaseTheme}"
+
+${phaseGuidance}
+
+ALREADY-COMPLETED TASKS (the user actually did these — build on them):
+${completedTasks.map(t => `- Day ${t.day_number}: ${t.task_text}`).join('\n')}
+
+USER'S RECENT LOGS (what they actually wrote — references actual progress):
+${recentLogs.slice(-10).map(l => `- Day ${l.day_number} (${l.log_type}): ${(l.log_text ?? '').slice(0, 180)}`).join('\n')}
+
+UNIVERSAL PRINCIPLES (still apply):
+1. Habit continuity — every habit the user established carries forward in "ongoing_habits".
+2. Each day = ONE new action + carried habits.
+3. No fake milestones.
+4. Domain vocabulary — use the user's own words from their logs.
+5. Reference what they actually did — "Now that you're consistent with X, today we add Y."
+
+Generate exactly ${count} tasks, day_number ${fromDay} to ${toDay}.
+
+OUTPUT (strict JSON array, no markdown):
+[
+  {
+    "day": ${fromDay},
+    "task_text": "...",
+    "task_type": "build" | "research" | "review",
+    "ongoing_habits": ["Continue X (since Day Y)", "..."],
+    "rationale": "One sentence on why this task today."
+  }
+]
+`
+  try {
+    const raw = await callGemini(prompt, undefined, false, 8192)
+    const parsed = safeParseJSON<GeneratedTask[]>(raw, [])
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      console.warn('[generatePhaseTasks] No tasks parsed — using fallback')
+      return getFallbackTasks(count).map((t, i) => ({ ...t, day: fromDay + i }))
+    }
+    return parsed.slice(0, count)
+  } catch (e) {
+    console.error('[generatePhaseTasks] error:', e)
+    return getFallbackTasks(count).map((t, i) => ({ ...t, day: fromDay + i }))
   }
 }
 

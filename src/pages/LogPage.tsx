@@ -3,10 +3,12 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { Check, Link2, X } from 'lucide-react'
 import PageWrapper from '../components/PageWrapper'
 import BloomOverlay from '../components/BloomOverlay'
+import PhaseUnlockedOverlay from '../components/PhaseUnlockedOverlay'
 import VerifyingOverlay from '../components/VerifyingOverlay'
 import { verifyLog, generatePostDraft } from '../lib/gemini'
 import type { VerificationResult } from '../lib/gemini'
-import { createLog, getLogsForSprint, getAllActiveSprints, getTodayTask, getTasksForSprint, calculateDayNumber, createFeedPost, markLogPostedToFeed, updateLogDraft } from '../lib/db'
+import { createLog, getLogsForSprint, getAllActiveSprints, getTodayTask, getTasksForSprint, calculateDayNumber, createFeedPost, markLogPostedToFeed, updateLogDraft, createTasks, markPhaseGenerated, getPhaseBoundaries, getPhaseForDay, nextPhaseAfter } from '../lib/db'
+import { generatePhaseTasks } from '../lib/gemini'
 import { useAuth } from '../context/AuthContext'
 import type { Sprint, Task, DailyLog } from '../lib/db'
 import { track, Events, incrementPeople, setPeople } from '../lib/analytics'
@@ -49,6 +51,7 @@ export default function LogPage() {
   const [upcomingTasks, setUpcomingTasks] = useState<Task[]>([])
   const [sprintLogs, setSprintLogs] = useState<Array<{ day_number: number; log_type: string }>>([])
   const [lastLogId, setLastLogId] = useState<string | null>(null)
+  const [phaseUnlock, setPhaseUnlock] = useState<null | { phase: 'build' | 'peak' | 'finish'; theme: string; status: 'generating' | 'done' | 'failed'; firstTaskText?: string }>(null)
   const [draftRestored, setDraftRestored] = useState(false)
   const DRAFT_KEY = 'stridewithme_draft_log'
 
@@ -141,6 +144,62 @@ export default function LogPage() {
     } catch { localStorage.removeItem(DRAFT_KEY) }
   }, [sprint?.id, dayNumber, DRAFT_KEY])
 
+  /** When user logs the last day of a phase (and sprint is 15/30 days), trigger
+   *  background generation of the next phase + show a celebratory unlock overlay. */
+  const triggerPhaseUnlockIfDue = async () => {
+    if (!sprint) return
+    if (sprint.sprint_length < 14) return // 7-day sprints: full plan already exists
+    const boundaries = getPhaseBoundaries(sprint.sprint_length)
+    const currentPhase = getPhaseForDay(dayNumber, sprint.sprint_length)
+    const nextPhase = nextPhaseAfter(currentPhase)
+    if (!nextPhase || nextPhase === 'foundation') return // Foundation is generated at onboarding
+    if (boundaries[currentPhase].to !== dayNumber) return // not last day of phase
+    if (sprint.last_generated_phase === nextPhase || sprint.last_generated_phase === 'finish') return // already generated
+
+    const next = nextPhase as 'build' | 'peak' | 'finish'
+    const theme = (sprint.phase_themes as Record<string, string> | undefined)?.[next] ?? `${next.charAt(0).toUpperCase() + next.slice(1)} phase`
+    setPhaseUnlock({ phase: next, theme, status: 'generating' })
+
+    try {
+      const allTasks = await getTasksForSprint(sprint.id)
+      const allLogs = await getLogsForSprint(sprint.id)
+      const completedTasks = allTasks
+        .filter((t) => t.day_number <= dayNumber)
+        .map((t) => ({ day_number: t.day_number, task_text: t.task_text }))
+
+      const newTasks = await generatePhaseTasks({
+        goalText: sprint.goal_text,
+        sprintLength: sprint.sprint_length,
+        phase: next,
+        fromDay: boundaries[next].from,
+        toDay: boundaries[next].to,
+        phaseTheme: theme,
+        completedTasks,
+        recentLogs: allLogs.map((l) => ({ day_number: l.day_number, log_type: l.log_type, log_text: l.log_text })),
+      })
+      if (newTasks.length === 0) {
+        setPhaseUnlock((p) => p ? { ...p, status: 'failed' } : null)
+        return
+      }
+      const rows = newTasks.map((t, idx) => ({
+        sprint_id: sprint.id,
+        day_number: boundaries[next].from + idx,
+        task_text: t.task_text,
+        task_type: t.task_type ?? 'build',
+        ongoing_habits: t.ongoing_habits ?? [],
+        rationale: t.rationale ?? null,
+      }))
+      await createTasks(rows)
+      await markPhaseGenerated(sprint.id, next)
+      // Reflect in local sprints array so dashboard doesn't re-trigger
+      setSprints((list) => list.map((s) => s.id === sprint.id ? { ...s, last_generated_phase: next } : s))
+      setPhaseUnlock({ phase: next, theme, status: 'done', firstTaskText: rows[0]?.task_text })
+    } catch (e) {
+      console.error('[phase-unlock]', e)
+      setPhaseUnlock((p) => p ? { ...p, status: 'failed' } : null)
+    }
+  }
+
   const handleVerify = async () => {
     if (!sprint || !user) return
     const canVerify = (activeTab === 'text' && logText.length >= 20) || (activeTab === 'image' && imageFiles.length > 0) || (activeTab === 'link' && linkUrl.length > 0)
@@ -186,6 +245,8 @@ export default function LogPage() {
       incrementPeople('total_verified_logs', 1)
       setPeople({ last_log_at: new Date().toISOString() })
       generateAndSaveDraft(newLog?.id)
+      // Phase unlock — runs in background, shows overlay when done
+      triggerPhaseUnlockIfDue()
     } else {
       setAttemptNumber(prev => prev + 1)
       setVerificationResult(result)
@@ -348,6 +409,7 @@ export default function LogPage() {
             setLogText(honestText)
             setPhase('honest_done')
             generateHonestDraft(honestText, newLog.id)
+            triggerPhaseUnlockIfDue()
           } else {
             navigate('/dashboard')
           }
@@ -386,6 +448,15 @@ export default function LogPage() {
             setShowBloom(false)
             setPhase('verified')
           }}
+        />
+      )}
+      {phaseUnlock && !showBloom && (
+        <PhaseUnlockedOverlay
+          phase={phaseUnlock.phase}
+          theme={phaseUnlock.theme}
+          status={phaseUnlock.status}
+          firstTaskText={phaseUnlock.firstTaskText}
+          onContinue={() => { setPhaseUnlock(null); navigate('/dashboard') }}
         />
       )}
     </PageWrapper>

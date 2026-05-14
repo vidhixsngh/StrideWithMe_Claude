@@ -1,5 +1,7 @@
 import { supabase } from './supabase'
 
+export type SprintPhase = 'foundation' | 'build' | 'peak' | 'finish'
+
 export interface Sprint {
   id: string
   user_id: string
@@ -12,6 +14,50 @@ export interface Sprint {
   start_date: string
   end_date: string
   created_at: string
+  phase_themes?: Partial<Record<SprintPhase, string>>
+  last_generated_phase?: SprintPhase
+}
+
+/** Day-range for each phase, scaled to the sprint length. Mirrors gemini.ts prompt math. */
+export function getPhaseBoundaries(total: number): Record<SprintPhase, { from: number; to: number }> {
+  const F = Math.max(1, Math.round(total * 0.2))
+  const B = Math.max(F + 1, Math.round(total * 0.67))
+  const P = Math.max(B + 1, Math.round(total * 0.93))
+  return {
+    foundation: { from: 1, to: F },
+    build: { from: F + 1, to: B },
+    peak: { from: B + 1, to: P },
+    finish: { from: P + 1, to: total },
+  }
+}
+
+export function getPhaseForDay(day: number, total: number): SprintPhase {
+  const b = getPhaseBoundaries(total)
+  if (day <= b.foundation.to) return 'foundation'
+  if (day <= b.build.to) return 'build'
+  if (day <= b.peak.to) return 'peak'
+  return 'finish'
+}
+
+export function nextPhaseAfter(phase: SprintPhase): SprintPhase | null {
+  const order: SprintPhase[] = ['foundation', 'build', 'peak', 'finish']
+  const idx = order.indexOf(phase)
+  return idx >= 0 && idx < order.length - 1 ? order[idx + 1] : null
+}
+
+export async function setSprintPhaseThemes(
+  sprintId: string,
+  themes: Partial<Record<SprintPhase, string>>
+): Promise<boolean> {
+  const { error } = await supabase.from('sprints').update({ phase_themes: themes }).eq('id', sprintId)
+  if (error) { console.error('setSprintPhaseThemes:', error); return false }
+  return true
+}
+
+export async function markPhaseGenerated(sprintId: string, phase: SprintPhase): Promise<boolean> {
+  const { error } = await supabase.from('sprints').update({ last_generated_phase: phase }).eq('id', sprintId)
+  if (error) { console.error('markPhaseGenerated:', error); return false }
+  return true
 }
 
 export interface Task {

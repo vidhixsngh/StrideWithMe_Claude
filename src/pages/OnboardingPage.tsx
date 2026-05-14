@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Lock, Users, Globe, Sprout, ChevronLeft } from 'lucide-react'
 import PlanGeneratingScreen from '../components/PlanGeneratingScreen'
 import { useAuth } from '../context/AuthContext'
-import { createSprint, createTasks, calculateEndDate, updateReminderSettings } from '../lib/db'
+import { createSprint, createTasks, calculateEndDate, updateReminderSettings, setSprintPhaseThemes } from '../lib/db'
 import { enablePush, isPushSupported, isStandaloneInstalled, isIOS } from '../lib/push'
 import { supabase } from '../lib/supabase'
 import { generateSprintPlan, assessGoalScope } from '../lib/gemini'
@@ -48,6 +48,7 @@ export default function OnboardingPage() {
   const [scopeAssessment, setScopeAssessment] = useState<ScopeAssessment | null>(null)
   const [scopeModalState, setScopeModalState] = useState<'closed' | 'unrealistic'>('closed')
   const [assessingScope, setAssessingScope] = useState(false)
+  const [phaseThemes, setPhaseThemes] = useState<Record<string, string> | undefined>(undefined)
 
   const goToStep = (next: number) => {
     setDirection('out')
@@ -106,6 +107,11 @@ export default function OnboardingPage() {
       const tasksOk = await createTasks(tasksToSave)
       console.log('[Onboarding] Tasks result:', tasksOk)
 
+      // Persist phase themes (only present in 15/30-day Foundation-mode generation)
+      if (phaseThemes) {
+        await setSprintPhaseThemes(sprint.id, phaseThemes)
+      }
+
       track(Events.SprintStarted, {
         sprint_id: sprint.id,
         sprint_length: sprintLength,
@@ -149,9 +155,12 @@ export default function OnboardingPage() {
       has_extra_context: !!extraContext?.trim(),
       scope: scopeAssessment?.scope ?? 'realistic',
     })
-    const result = await generateSprintPlan(effectiveGoal, sprintLength ?? 30, 'general', pastReflection, extraContext)
+    // Progressive generation: 15+ day sprints get Foundation-only, others get full
+    const mode = (sprintLength ?? 30) >= 14 ? 'foundation' : 'full'
+    const result = await generateSprintPlan(effectiveGoal, sprintLength ?? 30, 'general', pastReflection, extraContext, mode)
     setAiTasks(result.tasks)
     setWasVague(result.wasVague)
+    setPhaseThemes(result.phase_themes)
     setPlanGenerated(true)
     setGeneratingPlan(false)
     if (pastReflection?.trim()) track(Events.PastReflectionAdded, { length: pastReflection.length })
@@ -164,9 +173,11 @@ export default function OnboardingPage() {
     setGeneratingPlan(true)
     track(Events.PlanRegenerated, { length: text.length })
     track(Events.ExtraContextUsed, { length: text.length })
-    const result = await generateSprintPlan(goal, sprintLength ?? 30, 'general', pastReflection, text)
+    const mode = (sprintLength ?? 30) >= 14 ? 'foundation' : 'full'
+    const result = await generateSprintPlan(goal, sprintLength ?? 30, 'general', pastReflection, text, mode)
     setAiTasks(result.tasks)
     setWasVague(result.wasVague)
+    setPhaseThemes(result.phase_themes)
     setPlanGenerated(true)
     setGeneratingPlan(false)
   }
@@ -211,7 +222,7 @@ export default function OnboardingPage() {
         {step === 3 && (
           <Step3Visibility visibility={visibility} setVisibility={setVisibility} onNext={handleGoToStep4} generatingPlan={generatingPlan} onBack={() => goToStep(2)} />
         )}
-        {step === 4 && <Step4Preview goal={goal} sprintLength={sprintLength ?? 30} onBegin={() => goToStep(5)} submitError={undefined} aiTasks={aiTasks} wasVague={wasVague} generatingPlan={generatingPlan} pastReflection={pastReflection} extraContext={extraContext} hasUsedExtraContext={hasUsedExtraContext} onRegenerateWithContext={handleRegenerateWithContext} onBack={() => goToStep(3)} scopeAssessment={scopeAssessment} />}
+        {step === 4 && <Step4Preview goal={goal} sprintLength={sprintLength ?? 30} onBegin={() => goToStep(5)} submitError={undefined} aiTasks={aiTasks} wasVague={wasVague} generatingPlan={generatingPlan} pastReflection={pastReflection} extraContext={extraContext} hasUsedExtraContext={hasUsedExtraContext} onRegenerateWithContext={handleRegenerateWithContext} onBack={() => goToStep(3)} scopeAssessment={scopeAssessment} phaseThemes={phaseThemes} />}
         {step === 5 && <Step5Reminder onBeginDay1={handleBeginDay1} submitting={submitting} submitError={submitError} onBack={() => goToStep(4)} />}
       </div>
 
@@ -820,10 +831,12 @@ function getPhases(total: number): Array<{ name: string; tag: string; from: numb
   ]
 }
 
-function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVague, generatingPlan, pastReflection, extraContext, hasUsedExtraContext, onRegenerateWithContext, onBack, scopeAssessment }: { goal: string; sprintLength: number; onBegin: () => void; submitting?: boolean; submitError?: string; aiTasks?: GeneratedTask[]; wasVague?: boolean; generatingPlan?: boolean; pastReflection?: string; extraContext?: string; hasUsedExtraContext?: boolean; onRegenerateWithContext?: (text: string) => void; onBack?: () => void; scopeAssessment?: ScopeAssessment | null }) {
+function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVague, generatingPlan, pastReflection, extraContext, hasUsedExtraContext, onRegenerateWithContext, onBack, scopeAssessment, phaseThemes }: { goal: string; sprintLength: number; onBegin: () => void; submitting?: boolean; submitError?: string; aiTasks?: GeneratedTask[]; wasVague?: boolean; generatingPlan?: boolean; pastReflection?: string; extraContext?: string; hasUsedExtraContext?: boolean; onRegenerateWithContext?: (text: string) => void; onBack?: () => void; scopeAssessment?: ScopeAssessment | null; phaseThemes?: Record<string, string> }) {
   const [contextOpen, setContextOpen] = useState(false)
   const [contextDraft, setContextDraft] = useState('')
   const [expandedDay, setExpandedDay] = useState<number | null>(null)
+  // Phases collapsed by default except Foundation
+  const [expandedPhases, setExpandedPhases] = useState<Record<string, boolean>>({ Foundation: true, Build: false, Peak: false, Finish: false })
 
   const tasks = aiTasks && aiTasks.length > 0
     ? aiTasks
@@ -896,87 +909,93 @@ function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVa
         </div>
       )}
 
-      {/* All days, grouped by phase */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '14px' }}>
+      {/* Phases — collapsible. Foundation expanded by default; Build/Peak/Finish collapsed with theme card. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
         {phases.map((phase) => {
-          const phaseTasks = tasks.filter((t) => {
-            const day = t.day
-            return day >= phase.from && day <= phase.to
-          })
-          if (phaseTasks.length === 0) return null
+          const phaseTasks = tasks.filter((t) => t.day >= phase.from && t.day <= phase.to)
+          const isExpanded = expandedPhases[phase.name] ?? false
+          const phaseKey = phase.name.toLowerCase()
+          const themeForPhase = phaseThemes?.[phaseKey]
+          const hasTasks = phaseTasks.length > 0
           return (
-            <div key={phase.name}>
-              {/* Phase header */}
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '8px', paddingLeft: '2px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '13px' }}>{phase.emoji}</span>
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', letterSpacing: '0.1em', color: phase.color, margin: 0, textTransform: 'uppercase', fontWeight: 700 }}>
-                    {phase.name}
-                  </p>
-                  <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2' }}>
-                    · Day {phase.from}{phase.from !== phase.to ? `–${phase.to}` : ''}
-                  </span>
+            <div key={phase.name} style={{ background: 'rgba(255,255,255,0.6)', border: '1px solid #E8F0EC', borderRadius: '16px', overflow: 'hidden' }}>
+              {/* Phase header — tap to toggle */}
+              <button
+                onClick={() => setExpandedPhases({ ...expandedPhases, [phase.name]: !isExpanded })}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: '16px' }}>{phase.emoji}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', letterSpacing: '0.08em', color: phase.color, margin: 0, textTransform: 'uppercase', fontWeight: 700 }}>
+                        {phase.name}
+                      </p>
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2' }}>
+                        · Day {phase.from}{phase.from !== phase.to ? `–${phase.to}` : ''}
+                      </span>
+                    </div>
+                    <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', margin: '2px 0 0', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {hasTasks ? phase.tag : (themeForPhase ?? phase.tag)}
+                    </p>
+                  </div>
                 </div>
-                <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2' }}>{phase.tag}</span>
-              </div>
+                <span style={{ fontSize: '12px', color: '#9BBFB2', transition: 'transform 0.15s ease', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0)', marginLeft: '8px' }}>▾</span>
+              </button>
 
-              {/* Day cards within this phase */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {phaseTasks.map((task) => {
-                  const day = task.day
-                  const expanded = expandedDay === day
-                  const habits = task.ongoing_habits ?? []
-                  return (
-                    <button
-                      key={day}
-                      onClick={() => setExpandedDay(expanded ? null : day)}
-                      style={{
-                        textAlign: 'left',
-                        width: '100%',
-                        background: 'rgba(255,255,255,0.85)',
-                        border: expanded ? `1.5px solid ${phase.color}` : '1px solid #E8F0EC',
-                        borderRadius: '14px',
-                        padding: '10px 12px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '6px',
-                        cursor: 'pointer',
-                        boxShadow: '0 1px 3px rgba(28,61,48,0.04)',
-                        transition: 'border 0.15s ease, background 0.15s ease',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: `linear-gradient(135deg, ${phase.color}, ${phase.color}dd)`, color: '#FFFFFF', fontFamily: 'var(--font-heading)', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: `0 2px 6px ${phase.color}40` }}>
-                          {day}
-                        </div>
-                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', lineHeight: 1.45, color: '#2D4A3E', margin: 0, flex: 1, fontWeight: 500 }}>
-                          {task.task_text}
-                        </p>
-                        <span style={{ fontSize: '10px', color: '#9BBFB2', transition: 'transform 0.15s ease', transform: expanded ? 'rotate(180deg)' : 'rotate(0)' }}>▾</span>
-                      </div>
-
-                      {habits.length > 0 && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', paddingLeft: '38px' }}>
-                          <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2', alignSelf: 'center' }}>🔁</span>
-                          {habits.map((h, k) => (
-                            <span key={k} style={{ fontFamily: 'var(--font-body)', fontSize: '10px', color: '#5A9A3A', background: 'rgba(118,197,72,0.10)', border: '1px solid rgba(107,176,72,0.18)', borderRadius: '9999px', padding: '2px 8px', whiteSpace: 'nowrap' }}>
-                              {h}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-
-                      {expanded && task.rationale && (
-                        <div style={{ paddingLeft: '38px', paddingTop: '4px' }}>
-                          <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', margin: 0, lineHeight: 1.55, borderLeft: `2px solid ${phase.color}`, paddingLeft: '10px' }}>
-                            {task.rationale}
-                          </p>
-                        </div>
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
+              {/* Expanded content */}
+              {isExpanded && (
+                <div style={{ padding: '0 12px 12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {hasTasks ? (
+                    phaseTasks.map((task) => {
+                      const day = task.day
+                      const expanded = expandedDay === day
+                      const habits = task.ongoing_habits ?? []
+                      return (
+                        <button
+                          key={day}
+                          onClick={(e) => { e.stopPropagation(); setExpandedDay(expanded ? null : day) }}
+                          style={{ textAlign: 'left', width: '100%', background: 'rgba(255,255,255,0.95)', border: expanded ? `1.5px solid ${phase.color}` : '1px solid #E8F0EC', borderRadius: '12px', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '6px', cursor: 'pointer', boxShadow: '0 1px 2px rgba(28,61,48,0.04)' }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: `linear-gradient(135deg, ${phase.color}, ${phase.color}dd)`, color: '#FFFFFF', fontFamily: 'var(--font-heading)', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              {day}
+                            </div>
+                            <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', lineHeight: 1.45, color: '#2D4A3E', margin: 0, flex: 1, fontWeight: 500 }}>
+                              {task.task_text}
+                            </p>
+                          </div>
+                          {habits.length > 0 && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', paddingLeft: '38px' }}>
+                              <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2', alignSelf: 'center' }}>🔁</span>
+                              {habits.map((h, k) => (
+                                <span key={k} style={{ fontFamily: 'var(--font-body)', fontSize: '10px', color: '#5A9A3A', background: 'rgba(118,197,72,0.10)', border: '1px solid rgba(107,176,72,0.18)', borderRadius: '9999px', padding: '2px 8px', whiteSpace: 'nowrap' }}>
+                                  {h}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {expanded && task.rationale && (
+                            <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', margin: '0 0 0 38px', lineHeight: 1.55, borderLeft: `2px solid ${phase.color}`, paddingLeft: '10px' }}>
+                              {task.rationale}
+                            </p>
+                          )}
+                        </button>
+                      )
+                    })
+                  ) : (
+                    <div style={{ padding: '10px 12px', background: `linear-gradient(135deg, ${phase.color}15, ${phase.color}08)`, border: `1px dashed ${phase.color}55`, borderRadius: '12px' }}>
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', letterSpacing: '0.1em', textTransform: 'uppercase', color: phase.color, margin: '0 0 4px', fontWeight: 700 }}>🔒 Unlocks on Day {phase.from}</p>
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', color: '#3D5949', margin: '0 0 6px', lineHeight: 1.5 }}>
+                        {themeForPhase ?? phase.tag}
+                      </p>
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2', margin: 0, lineHeight: 1.5 }}>
+                        Tasks for these days will be generated when you reach Day {phase.from} — using your actual progress from Foundation.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )
         })}
