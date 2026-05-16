@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Lock, Users, Globe, Sprout, ChevronLeft } from 'lucide-react'
 import PlanGeneratingScreen from '../components/PlanGeneratingScreen'
@@ -476,6 +476,26 @@ function Step1Goal({
 }) {
   const [activeTheme, setActiveTheme] = useState<string | null>(null)
   const goalCommitted = goal.length >= 10
+  const pillsScrollRef = useRef<HTMLDivElement>(null)
+  const [atScrollEnd, setAtScrollEnd] = useState(false)
+  const [pillsScrollable, setPillsScrollable] = useState(true)
+
+  useEffect(() => {
+    const el = pillsScrollRef.current
+    if (!el) return
+    const check = () => {
+      const scrollable = el.scrollWidth > el.clientWidth + 2
+      setPillsScrollable(scrollable)
+      setAtScrollEnd(!scrollable || el.scrollLeft + el.clientWidth >= el.scrollWidth - 4)
+    }
+    check()
+    el.addEventListener('scroll', check, { passive: true })
+    window.addEventListener('resize', check)
+    return () => {
+      el.removeEventListener('scroll', check)
+      window.removeEventListener('resize', check)
+    }
+  }, [goalCommitted])
   return (
     <div className="flex-1 flex flex-col">
       <StepLabel step={1} label="Your commitment" />
@@ -525,7 +545,7 @@ function Step1Goal({
             ✨ Need inspiration? Pick a theme
           </p>
           <div style={{ position: 'relative', margin: '0 -24px' }}>
-            <div className="no-scrollbar" style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', padding: '0 24px 4px', scrollbarWidth: 'none' }}>
+            <div ref={pillsScrollRef} className="no-scrollbar" style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', padding: '0 24px 4px', scrollbarWidth: 'none' }}>
               {GOAL_THEMES.map((t) => {
                 const isActive = activeTheme === t.key
                 return (
@@ -559,10 +579,12 @@ function Step1Goal({
               {/* trailing spacer so the chevron doesn't overlap the last pill at scroll-end */}
               <div style={{ flexShrink: 0, width: '12px' }} />
             </div>
-            {/* Scroll-hint: fade gradient + chevron on right edge */}
-            <div style={{ position: 'absolute', top: 0, right: 0, bottom: '4px', width: '44px', pointerEvents: 'none', background: 'linear-gradient(90deg, rgba(245,242,236,0) 0%, rgba(245,242,236,0.85) 60%, rgba(245,242,236,1) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '8px' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '50%', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', fontSize: '12px', fontWeight: 700, boxShadow: '0 2px 6px rgba(107,176,72,0.30)', animation: 'pill-nudge 1.6s ease-in-out infinite' }}>›</span>
-            </div>
+            {/* Scroll-hint: fade gradient + chevron on right edge — fades out when scrolled to end */}
+            {pillsScrollable && (
+              <div style={{ position: 'absolute', top: 0, right: 0, bottom: '4px', width: '44px', pointerEvents: 'none', background: 'linear-gradient(90deg, rgba(245,242,236,0) 0%, rgba(245,242,236,0.85) 60%, rgba(245,242,236,1) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '8px', opacity: atScrollEnd ? 0 : 1, transition: 'opacity 0.25s ease' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '50%', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', fontSize: '12px', fontWeight: 700, boxShadow: '0 2px 6px rgba(107,176,72,0.30)', animation: 'pill-nudge 1.6s ease-in-out infinite' }}>›</span>
+              </div>
+            )}
             <style>{`@keyframes pill-nudge { 0%, 60%, 100% { transform: translateX(0); } 30% { transform: translateX(3px); } }`}</style>
           </div>
 
@@ -697,30 +719,31 @@ function Step2Sprint({
                 boxShadow: isSelected ? '0 8px 20px rgba(107,176,72,0.15)' : '0 1px 4px rgba(28,61,48,0.04)',
                 cursor: 'pointer',
                 textAlign: 'left',
-                position: 'relative',
                 transition: 'all 0.15s ease',
               }}
             >
-              {/* Tag pill */}
-              <span style={{ position: 'absolute', top: '12px', right: '14px', fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', letterSpacing: '0.06em', textTransform: 'uppercase', color: isSelected ? '#FFFFFF' : '#5A9A3A', backgroundColor: isSelected ? '#6BB048' : 'rgba(107,176,72,0.10)', borderRadius: '9999px', padding: '3px 9px', fontWeight: 600 }}>
-                {opt.tag}
-              </span>
-
-              {/* Title row */}
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '4px' }}>
-                <span style={{ fontFamily: 'var(--font-heading)', fontSize: '22px', fontWeight: 600, color: '#1A3028', letterSpacing: '-0.02em' }}>{opt.title}</span>
-                <span style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: isSelected ? '#5A9A3A' : '#6B9E8A' }}>· {opt.subtitle}</span>
+              {/* Top row: title + tag pill, vertically centered on the title's cap height */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', marginBottom: '4px' }}>
+                <span style={{ fontFamily: 'var(--font-heading)', fontSize: '22px', fontWeight: 600, color: '#1A3028', letterSpacing: '-0.02em', lineHeight: 1.1 }}>{opt.title}</span>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', letterSpacing: '0.06em', textTransform: 'uppercase', color: isSelected ? '#FFFFFF' : '#5A9A3A', backgroundColor: isSelected ? '#6BB048' : 'rgba(107,176,72,0.10)', borderRadius: '9999px', padding: '3px 9px', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0, marginTop: '4px' }}>
+                  {opt.tag}
+                </span>
               </div>
 
-              {/* Tagline */}
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', color: '#6B9E8A', lineHeight: 1.55, margin: '6px 28px 0 0', fontStyle: 'italic' }}>
-                {opt.tagline}
+              {/* Subtitle */}
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: isSelected ? '#5A9A3A' : '#6B9E8A', margin: 0, lineHeight: 1.35 }}>
+                {opt.subtitle}
               </p>
 
-              {/* Selected indicator */}
-              {isSelected && (
-                <div style={{ position: 'absolute', bottom: '14px', right: '14px', width: '20px', height: '20px', borderRadius: '50%', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '11px', fontWeight: 700, boxShadow: '0 2px 6px rgba(107,176,72,0.3)' }}>✓</div>
-              )}
+              {/* Tagline */}
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px', marginTop: '10px' }}>
+                <p style={{ flex: 1, fontFamily: 'var(--font-body)', fontSize: '12px', color: '#6B9E8A', lineHeight: 1.5, margin: 0, fontStyle: 'italic' }}>
+                  {opt.tagline}
+                </p>
+                {isSelected && (
+                  <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '12px', fontWeight: 700, boxShadow: '0 2px 6px rgba(107,176,72,0.3)', flexShrink: 0 }}>✓</div>
+                )}
+              </div>
             </button>
           )
         })}
@@ -796,21 +819,21 @@ function Step3Visibility({
                 </span>
               </div>
 
-              {/* Tagline below */}
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', color: '#6B9E8A', lineHeight: 1.55, margin: '12px 0 0', fontStyle: 'italic', paddingRight: isSelected ? '32px' : '0' }}>
-                {opt.tagline}
-              </p>
-
-              {/* Selected check at bottom-right */}
-              {isSelected && (
-                <div style={{ position: 'absolute', bottom: '14px', right: '14px', width: '22px', height: '22px', borderRadius: '50%', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '12px', fontWeight: 700, boxShadow: '0 2px 6px rgba(107,176,72,0.3)' }}>✓</div>
-              )}
+              {/* Tagline + check inline at bottom */}
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px', marginTop: '12px' }}>
+                <p style={{ flex: 1, fontFamily: 'var(--font-body)', fontSize: '12px', color: '#6B9E8A', lineHeight: 1.55, margin: 0, fontStyle: 'italic' }}>
+                  {opt.tagline}
+                </p>
+                {isSelected && (
+                  <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '12px', fontWeight: 700, boxShadow: '0 2px 6px rgba(107,176,72,0.3)', flexShrink: 0 }}>✓</div>
+                )}
+              </div>
             </button>
           )
         })}
       </div>
 
-      <div className="mt-auto" style={{ paddingBottom: '32px' }}>
+      <div className="mt-auto" style={{ paddingTop: '24px', paddingBottom: '32px' }}>
         <CTAButton label={generatingPlan ? "Building your plan..." : "Got it, let's go →"} disabled={generatingPlan} onClick={onNext} />
       </div>
     </div>
@@ -1002,14 +1025,14 @@ function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVa
       {/* Phase timeline — emojis sit ON the line, flush to the extremes */}
       <div style={{ marginBottom: '24px' }}>
         <div style={{ position: 'relative', height: '32px' }}>
-          {/* The line — passes through the vertical center */}
+          {/* The line — passes through the vertical center. Inset so it ends where the seedling/sunflower glyphs visually sit. */}
           <div
             style={{
               position: 'absolute',
               top: '50%',
               transform: 'translateY(-50%)',
-              left: 0,
-              right: 0,
+              left: '11px',
+              right: '11px',
               height: '4px',
               borderRadius: '9999px',
               background: `linear-gradient(90deg, ${phases.map((p, i) => {
