@@ -690,15 +690,15 @@ function Step2Sprint({
 }) {
   const options = [
     { days: 7, title: '7 days', subtitle: 'A focused mini-sprint', tagline: 'Best for goals you can wrap up in a week — ship a feature, finish a draft, run a test.', tag: 'Quick wins' },
-    { days: 14, title: '14 days', subtitle: 'Two weeks of momentum', tagline: 'A sweet spot — long enough to build a real habit, short enough to feel close.', tag: 'Most popular' },
-    { days: 30, title: '30 days', subtitle: 'A full transformation arc', tagline: "When you mean it. Big goals — your first client, a launched product, a new role — happen here.", tag: 'Most rewarding' },
+    { days: 14, title: '14 days', subtitle: 'Two weeks of momentum', tagline: 'A sweet spot — long enough to build a real habit, short enough to feel close.', tag: 'Sweet spot' },
+    { days: 30, title: '30 days', subtitle: 'A full transformation arc', tagline: "When you mean it. Big goals — your first client, a launched product, a new role — happen here.", tag: 'Full transformation arc' },
   ]
 
   return (
     <div className="flex-1 flex flex-col">
       {onBack && <BackButton onClick={onBack} />}
       <StepLabel step={2} label="Your sprint" />
-      <Heading>How much time do we have?</Heading>
+      <Heading>How long are you in for?</Heading>
       <Subtext>
         Pick what feels honest — not what sounds impressive. You can always run another sprint after.
       </Subtext>
@@ -771,7 +771,7 @@ function Step3Visibility({
   onBack?: () => void
 }) {
   const options: { value: Visibility; icon: React.ReactNode; title: string; subtitle: string; tagline: string; tag: string }[] = [
-    { value: 'PRIVATE', icon: <Lock size={18} />, title: 'Just me', subtitle: 'A quiet build', tagline: "Your logs stay completely private. Best for personal goals or when you're not ready to share yet.", tag: 'Most chosen' },
+    { value: 'PRIVATE', icon: <Lock size={18} />, title: 'Just me', subtitle: 'A quiet build', tagline: "Your logs stay completely private. Best for personal goals or when you're not ready to share yet.", tag: 'Safest start' },
     { value: 'COHORT', icon: <Users size={18} />, title: 'My Cohort', subtitle: 'Build alongside others', tagline: 'A small group going through the same 30 days. You see their logs, they see yours — gentle accountability.', tag: 'Best for momentum' },
     { value: 'PUBLIC', icon: <Globe size={18} />, title: 'Build in public', subtitle: 'Open to the world', tagline: 'Anyone with the link can see your Sprint Record. Best when your goal benefits from an audience.', tag: 'Highest stakes' },
   ]
