@@ -812,7 +812,7 @@ function Step3Visibility({
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontFamily: 'var(--font-heading)', fontSize: '17px', fontWeight: 600, color: '#1A3028', margin: 0, letterSpacing: '-0.01em', lineHeight: 1.2 }}>{opt.title}</p>
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: isSelected ? '#5A9A3A' : '#6B9E8A', margin: '2px 0 0', lineHeight: 1.35 }}>{opt.subtitle}</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: isSelected ? '#5A9A3A' : '#6B9E8A', margin: '2px 0 0', lineHeight: 1.35, whiteSpace: 'nowrap' }}>{opt.subtitle}</p>
                 </div>
                 <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', letterSpacing: '0.06em', textTransform: 'uppercase', color: isSelected ? '#FFFFFF' : '#5A9A3A', backgroundColor: isSelected ? '#6BB048' : 'rgba(107,176,72,0.10)', borderRadius: '9999px', padding: '3px 9px', fontWeight: 600, flexShrink: 0, alignSelf: 'flex-start', whiteSpace: 'nowrap' }}>
                   {opt.tag}
@@ -1195,7 +1195,7 @@ function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVa
                             <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: `linear-gradient(135deg, ${phase.color}, ${phase.color}dd)`, color: '#FFFFFF', fontFamily: 'var(--font-heading)', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                               {day}
                             </div>
-                            <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', lineHeight: 1.45, color: '#2D4A3E', margin: 0, flex: 1, fontWeight: 500 }}>
+                            <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', lineHeight: 1.45, color: '#2D4A3E', margin: 0, flex: 1, minWidth: 0, fontWeight: 500, overflowWrap: 'break-word', wordBreak: 'break-word' }}>
                               {task.task_text}
                             </p>
                             {hasRationale && (
@@ -1482,33 +1482,22 @@ function Step5Reminder({
           Detected timezone: {TZ}
         </p>
 
-        {/* iOS install card — only when iOS Safari + not standalone. Yellow/amber, attention-seeking. */}
+        {/* iOS install card — soft yellow, compact 1-fold. Only when iOS Safari + not standalone. */}
         {needsIosInstall && (
-          <div style={{ padding: '18px 18px 20px', background: 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)', border: '2px solid #F59E0B', borderRadius: '16px', marginBottom: '0', boxShadow: '0 8px 24px rgba(245,158,11,0.18), 0 0 0 4px rgba(245,158,11,0.10)', position: 'relative' }}>
-            <style>{`@keyframes ios-pulse { 0%, 100% { box-shadow: 0 8px 24px rgba(245,158,11,0.18), 0 0 0 4px rgba(245,158,11,0.10); } 50% { box-shadow: 0 12px 32px rgba(245,158,11,0.30), 0 0 0 8px rgba(245,158,11,0.16); } }`}</style>
-            <div style={{ position: 'absolute', inset: 0, borderRadius: '16px', pointerEvents: 'none', animation: 'ios-pulse 2.4s ease-in-out infinite' }} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-              <span style={{ fontSize: '22px' }}>📲</span>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', letterSpacing: '0.14em', textTransform: 'uppercase', color: '#92400E', margin: 0, fontWeight: 800 }}>Required on iPhone</p>
+          <div style={{ padding: '12px 14px', background: 'linear-gradient(135deg, #FEF9C3 0%, #FEF3C7 100%)', border: '1px solid #FDE68A', borderRadius: '14px', marginBottom: '0', boxShadow: '0 4px 12px rgba(245,158,11,0.10)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <span style={{ fontSize: '16px' }}>📲</span>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 700, color: '#78350F', margin: 0, lineHeight: 1.3 }}>Add to Home Screen for reminders</p>
             </div>
-            <p style={{ fontFamily: 'var(--font-heading)', fontSize: '18px', fontWeight: 700, color: '#78350F', margin: '0 0 6px', lineHeight: 1.3, letterSpacing: '-0.01em' }}>
-              Add StrideWithMe to your Home Screen
-            </p>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: '#78350F', margin: '0 0 14px', lineHeight: 1.55 }}>
-              <strong>iOS won't send reminders until you do this.</strong> Two taps, then you're done.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
               {[
-                { n: '1', t: 'Tap the Share icon', sub: 'The square with an up-arrow at the bottom of Safari.' },
-                { n: '2', t: 'Tap "Add to Home Screen"', sub: 'Scroll down inside the share sheet if you don\'t see it.' },
-                { n: '3', t: 'Open StrideWithMe from your Home Screen', sub: 'Your reminders will start arriving from the home-screen app.' },
+                { n: '1', t: 'Tap Share at the bottom of Safari' },
+                { n: '2', t: 'Tap "Add to Home Screen"' },
+                { n: '3', t: 'Open StrideWithMe from there' },
               ].map((s) => (
-                <div key={s.n} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '8px 10px', background: 'rgba(255,255,255,0.55)', borderRadius: '10px', border: '1px solid rgba(245,158,11,0.25)' }}>
-                  <div style={{ width: '24px', height: '24px', flexShrink: 0, borderRadius: '50%', background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 800, boxShadow: '0 2px 6px rgba(245,158,11,0.30)' }}>{s.n}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 700, color: '#78350F', margin: 0, lineHeight: 1.35 }}>{s.t}</p>
-                    <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#92400E', margin: '2px 0 0', lineHeight: 1.45, opacity: 0.85 }}>{s.sub}</p>
-                  </div>
+                <div key={s.n} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ width: '16px', height: '16px', flexShrink: 0, borderRadius: '50%', background: '#F59E0B', color: '#FFFFFF', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-body)', fontSize: '9px', fontWeight: 800 }}>{s.n}</span>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#78350F', margin: 0, lineHeight: 1.4 }}>{s.t}</p>
                 </div>
               ))}
             </div>
