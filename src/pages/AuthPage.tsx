@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase'
 import PageWrapper from '../components/PageWrapper'
 
 export default function AuthPage() {
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin')
+  const [mode, setMode] = useState<'signin' | 'signup'>('signup')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')

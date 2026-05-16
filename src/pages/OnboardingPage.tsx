@@ -524,37 +524,46 @@ function Step1Goal({
           <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', marginBottom: '10px', letterSpacing: '0.04em' }}>
             ✨ Need inspiration? Pick a theme
           </p>
-          <div className="no-scrollbar" style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', margin: '0 -24px', padding: '0 24px 4px', scrollbarWidth: 'none' }}>
-            {GOAL_THEMES.map((t) => {
-              const isActive = activeTheme === t.key
-              return (
-                <button
-                  key={t.key}
-                  onClick={() => setActiveTheme(isActive ? null : t.key)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '7px 12px',
-                    background: isActive ? 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)' : 'rgba(255,255,255,0.85)',
-                    border: isActive ? 'none' : '1px solid #E8F0EC',
-                    borderRadius: '9999px',
-                    cursor: 'pointer',
-                    fontFamily: 'var(--font-body)',
-                    fontSize: '12px',
-                    fontWeight: 500,
-                    color: isActive ? '#FFFFFF' : '#3D5949',
-                    boxShadow: isActive ? '0 4px 12px rgba(107,176,72,0.25)' : 'none',
-                    transition: 'all 0.15s ease',
-                    flexShrink: 0,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  <span style={{ fontSize: '13px' }}>{t.emoji}</span>
-                  <span>{t.label}</span>
-                </button>
-              )
-            })}
+          <div style={{ position: 'relative', margin: '0 -24px' }}>
+            <div className="no-scrollbar" style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', padding: '0 24px 4px', scrollbarWidth: 'none' }}>
+              {GOAL_THEMES.map((t) => {
+                const isActive = activeTheme === t.key
+                return (
+                  <button
+                    key={t.key}
+                    onClick={() => setActiveTheme(isActive ? null : t.key)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '7px 12px',
+                      background: isActive ? 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)' : 'rgba(255,255,255,0.85)',
+                      border: isActive ? 'none' : '1px solid #E8F0EC',
+                      borderRadius: '9999px',
+                      cursor: 'pointer',
+                      fontFamily: 'var(--font-body)',
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      color: isActive ? '#FFFFFF' : '#3D5949',
+                      boxShadow: isActive ? '0 4px 12px rgba(107,176,72,0.25)' : 'none',
+                      transition: 'all 0.15s ease',
+                      flexShrink: 0,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <span style={{ fontSize: '13px' }}>{t.emoji}</span>
+                    <span>{t.label}</span>
+                  </button>
+                )
+              })}
+              {/* trailing spacer so the chevron doesn't overlap the last pill at scroll-end */}
+              <div style={{ flexShrink: 0, width: '12px' }} />
+            </div>
+            {/* Scroll-hint: fade gradient + chevron on right edge */}
+            <div style={{ position: 'absolute', top: 0, right: 0, bottom: '4px', width: '44px', pointerEvents: 'none', background: 'linear-gradient(90deg, rgba(245,242,236,0) 0%, rgba(245,242,236,0.85) 60%, rgba(245,242,236,1) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '8px' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '50%', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', fontSize: '12px', fontWeight: 700, boxShadow: '0 2px 6px rgba(107,176,72,0.30)', animation: 'pill-nudge 1.6s ease-in-out infinite' }}>›</span>
+            </div>
+            <style>{`@keyframes pill-nudge { 0%, 60%, 100% { transform: translateX(0); } 30% { transform: translateX(3px); } }`}</style>
           </div>
 
           {/* Goals for active theme */}
@@ -780,7 +789,7 @@ function Step3Visibility({
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontFamily: 'var(--font-heading)', fontSize: '17px', fontWeight: 600, color: '#1A3028', margin: 0, letterSpacing: '-0.01em', lineHeight: 1.2 }}>{opt.title}</p>
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: isSelected ? '#5A9A3A' : '#6B9E8A', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{opt.subtitle}</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: isSelected ? '#5A9A3A' : '#6B9E8A', margin: '2px 0 0', lineHeight: 1.35 }}>{opt.subtitle}</p>
                 </div>
                 <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', letterSpacing: '0.06em', textTransform: 'uppercase', color: isSelected ? '#FFFFFF' : '#5A9A3A', backgroundColor: isSelected ? '#6BB048' : 'rgba(107,176,72,0.10)', borderRadius: '9999px', padding: '3px 9px', fontWeight: 600, flexShrink: 0, alignSelf: 'flex-start', whiteSpace: 'nowrap' }}>
                   {opt.tag}
@@ -899,7 +908,7 @@ function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVa
   const [expandedDay, setExpandedDay] = useState<number | null>(null)
   const [ambitiousOpen, setAmbitiousOpen] = useState(false)
   // Phases collapsed by default except Foundation
-  const [expandedPhases, setExpandedPhases] = useState<Record<string, boolean>>({ Foundation: true, Build: false, Peak: false, Finish: false })
+  const [expandedPhases, setExpandedPhases] = useState<Record<string, boolean>>({ Foundation: false, Build: false, Peak: false, Finish: false })
 
   const tasks = aiTasks && aiTasks.length > 0
     ? aiTasks
@@ -990,8 +999,8 @@ function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVa
         </div>
       )}
 
-      {/* Phase timeline — emojis sit ON the line, centered through their vertical midpoint */}
-      <div style={{ marginBottom: '24px', padding: '0 4px' }}>
+      {/* Phase timeline — emojis sit ON the line, flush to the extremes */}
+      <div style={{ marginBottom: '24px' }}>
         <div style={{ position: 'relative', height: '32px' }}>
           {/* The line — passes through the vertical center */}
           <div
@@ -1141,6 +1150,12 @@ function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVa
                       </p>
                     </div>
                   )}
+                  {hasTasks && phaseTasks.some((t) => Boolean(t.rationale?.trim())) && (
+                    <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', margin: '2px 0 0', textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '12px' }}>💡</span>
+                      Tap any day to see the reasoning
+                    </p>
+                  )}
                   {hasTasks ? (
                     phaseTasks.map((task) => {
                       const day = task.day
@@ -1157,9 +1172,12 @@ function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVa
                             <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: `linear-gradient(135deg, ${phase.color}, ${phase.color}dd)`, color: '#FFFFFF', fontFamily: 'var(--font-heading)', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                               {day}
                             </div>
-                            <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', lineHeight: 1.45, color: '#2D4A3E', margin: 0, flex: 1, fontWeight: 500, paddingRight: hasRationale ? '52px' : 0 }}>
+                            <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', lineHeight: 1.45, color: '#2D4A3E', margin: 0, flex: 1, fontWeight: 500 }}>
                               {task.task_text}
                             </p>
+                            {hasRationale && (
+                              <span style={{ fontSize: '14px', color: phase.color, opacity: 0.55, flexShrink: 0, transition: 'transform 0.15s ease', transform: expanded ? 'rotate(180deg)' : 'rotate(0)' }}>▾</span>
+                            )}
                           </div>
                           {habits.length > 0 && (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', paddingLeft: '38px' }}>
@@ -1175,11 +1193,6 @@ function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVa
                             <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', margin: '0 0 0 38px', lineHeight: 1.55, borderLeft: `2px solid ${phase.color}`, paddingLeft: '10px' }}>
                               {task.rationale}
                             </p>
-                          )}
-                          {hasRationale && !expanded && (
-                            <span style={{ position: 'absolute', bottom: '8px', right: '10px', fontFamily: 'var(--font-body)', fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: phase.color, background: `${phase.color}14`, border: `1px solid ${phase.color}44`, borderRadius: '9999px', padding: '3px 9px' }}>
-                              Why
-                            </span>
                           )}
                         </button>
                       )
@@ -1446,36 +1459,38 @@ function Step5Reminder({
           Detected timezone: {TZ}
         </p>
 
-        {/* iOS install card — only when iOS Safari + not standalone */}
+        {/* iOS install card — only when iOS Safari + not standalone. Yellow/amber, attention-seeking. */}
         {needsIosInstall && (
-          <div style={{ padding: '14px 16px', background: 'linear-gradient(135deg, rgba(118,197,72,0.10) 0%, rgba(245,213,71,0.06) 100%)', border: '1.5px solid rgba(107,176,72,0.30)', borderRadius: '14px', marginBottom: '0' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-            <span style={{ fontSize: '15px' }}>📲</span>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#5A9A3A', margin: 0, fontWeight: 700 }}>Required on iPhone</p>
-          </div>
-          <p style={{ fontFamily: 'var(--font-heading)', fontSize: '14px', fontWeight: 600, color: '#1A3028', margin: '0 0 4px', lineHeight: 1.4 }}>
-            Add StrideWithMe to your Home Screen
-          </p>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', margin: '0 0 10px', lineHeight: 1.55 }}>
-            iOS only delivers notifications when the app lives on your home screen.
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {[
-              { n: '1', t: 'Tap the Share icon', sub: 'Bottom-center of Safari.' },
-              { n: '2', t: 'Tap "Add to Home Screen"', sub: 'Scroll the share sheet if needed.' },
-              { n: '3', t: 'Open the app from there', sub: 'Reminders start arriving.' },
-            ].map((s) => (
-              <div key={s.n} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                <div style={{ width: '20px', height: '20px', flexShrink: 0, borderRadius: '50%', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 700 }}>{s.n}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 600, color: '#1A3028', margin: 0, lineHeight: 1.35 }}>{s.t}</p>
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2', margin: '1px 0 0', lineHeight: 1.4 }}>{s.sub}</p>
+          <div style={{ padding: '18px 18px 20px', background: 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)', border: '2px solid #F59E0B', borderRadius: '16px', marginBottom: '0', boxShadow: '0 8px 24px rgba(245,158,11,0.18), 0 0 0 4px rgba(245,158,11,0.10)', position: 'relative' }}>
+            <style>{`@keyframes ios-pulse { 0%, 100% { box-shadow: 0 8px 24px rgba(245,158,11,0.18), 0 0 0 4px rgba(245,158,11,0.10); } 50% { box-shadow: 0 12px 32px rgba(245,158,11,0.30), 0 0 0 8px rgba(245,158,11,0.16); } }`}</style>
+            <div style={{ position: 'absolute', inset: 0, borderRadius: '16px', pointerEvents: 'none', animation: 'ios-pulse 2.4s ease-in-out infinite' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+              <span style={{ fontSize: '22px' }}>📲</span>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', letterSpacing: '0.14em', textTransform: 'uppercase', color: '#92400E', margin: 0, fontWeight: 800 }}>Required on iPhone</p>
+            </div>
+            <p style={{ fontFamily: 'var(--font-heading)', fontSize: '18px', fontWeight: 700, color: '#78350F', margin: '0 0 6px', lineHeight: 1.3, letterSpacing: '-0.01em' }}>
+              Add StrideWithMe to your Home Screen
+            </p>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: '#78350F', margin: '0 0 14px', lineHeight: 1.55 }}>
+              <strong>iOS won't send reminders until you do this.</strong> Two taps, then you're done.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {[
+                { n: '1', t: 'Tap the Share icon', sub: 'The square with an up-arrow at the bottom of Safari.' },
+                { n: '2', t: 'Tap "Add to Home Screen"', sub: 'Scroll down inside the share sheet if you don\'t see it.' },
+                { n: '3', t: 'Open StrideWithMe from your Home Screen', sub: 'Your reminders will start arriving from the home-screen app.' },
+              ].map((s) => (
+                <div key={s.n} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '8px 10px', background: 'rgba(255,255,255,0.55)', borderRadius: '10px', border: '1px solid rgba(245,158,11,0.25)' }}>
+                  <div style={{ width: '24px', height: '24px', flexShrink: 0, borderRadius: '50%', background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 800, boxShadow: '0 2px 6px rgba(245,158,11,0.30)' }}>{s.n}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 700, color: '#78350F', margin: 0, lineHeight: 1.35 }}>{s.t}</p>
+                    <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#92400E', margin: '2px 0 0', lineHeight: 1.45, opacity: 0.85 }}>{s.sub}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {error && (
         <div style={{ backgroundColor: '#FEF3E8', border: '1px solid #F5D5A8', borderRadius: '10px', padding: '8px 12px', marginTop: '10px' }}>
