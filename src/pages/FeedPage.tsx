@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Lock, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -483,8 +483,12 @@ export default function FeedPage() {
               <X size={18} color="#9BBFB2" />
             </button>
 
-            <div style={{ width: '56px', height: '56px', margin: '0 auto 14px', borderRadius: '50%', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 20px rgba(107,176,72,0.30)' }}>
-              <Lock size={22} color="#FFFFFF" />
+            <div style={{ width: '160px', height: '120px', margin: '0 auto 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <img
+                src="/cohort-locked.png"
+                alt="Three people rowing together in a paper boat"
+                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', filter: 'drop-shadow(0 6px 14px rgba(107,176,72,0.18))' }}
+              />
             </div>
 
             <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', letterSpacing: '0.12em', color: '#5A9A3A', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 600 }}>Cohort feed · Locked</p>
