@@ -208,7 +208,7 @@ export default function IntroPage() {
                 fontFamily: 'var(--font-body)',
                 fontSize: '14px',
                 color: '#3D5949',
-                margin: '6px 0 0',
+                margin: 0,
                 lineHeight: 1.55,
                 maxWidth: '340px',
                 marginLeft: 'auto',
