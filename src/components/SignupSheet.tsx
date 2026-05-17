@@ -13,9 +13,10 @@ interface Props {
 export default function SignupSheet({ open, onClose, onSignedIn, onBeforeAuthAction, goalPreview }: Props) {
   const [mode, setMode] = useState<'choose' | 'email'>('choose')
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [name, setName] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [emailSent, setEmailSent] = useState(false)
   const [error, setError] = useState('')
   const [enter, setEnter] = useState(false)
 
@@ -26,8 +27,8 @@ export default function SignupSheet({ open, onClose, onSignedIn, onBeforeAuthAct
     } else {
       setEnter(false)
       setMode('choose')
-      setEmailSent(false)
       setError('')
+      setPassword('')
     }
   }, [open])
 
@@ -48,22 +49,45 @@ export default function SignupSheet({ open, onClose, onSignedIn, onBeforeAuthAct
     })
   }
 
-  const handleEmailMagicLink = async () => {
+  /** Smart submit — try sign-in first, fall back to sign-up. */
+  const handleEmailPassword = async () => {
     setError('')
-    const trimmed = email.trim()
-    if (!trimmed || !trimmed.includes('@')) { setError('Enter a valid email'); return }
+    const trimmedEmail = email.trim()
+    const trimmedPassword = password.trim()
+    if (!trimmedEmail || !trimmedEmail.includes('@')) { setError('Enter a valid email'); return }
+    if (trimmedPassword.length < 6) { setError('Password must be at least 6 characters'); return }
+
     setSubmitting(true)
     onBeforeAuthAction()
-    const { error } = await supabase.auth.signInWithOtp({
-      email: trimmed,
-      options: {
-        emailRedirectTo: window.location.origin + '/onboarding?resume=1',
-        data: name.trim() ? { full_name: name.trim() } : undefined,
-      },
+
+    // 1) Try sign-in (returning users get here in one shot).
+    const signIn = await supabase.auth.signInWithPassword({ email: trimmedEmail, password: trimmedPassword })
+    if (signIn.data.session) { setSubmitting(false); return }
+    // Invalid credentials OR new user — fall through to signUp.
+
+    // 2) Try sign-up (new users).
+    const signUp = await supabase.auth.signUp({
+      email: trimmedEmail,
+      password: trimmedPassword,
+      options: { data: name.trim() ? { full_name: name.trim() } : undefined },
     })
     setSubmitting(false)
-    if (error) setError(error.message)
-    else setEmailSent(true)
+
+    if (signUp.error) {
+      // Most common: email exists but password doesn't match -> surface as wrong password.
+      if (signUp.error.message?.toLowerCase().includes('already registered') || signUp.error.message?.toLowerCase().includes('user already')) {
+        setError('Email already registered. Try a different password.')
+      } else {
+        setError(signUp.error.message)
+      }
+      return
+    }
+
+    if (!signUp.data.session) {
+      // Email confirmation is still enabled in Supabase. Surface a helpful message.
+      setError('Check your email to confirm, then come back and tap Continue.')
+    }
+    // If session exists, onAuthStateChange picks it up → onSignedIn fires.
   }
 
   if (!open) return null
@@ -92,23 +116,7 @@ export default function SignupSheet({ open, onClose, onSignedIn, onBeforeAuthAct
       >
         <div style={{ width: '40px', height: '4px', background: '#D4EDE3', borderRadius: '9999px', margin: '0 auto 18px' }} />
 
-        {emailSent ? (
-          <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
-            <div style={{ fontSize: '44px', marginBottom: '12px' }}>📩</div>
-            <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '20px', fontWeight: 600, color: '#1A3028', margin: '0 0 8px', letterSpacing: '-0.01em' }}>Check your email</h2>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: '#3D5949', margin: '0 0 16px', lineHeight: 1.55 }}>
-              We sent a sign-in link to <strong style={{ color: '#1A3028' }}>{email}</strong>. Tap it and your sprint will start automatically.
-            </p>
-            <div style={{ padding: '10px 14px', background: 'rgba(101,212,84,0.10)', border: '1px solid rgba(101,212,84,0.30)', borderRadius: '12px', marginBottom: '16px' }}>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#3D7A5F', margin: 0, lineHeight: 1.55 }}>
-                Your plan is saved on this device — you can close this and come back.
-              </p>
-            </div>
-            <button onClick={onClose} style={{ width: '100%', height: '46px', background: 'transparent', color: '#6B9E8A', border: '1px solid #D4EDE3', borderRadius: '9999px', fontFamily: 'var(--font-body)', fontSize: '13px', cursor: 'pointer', fontWeight: 500 }}>
-              Got it
-            </button>
-          </div>
-        ) : mode === 'choose' ? (
+        {mode === 'choose' ? (
           <>
             <div style={{ textAlign: 'center', marginBottom: '22px' }}>
               <div style={{ fontSize: '36px', marginBottom: '6px' }}>🌱</div>
@@ -162,10 +170,10 @@ export default function SignupSheet({ open, onClose, onSignedIn, onBeforeAuthAct
               ← Back
             </button>
             <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '20px', fontWeight: 600, color: '#1A3028', margin: '0 0 6px', letterSpacing: '-0.01em' }}>
-              Sign in with email
+              Email and password
             </h2>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', color: '#3D5949', margin: '0 0 16px', lineHeight: 1.55 }}>
-              We'll send you a magic link. No password to remember.
+              We'll create your account if you're new, or sign you in if you've been here before.
             </p>
 
             <label style={{ display: 'block', marginBottom: '10px' }}>
@@ -178,7 +186,7 @@ export default function SignupSheet({ open, onClose, onSignedIn, onBeforeAuthAct
                 style={{ width: '100%', height: '46px', padding: '0 14px', borderRadius: '12px', border: '1px solid #D4EDE3', fontFamily: 'var(--font-body)', fontSize: '14px', color: '#1A3028', outline: 'none', background: '#FFFFFF', boxSizing: 'border-box' }}
               />
             </label>
-            <label style={{ display: 'block', marginBottom: '14px' }}>
+            <label style={{ display: 'block', marginBottom: '10px' }}>
               <span style={{ display: 'block', fontFamily: 'var(--font-body)', fontSize: '11px', color: '#6B9E8A', marginBottom: '4px', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Email</span>
               <input
                 type="email"
@@ -186,8 +194,31 @@ export default function SignupSheet({ open, onClose, onSignedIn, onBeforeAuthAct
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
+                autoComplete="email"
                 style={{ width: '100%', height: '46px', padding: '0 14px', borderRadius: '12px', border: '1px solid #D4EDE3', fontFamily: 'var(--font-body)', fontSize: '14px', color: '#1A3028', outline: 'none', background: '#FFFFFF', boxSizing: 'border-box' }}
               />
+            </label>
+            <label style={{ display: 'block', marginBottom: '14px' }}>
+              <span style={{ display: 'block', fontFamily: 'var(--font-body)', fontSize: '11px', color: '#6B9E8A', marginBottom: '4px', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Password</span>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="At least 6 characters"
+                  autoComplete="current-password"
+                  onKeyDown={(e) => { if (e.key === 'Enter') void handleEmailPassword() }}
+                  style={{ width: '100%', height: '46px', padding: '0 52px 0 14px', borderRadius: '12px', border: '1px solid #D4EDE3', fontFamily: 'var(--font-body)', fontSize: '14px', color: '#1A3028', outline: 'none', background: '#FFFFFF', boxSizing: 'border-box' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: 600, color: '#3D7A5F', padding: '6px 8px' }}
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
             </label>
 
             {error && (
@@ -195,11 +226,11 @@ export default function SignupSheet({ open, onClose, onSignedIn, onBeforeAuthAct
             )}
 
             <button
-              onClick={handleEmailMagicLink}
+              onClick={handleEmailPassword}
               disabled={submitting}
               style={{ width: '100%', height: '52px', background: 'linear-gradient(180deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', border: 'none', borderRadius: '9999px', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 500, cursor: submitting ? 'wait' : 'pointer', opacity: submitting ? 0.6 : 1, boxShadow: '0 6px 18px rgba(107,176,72,0.30)' }}
             >
-              {submitting ? 'Sending…' : 'Send magic link →'}
+              {submitting ? 'Working…' : 'Continue →'}
             </button>
           </>
         )}
