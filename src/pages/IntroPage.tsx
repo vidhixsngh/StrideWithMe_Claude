@@ -22,7 +22,7 @@ const SLIDES: Slide[] = [
     bg: '#ECFDF8',
     accent: '#0F766E',
     title: 'We verify every day.',
-    subtitle: 'No cheating. Honest days count too.',
+    subtitle: 'No fooling around. Honest days count too.',
   },
   {
     image: '/intro/intro-3.png',

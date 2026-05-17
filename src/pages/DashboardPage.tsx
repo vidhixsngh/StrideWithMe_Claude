@@ -9,7 +9,6 @@ import type { Sprint, Task, DailyLog } from '../lib/db'
 import { shouldTriggerReplan, generateReplan, getReplanThreshold } from '../lib/gemini'
 import { createTasks, getTasksForSprint } from '../lib/db'
 import { supabase } from '../lib/supabase'
-import { getPhases } from '../lib/phases'
 
 export default function DashboardPage() {
   const navigate = useNavigate()
@@ -251,40 +250,31 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Sprint Hero Card — animated bg tinted by current phase */}
-      {(() => {
-        const phases = getPhases(sprint.sprint_length)
-        const currentPhase = phases.find((p) => dayNumber >= p.from && dayNumber <= p.to) ?? phases[0]
-        const phaseColor = currentPhase.color
-        const phaseAccent = currentPhase.accent
-        return (
+      {/* Sprint Hero Card — solid dark green, no gradient */}
       <div
         style={{
           margin: '16px',
           borderRadius: '24px',
-          background: `linear-gradient(135deg, #1C3D30 0%, #1C3D30 55%, ${phaseColor}44 95%, ${phaseAccent}55 100%)`,
+          backgroundColor: '#1C3D30',
           padding: '20px',
           minHeight: '160px',
-          position: 'relative',
-          overflow: 'hidden',
         }}
       >
-
         {/* Top row */}
-        <div className="flex items-center justify-between" style={{ position: 'relative', zIndex: 1 }}>
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: phaseAccent, boxShadow: `0 0 8px ${phaseColor}` }} />
+            <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#7AB5A0' }} />
             <span
               style={{
                 fontFamily: 'var(--font-body)',
                 fontSize: '10px',
                 letterSpacing: '0.1em',
                 fontStyle: 'italic',
-                color: phaseAccent,
+                color: '#7AB5A0',
                 textTransform: 'uppercase',
               }}
             >
-              Active Sprint · {currentPhase.name} phase
+              Active Sprint
             </span>
           </div>
           {/* Circular progress (+ verification bloom sparkles) */}
@@ -338,15 +328,13 @@ export default function DashboardPage() {
             WebkitBoxOrient: 'vertical',
             overflow: 'hidden',
             lineHeight: 1.4,
-            position: 'relative',
-            zIndex: 1,
           }}
         >
           {sprint.goal_text}
         </p>
 
         {/* Stats row */}
-        <div className="flex justify-between" style={{ marginTop: '16px', position: 'relative', zIndex: 1 }}>
+        <div className="flex justify-between" style={{ marginTop: '16px' }}>
           <div>
             <span style={{ fontFamily: 'var(--font-body)', fontSize: '18px', fontWeight: 700, color: '#FFFFFF' }}>
               {daysLeft}
@@ -368,8 +356,6 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
-        )
-      })()}
 
       {/* Page indicator dots */}
       {sprintsData.length > 1 && (
