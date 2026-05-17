@@ -122,34 +122,37 @@ export default function ProfilePage() {
           <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', color: '#6B9E8A', margin: 0 }}>{tagline}</p>
         </div>
 
-        {/* Sprint-level tiny stats above the grid */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '18px' }}>
-          <div style={{ textAlign: 'center' }}>
-            <span style={{ fontFamily: 'var(--font-heading)', fontSize: '15px', fontWeight: 600, color: '#1A3028' }}>{sprints.length}</span>
-            <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', marginLeft: '4px' }}>sprint{sprints.length !== 1 ? 's' : ''}</span>
-          </div>
-          <span style={{ color: '#D4EDE3' }}>·</span>
-          <div style={{ textAlign: 'center' }}>
-            <span style={{ fontFamily: 'var(--font-heading)', fontSize: '15px', fontWeight: 600, color: '#1A3028' }}>{totalDays}</span>
-            <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', marginLeft: '4px' }}>days committed</span>
-          </div>
-        </div>
-
-        {/* Modern 2x2 stat grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: '28px' }}>
+        {/* Stats — single card, single line */}
+        <div
+          style={{
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,251,249,0.95) 100%)',
+            border: '1px solid #E8F0EC',
+            borderRadius: '20px',
+            padding: '16px 8px',
+            marginBottom: '24px',
+            boxShadow: '0 2px 12px rgba(28,61,48,0.05)',
+            display: 'flex',
+            alignItems: 'stretch',
+            justifyContent: 'space-between',
+          }}
+        >
           {[
-            { value: verifiedCount, label: 'Verified', sub: 'days proven', color: '#65D454', bg: 'linear-gradient(135deg, rgba(101,212,84,0.10) 0%, rgba(167,243,160,0.06) 100%)', border: 'rgba(101,212,84,0.30)' },
-            { value: honestCount, label: 'Honest', sub: 'days logged real', color: '#F59E0B', bg: 'linear-gradient(135deg, rgba(245,158,11,0.10) 0%, rgba(252,211,77,0.06) 100%)', border: 'rgba(245,158,11,0.30)' },
-            { value: currentStreak, label: 'Current streak', sub: 'days in a row', color: '#14B8A6', bg: 'linear-gradient(135deg, rgba(20,184,166,0.10) 0%, rgba(94,234,212,0.06) 100%)', border: 'rgba(20,184,166,0.30)' },
-            { value: bestStreak, label: 'Best streak', sub: 'all-time peak', color: '#8B5CF6', bg: 'linear-gradient(135deg, rgba(139,92,246,0.10) 0%, rgba(196,181,253,0.06) 100%)', border: 'rgba(139,92,246,0.30)' },
-          ].map((s) => (
-            <div key={s.label} style={{ background: s.bg, border: `1px solid ${s.border}`, borderRadius: '18px', padding: '14px 14px 12px' }}>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: '9px', letterSpacing: '0.14em', textTransform: 'uppercase', color: s.color, margin: 0, fontWeight: 800 }}>{s.label}</p>
-              <p style={{ fontFamily: 'var(--font-heading)', fontSize: '34px', fontWeight: 700, color: '#1A3028', margin: '4px 0 2px', lineHeight: 1, letterSpacing: '-0.02em' }}>{s.value}</p>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', margin: 0 }}>{s.sub}</p>
+            { value: verifiedCount, label: 'Verified', color: '#65D454' },
+            { value: honestCount, label: 'Honest', color: '#F59E0B' },
+            { value: currentStreak, label: 'Streak', color: '#14B8A6' },
+            { value: bestStreak, label: 'Best', color: '#8B5CF6' },
+          ].map((s, i, arr) => (
+            <div key={s.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRight: i < arr.length - 1 ? '1px solid #EDF2EF' : 'none', padding: '2px 6px' }}>
+              <p style={{ fontFamily: 'var(--font-heading)', fontSize: '26px', fontWeight: 700, color: '#1A3028', margin: 0, lineHeight: 1, letterSpacing: '-0.02em' }}>{s.value}</p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase', color: s.color, margin: '6px 0 0', fontWeight: 700 }}>{s.label}</p>
             </div>
           ))}
         </div>
+
+        {/* Subtle sprint count under the stats */}
+        <p style={{ textAlign: 'center', fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', margin: '-14px 0 24px' }}>
+          {sprints.length} sprint{sprints.length !== 1 ? 's' : ''} · {totalDays} days committed
+        </p>
 
         {/* Start a new sprint CTA */}
         <button

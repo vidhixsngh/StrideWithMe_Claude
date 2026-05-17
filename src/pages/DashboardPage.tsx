@@ -9,6 +9,7 @@ import type { Sprint, Task, DailyLog } from '../lib/db'
 import { shouldTriggerReplan, generateReplan, getReplanThreshold } from '../lib/gemini'
 import { createTasks, getTasksForSprint } from '../lib/db'
 import { supabase } from '../lib/supabase'
+import { getPhases } from '../lib/phases'
 
 export default function DashboardPage() {
   const navigate = useNavigate()
@@ -250,31 +251,59 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Sprint Hero Card */}
+      {/* Sprint Hero Card — animated bg tinted by current phase */}
+      {(() => {
+        const phases = getPhases(sprint.sprint_length)
+        const currentPhase = phases.find((p) => dayNumber >= p.from && dayNumber <= p.to) ?? phases[0]
+        const phaseEmoji = currentPhase.emoji
+        const phaseColor = currentPhase.color
+        const phaseAccent = currentPhase.accent
+        return (
       <div
         style={{
           margin: '16px',
           borderRadius: '24px',
-          backgroundColor: '#1C3D30',
+          background: `linear-gradient(135deg, #1C3D30 0%, #1C3D30 45%, ${phaseColor}55 100%)`,
           padding: '20px',
           minHeight: '160px',
+          position: 'relative',
+          overflow: 'hidden',
         }}
       >
+        <style>{`
+          @keyframes hero-particle-drift {
+            0% { transform: translateY(110%) translateX(0) rotate(-8deg); opacity: 0; }
+            12% { opacity: 0.22; }
+            85% { opacity: 0.22; }
+            100% { transform: translateY(-20%) translateX(18px) rotate(8deg); opacity: 0; }
+          }
+          @keyframes hero-glow-pulse {
+            0%, 100% { opacity: 0.35; transform: translateX(0); }
+            50% { opacity: 0.55; transform: translateX(8px); }
+          }
+        `}</style>
+        {/* Soft phase-tinted glow that breathes across the card */}
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: `radial-gradient(ellipse at 80% 110%, ${phaseAccent}33 0%, transparent 60%)`, animation: 'hero-glow-pulse 6s ease-in-out infinite' }} />
+        {/* Drifting phase-themed particles */}
+        <span style={{ position: 'absolute', left: '12%', bottom: 0, fontSize: '36px', pointerEvents: 'none', animation: 'hero-particle-drift 9s ease-in-out infinite', animationDelay: '0s', filter: `drop-shadow(0 0 12px ${phaseColor}88)` }}>{phaseEmoji}</span>
+        <span style={{ position: 'absolute', left: '58%', bottom: 0, fontSize: '28px', pointerEvents: 'none', animation: 'hero-particle-drift 11s ease-in-out infinite', animationDelay: '3s', filter: `drop-shadow(0 0 10px ${phaseColor}77)` }}>{phaseEmoji}</span>
+        <span style={{ position: 'absolute', left: '82%', bottom: 0, fontSize: '24px', pointerEvents: 'none', animation: 'hero-particle-drift 10s ease-in-out infinite', animationDelay: '6s', filter: `drop-shadow(0 0 8px ${phaseColor}66)` }}>{phaseEmoji}</span>
+
         {/* Top row */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between" style={{ position: 'relative', zIndex: 1 }}>
           <div className="flex items-center gap-2">
-            <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#7AB5A0' }} />
+            <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: phaseAccent, boxShadow: `0 0 8px ${phaseColor}` }} />
             <span
               style={{
                 fontFamily: 'var(--font-body)',
                 fontSize: '10px',
                 letterSpacing: '0.1em',
                 fontStyle: 'italic',
-                color: '#7AB5A0',
+                color: phaseAccent,
                 textTransform: 'uppercase',
               }}
             >
-              Active Sprint
+              Active Sprint · {currentPhase.name} phase
             </span>
           </div>
           {/* Circular progress */}
@@ -328,13 +357,15 @@ export default function DashboardPage() {
             WebkitBoxOrient: 'vertical',
             overflow: 'hidden',
             lineHeight: 1.4,
+            position: 'relative',
+            zIndex: 1,
           }}
         >
           {sprint.goal_text}
         </p>
 
         {/* Stats row */}
-        <div className="flex justify-between" style={{ marginTop: '16px' }}>
+        <div className="flex justify-between" style={{ marginTop: '16px', position: 'relative', zIndex: 1 }}>
           <div>
             <span style={{ fontFamily: 'var(--font-body)', fontSize: '18px', fontWeight: 700, color: '#FFFFFF' }}>
               {daysLeft}
@@ -356,6 +387,8 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+        )
+      })()}
 
       {/* Page indicator dots */}
       {sprintsData.length > 1 && (

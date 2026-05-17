@@ -97,7 +97,7 @@ export default function PlanPage() {
 
           {/* Phase timeline — clean 🌱 → line → 🌻 journey with 🐝 marking today */}
           <div style={{ marginBottom: '22px' }}>
-            <style>{`@keyframes bee-float { 0%, 100% { transform: translate(-50%, -50%); } 50% { transform: translate(-50%, calc(-50% - 3px)); } }`}</style>
+            <style>{`@keyframes bee-float { 0%, 100% { transform: translate(-50%, -50%) scaleX(-1); } 50% { transform: translate(-50%, calc(-50% - 3px)) scaleX(-1); } }`}</style>
             <div style={{ position: 'relative', height: '36px' }}>
               {/* Line */}
               <div
@@ -208,9 +208,24 @@ export default function PlanPage() {
                           {isCurrent && (
                             <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', letterSpacing: '0.1em', color: '#FFFFFF', background: `linear-gradient(135deg, ${phase.color}, ${phase.accent})`, padding: '2px 8px', borderRadius: '9999px', fontWeight: 700, textTransform: 'uppercase', boxShadow: `0 2px 6px ${phase.color}55` }}>Live</span>
                           )}
-                          {isPast && (
-                            <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', letterSpacing: '0.1em', color: phase.color, background: `${phase.color}18`, padding: '2px 8px', borderRadius: '9999px', fontWeight: 700, textTransform: 'uppercase' }}>✓ Done</span>
-                          )}
+                          {isPast && (() => {
+                            const phaseDays = phase.to - phase.from + 1
+                            const phaseLogs = logs.filter((l) => l.day_number >= phase.from && l.day_number <= phase.to)
+                            const verifiedInPhase = phaseLogs.filter((l) => l.log_type === 'VERIFIED').length
+                            const loggedInPhase = phaseLogs.length
+                            const verifiedPct = phaseDays > 0 ? verifiedInPhase / phaseDays : 0
+                            const tier =
+                              loggedInPhase === 0 ? { label: 'Phase complete', emoji: '' } :
+                              verifiedPct >= 0.9 ? { label: 'Crushed it', emoji: '🔥' } :
+                              verifiedPct >= 0.7 ? { label: 'Strong run', emoji: '💪' } :
+                              verifiedPct >= 0.5 ? { label: 'Got it done', emoji: '✓' } :
+                              { label: 'Showed up', emoji: '🌱' }
+                            return (
+                              <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', letterSpacing: '0.1em', color: phase.color, background: `${phase.color}18`, padding: '2px 8px', borderRadius: '9999px', fontWeight: 700, textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                {tier.emoji && <span>{tier.emoji}</span>} {tier.label}
+                              </span>
+                            )
+                          })()}
                           {isLocked && (
                             <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', color: '#9BBFB2', fontWeight: 600 }}>🔒</span>
                           )}

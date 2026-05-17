@@ -8,9 +8,14 @@ export default function IOSInstallHint() {
     const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent)
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches
     if (!isIOS || isStandalone) return
-    // Show immediately so iOS users without the app on home screen always see it
+    if (sessionStorage.getItem('ios_hint_dismissed_session') === '1') return
     setShow(true)
   }, [])
+
+  const handleDismiss = () => {
+    setShow(false)
+    sessionStorage.setItem('ios_hint_dismissed_session', '1')
+  }
 
   if (!show) return null
 
@@ -28,7 +33,7 @@ export default function IOSInstallHint() {
           zIndex: 9000,
           background: 'linear-gradient(135deg, #FEF9C3 0%, #FEF3C7 100%)',
           borderRadius: '14px',
-          padding: '10px 12px',
+          padding: '10px 32px 10px 12px',
           border: '1px solid #FDE68A',
           boxShadow: '0 6px 18px rgba(245,158,11,0.18)',
           animation: 'ios-hint-slide-in 0.35s ease-out',
@@ -60,6 +65,13 @@ export default function IOSInstallHint() {
             )}
           </div>
           <span style={{ fontSize: '11px', color: '#92400E', flexShrink: 0, transform: expanded ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.15s ease', fontWeight: 700 }}>▾</span>
+        </button>
+        <button
+          onClick={handleDismiss}
+          aria-label="Dismiss"
+          style={{ position: 'absolute', top: '8px', right: '10px', width: '22px', height: '22px', borderRadius: '50%', background: 'rgba(245,158,11,0.18)', border: 'none', color: '#78350F', fontSize: '12px', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, lineHeight: 1 }}
+        >
+          ✕
         </button>
 
         {expanded && (
