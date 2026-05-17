@@ -48,10 +48,12 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 export default function WelcomePage() {
   const navigate = useNavigate()
   const { user, loading: authLoading } = useAuth()
-  // Send first-time visitors through the intro carousel; returning users skip straight to auth.
+  // First-time visitors go through the carousel then start onboarding anonymously (signup at end).
+  // Returning visitors who've seen the carousel go straight to onboarding (anonymous), where a
+  // signed-in session is detected and they jump straight to dashboard, OR they hit signup at Step 5.
   const goNext = () => {
     const seen = (() => { try { return localStorage.getItem('stride_intro_seen') === '1' } catch { return false } })()
-    navigate(seen ? '/auth' : '/intro')
+    navigate(seen ? '/onboarding' : '/intro')
   }
   const [goalIndex, setGoalIndex] = useState(0)
   const [visible, setVisible] = useState(true)
@@ -460,6 +462,12 @@ export default function WelcomePage() {
           <button onClick={() => { track(Events.WelcomeCtaClicked, { location: 'hero' }); goNext() }} style={{ width: '100%', height: '54px', background: 'linear-gradient(180deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', borderRadius: '9999px', border: 'none', fontFamily: 'var(--font-heading)', fontSize: '16px', fontWeight: 500, cursor: 'pointer', boxShadow: '0 8px 24px rgba(107,176,72,0.32), 0 4px 12px rgba(107,176,72,0.18)', letterSpacing: '0.015em' }}>
             Begin your journey today →
           </button>
+          <p style={{ textAlign: 'center', margin: '10px 0 0', fontFamily: 'var(--font-body)', fontSize: '12px', color: '#6B9E8A' }}>
+            Already have an account?{' '}
+            <button onClick={() => navigate('/auth')} style={{ background: 'none', border: 'none', color: '#3D7A5F', fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 600, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>
+              Sign in
+            </button>
+          </p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '14px' }}>
             {['Free to start', 'Private by default', '2 minutes'].map((t) => (
               <div key={t} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>

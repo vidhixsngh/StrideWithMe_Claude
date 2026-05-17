@@ -55,7 +55,7 @@ export default function IntroPage() {
 
   const completeIntro = () => {
     try { localStorage.setItem(INTRO_SEEN_KEY, '1') } catch { /* ignore */ }
-    navigate('/auth')
+    navigate('/onboarding')
   }
 
   const advance = () => {
