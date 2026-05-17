@@ -62,11 +62,12 @@ export default function FeedbackSheet({ open, onClose, onWantsToShare }: Props) 
     if (!result.ok) { setError(result.error ?? 'Could not submit. Try again.'); return }
     track(Events.FeedbackSubmitted, { rating, has_message: !!message.trim(), wants_share: wantsShare, allow_contact: allowContact })
     setStep('thanks')
-    // If they were a happy user and opted in to share — open the share sheet after a short delay
+    // Give the user enough time to actually read the thank-you and feel acknowledged.
+    // (Reading "We read every message. Thanks for showing up." comfortably ≈ 3s.)
     if (isPromoter && wantsShare && onWantsToShare) {
-      setTimeout(() => { onClose(); onWantsToShare() }, 1000)
+      setTimeout(() => { onClose(); onWantsToShare() }, 2200)
     } else {
-      setTimeout(() => onClose(), 1400)
+      setTimeout(() => onClose(), 3500)
     }
   }
 
