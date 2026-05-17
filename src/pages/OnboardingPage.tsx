@@ -55,13 +55,16 @@ export default function OnboardingPage() {
   const [signupSheetOpen, setSignupSheetOpen] = useState(false)
   const hasAutoResumed = useRef(false)
 
-  // Resume flow: user returns from OAuth/magic link with ?resume=1 → restore stash + create sprint
+  // Resume flow: if a stash exists and the user is signed in, restore + create the sprint.
+  // The presence of the stash IS the signal — we don't require ?resume=1 because Supabase
+  // can normalize/strip query params from magic-link redirects.
   useEffect(() => {
     if (hasAutoResumed.current) return
     if (!user) return
-    const shouldResume = searchParams.get('resume') === '1'
     const stash = loadOnboardingStash()
-    if (!shouldResume || !stash) return
+    if (!stash) return
+    // Helpful telemetry only
+    void searchParams.get('resume')
     hasAutoResumed.current = true
 
     setGoal(stash.goal)
