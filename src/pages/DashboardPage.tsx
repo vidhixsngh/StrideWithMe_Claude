@@ -36,11 +36,24 @@ export default function DashboardPage() {
   const [replanNeeded, setReplanNeeded] = useState(false)
   const [replanLoading, setReplanLoading] = useState(false)
   const [replanDone, setReplanDone] = useState(false)
+  const [showVerifyBloom, setShowVerifyBloom] = useState(false)
 
   useEffect(() => {
     if (!user) return
     loadDashboard()
   }, [user])
+
+  // Verification bloom — fire once per (sprint, day) the first time we render with today verified
+  useEffect(() => {
+    if (!sprint || !todayLog || todayLog.log_type !== 'VERIFIED') return
+    const dn = calculateDayNumber(sprint.start_date)
+    const key = `verify-bloom-${sprint.id}-${dn}`
+    if (localStorage.getItem(key)) return
+    setShowVerifyBloom(true)
+    localStorage.setItem(key, '1')
+    const t = setTimeout(() => setShowVerifyBloom(false), 1800)
+    return () => clearTimeout(t)
+  }, [sprint?.id, todayLog?.log_type, sprint?.start_date])
 
   async function loadDashboard() {
     setLoading(true)
@@ -149,18 +162,6 @@ export default function DashboardPage() {
     }
     return streak
   })()
-
-  // Verification bloom — fire once per (sprint, day) the first time we render with today verified
-  const [showVerifyBloom, setShowVerifyBloom] = useState(false)
-  useEffect(() => {
-    if (!sprint || !todayLog || todayLog.log_type !== 'VERIFIED') return
-    const key = `verify-bloom-${sprint.id}-${dayNumber}`
-    if (localStorage.getItem(key)) return
-    setShowVerifyBloom(true)
-    localStorage.setItem(key, '1')
-    const t = setTimeout(() => setShowVerifyBloom(false), 1800)
-    return () => clearTimeout(t)
-  }, [sprint?.id, dayNumber, todayLog?.log_type])
 
   // Streak flame tier — bigger and more glow as streak grows
   const streakFlame = (() => {
