@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import PageWrapper from '../components/PageWrapper'
 
 export default function AuthPage() {
-  const [mode, setMode] = useState<'signin' | 'signup'>('signup')
+  const [searchParams] = useSearchParams()
+  const initialMode = searchParams.get('mode') === 'signin' ? 'signin' : 'signup'
+  const [mode, setMode] = useState<'signin' | 'signup'>(initialMode)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')

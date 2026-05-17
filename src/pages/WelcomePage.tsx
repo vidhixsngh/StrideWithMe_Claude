@@ -464,7 +464,7 @@ export default function WelcomePage() {
           </button>
           <p style={{ textAlign: 'center', margin: '10px 0 0', fontFamily: 'var(--font-body)', fontSize: '12px', color: '#6B9E8A' }}>
             Already have an account?{' '}
-            <button onClick={() => navigate('/auth')} style={{ background: 'none', border: 'none', color: '#3D7A5F', fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 600, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>
+            <button onClick={() => navigate('/auth?mode=signin')} style={{ background: 'none', border: 'none', color: '#3D7A5F', fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 600, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>
               Sign in
             </button>
           </p>

@@ -79,7 +79,7 @@ export default function PlanPage() {
             Your plan
           </h1>
           <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', color: '#6B9E8A', margin: '0 0 18px', lineHeight: 1.5 }}>
-            Your full sprint in 4 phases. Tap any phase to see the tasks inside.
+            Your full sprint in {phases.length} phases. Tap any phase to see the tasks inside.
           </p>
 
           {/* Goal card */}

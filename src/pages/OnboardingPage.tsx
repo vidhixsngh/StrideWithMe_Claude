@@ -81,19 +81,25 @@ export default function OnboardingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
-  const buildStash = (reminderTime: string | null = null) => ({
-    goal,
-    sprintLength: sprintLength!,
-    visibility,
-    pastReflection,
-    extraContext,
-    hasUsedExtraContext,
-    aiTasks,
-    scopeAssessment,
-    phaseThemes: phaseThemes ?? null,
-    reminderTime,
-    savedAt: new Date().toISOString(),
-  })
+  // Preserve any previously-stashed reminderTime when called without an explicit value,
+  // so re-stashing in SignupSheet.onBeforeAuthAction doesn't wipe the reminder
+  // that handleBeginDay1 just saved.
+  const buildStash = (reminderTime?: string | null) => {
+    const existing = loadOnboardingStash()
+    return {
+      goal,
+      sprintLength: sprintLength!,
+      visibility,
+      pastReflection,
+      extraContext,
+      hasUsedExtraContext,
+      aiTasks,
+      scopeAssessment,
+      phaseThemes: phaseThemes ?? null,
+      reminderTime: reminderTime !== undefined ? reminderTime : (existing?.reminderTime ?? null),
+      savedAt: new Date().toISOString(),
+    }
+  }
 
   const createSprintFromStash = async (stash: ReturnType<typeof loadOnboardingStash>) => {
     if (!user || !stash) return
@@ -815,7 +821,7 @@ function Step2Sprint({
   const options = [
     { days: 7, title: '7 days', subtitle: 'A focused mini-sprint', tagline: 'Best for goals you can wrap up in a week — ship a feature, finish a draft, run a test.', tag: 'Quick wins' },
     { days: 14, title: '14 days', subtitle: 'Two weeks of momentum', tagline: 'A sweet spot — long enough to build a real habit, short enough to feel close.', tag: 'Sweet spot' },
-    { days: 30, title: '30 days', subtitle: 'A full transformation arc', tagline: "When you mean it. Big goals — your first client, a launched product, a new role — happen here.", tag: 'Full transformation arc' },
+    { days: 30, title: '30 days', subtitle: 'A full transformation arc', tagline: "When you mean it. Big goals — your first client, a launched product, a new role — happen here.", tag: 'Most ambitious' },
   ]
 
   return (

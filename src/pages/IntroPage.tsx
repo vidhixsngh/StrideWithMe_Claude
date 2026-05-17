@@ -22,8 +22,9 @@ const SLIDES: Slide[] = [
     image: '/intro/intro-2.png',
     bg: '#FEF9C3',
     accent: '#A16207',
-    title: 'We verify every day.',
+    title: 'Our AI verifies your progress everyday.',
     subtitle: 'No fooling around. Honest days count too.',
+    extraLine: 'Bloom with us.',
   },
   {
     image: '/intro/intro-3.png',
