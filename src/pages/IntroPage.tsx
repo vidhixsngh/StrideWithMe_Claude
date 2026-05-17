@@ -7,6 +7,7 @@ interface Slide {
   accent: string
   title: string
   subtitle: string
+  extraLine?: string
 }
 
 const SLIDES: Slide[] = [
@@ -19,8 +20,8 @@ const SLIDES: Slide[] = [
   },
   {
     image: '/intro/intro-2.png',
-    bg: '#ECFDF8',
-    accent: '#0F766E',
+    bg: '#FEF9C3',
+    accent: '#A16207',
     title: 'We verify every day.',
     subtitle: 'No fooling around. Honest days count too.',
   },
@@ -30,6 +31,7 @@ const SLIDES: Slide[] = [
     accent: '#6D28D9',
     title: 'Earn your Sprint Record.',
     subtitle: 'Proof of what you actually built.',
+    extraLine: 'Share, where it matters the most.',
   },
 ]
 
@@ -199,6 +201,24 @@ export default function IntroPage() {
           >
             {slide.subtitle}
           </p>
+          {slide.extraLine && (
+            <p
+              key={`extra-${index}`}
+              style={{
+                fontFamily: 'var(--font-body)',
+                fontSize: '14px',
+                color: '#3D5949',
+                margin: '6px 0 0',
+                lineHeight: 1.55,
+                maxWidth: '340px',
+                marginLeft: 'auto',
+                marginRight: 'auto',
+                animation: 'intro-slide-up 0.5s ease 0.26s both',
+              }}
+            >
+              {slide.extraLine}
+            </p>
+          )}
         </div>
       </div>
 
