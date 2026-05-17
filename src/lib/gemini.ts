@@ -516,63 +516,73 @@ export function shouldTriggerReplan(
 
 // ── AI-4: ADAPTIVE RE-PLANNING ──
 
-export async function generateReplan(params: {
+/** Regenerate the remaining days of the CURRENT phase only.
+ *  Future phases stay as-is (or will be progressively generated later) — keeps tokens low (~10x cheaper)
+ *  and preserves the phase narrative. */
+export async function generatePhaseReplan(params: {
   goalText: string
-  originalTasks: Array<{ day: number; task_text: string; task_type: string }>
-  completedLogs: Array<{ day_number: number; log_text: string | null; log_type: string }>
-  missedDays: number[]
-  daysRemaining: number
+  phaseName: 'Foundation' | 'Build' | 'Peak' | 'Finish'
+  phaseFrom: number  // first day to regenerate (typically currentDay + 1)
+  phaseTo: number    // last day of the current phase
   currentDay: number
   sprintLength: number
+  completedLogs: Array<{ day_number: number; log_text: string | null; log_type: string }>
+  missedDays: number[]
 }): Promise<GeneratedTask[]> {
-  const { goalText, completedLogs, missedDays, daysRemaining, currentDay, sprintLength } = params
+  const { goalText, phaseName, phaseFrom, phaseTo, currentDay, sprintLength, completedLogs, missedDays } = params
+  const daysToGenerate = phaseTo - phaseFrom + 1
 
-  const completedTasksSummary = completedLogs
+  const completedSummary = completedLogs
     .filter(l => l.log_type === 'VERIFIED')
     .map(l => `Day ${l.day_number}: ${l.log_text?.slice(0, 100)}`)
     .join('\n')
 
-  const isNearEnd = daysRemaining <= 2
+  const honestSummary = completedLogs
+    .filter(l => l.log_type === 'HONEST')
+    .map(l => `Day ${l.day_number}: ${l.log_text?.slice(0, 100) ?? '(honest day, no text)'}`)
+    .join('\n')
 
   const prompt = `
 You are the adaptive re-planning system for StrideWithMe.
-The user has had ${missedDays.length} missed/honest days and needs an adjusted plan.
+The user has had a rough stretch and needs the rest of their CURRENT PHASE rebuilt — nothing else.
 
 USER'S GOAL: "${goalText}"
-SPRINT: ${sprintLength} days total, ${daysRemaining} days remaining
+SPRINT: ${sprintLength} days total
 CURRENT DAY: ${currentDay}
+CURRENT PHASE: ${phaseName} (regenerating days ${phaseFrom}–${phaseTo}, ${daysToGenerate} task${daysToGenerate === 1 ? '' : 's'} total)
 
-WHAT THEY COMPLETED:
-${completedTasksSummary || 'No verified logs yet.'}
+WHAT THEY VERIFIED:
+${completedSummary || '(nothing verified yet in this sprint)'}
 
-MISSED DAYS: ${missedDays.join(', ') || 'None'}
+HONEST DAYS LOGGED:
+${honestSummary || '(none)'}
 
-${isNearEnd ? `IMPORTANT: Only ${daysRemaining} day(s) remaining. Generate compressed "essentials only" plan. Final day task MUST be: "Reflect on your sprint journey and document your biggest learning."` : ''}
+MISSED DAYS (no log at all): ${missedDays.length ? missedDays.join(', ') : 'None'}
 
 RULES:
-1. Output ONLY valid JSON array. No explanation.
-2. Generate exactly ${daysRemaining} tasks. Day numbers start from ${currentDay + 1}.
-3. DO NOT punish missed days — make the plan realistic and achievable.
-4. Each task_text under 80 characters.
-5. task_type: "build", "research", or "review"
+1. Output ONLY a valid JSON array. No explanation, no markdown.
+2. Generate exactly ${daysToGenerate} tasks. Day numbers must be ${phaseFrom} through ${phaseTo}, in order.
+3. Stay TRUE to the ${phaseName} phase character (Foundation = tiny habit installs; Build = compounding output; Peak = hardest push; Finish = ship/measure/lock-in).
+4. DO NOT punish missed days — make it realistic for someone who's been struggling. Lower friction, shorter scope, easier wins.
+5. If the user has been logging HONEST days repeatedly, the new tasks should be smaller and more confidence-rebuilding.
+6. Each task_text under 80 characters. task_type ∈ {build, research, review}.
 
 OUTPUT FORMAT (strict JSON array):
 [
-  { "day": ${currentDay + 1}, "task_text": "...", "task_type": "build" }
+  { "day": ${phaseFrom}, "task_text": "...", "task_type": "build" }
 ]
 `
 
   try {
-    // Replan can also be many days — give it generous headroom
-    const raw = await callGemini(prompt, undefined, false, 8192)
+    const raw = await callGemini(prompt, undefined, false, 4096)
     const parsed = safeParseJSON<GeneratedTask[]>(raw, [])
     if (!parsed || parsed.length === 0) {
-      return getFallbackTasks(daysRemaining).map((t, i) => ({ ...t, day: currentDay + 1 + i }))
+      return getFallbackTasks(daysToGenerate).map((t, i) => ({ ...t, day: phaseFrom + i }))
     }
-    return parsed.slice(0, daysRemaining)
+    return parsed.slice(0, daysToGenerate)
   } catch (err) {
-    console.error('AI-4 error:', err)
-    return getFallbackTasks(daysRemaining).map((t, i) => ({ ...t, day: currentDay + 1 + i }))
+    console.error('generatePhaseReplan error:', err)
+    return getFallbackTasks(daysToGenerate).map((t, i) => ({ ...t, day: phaseFrom + i }))
   }
 }
 

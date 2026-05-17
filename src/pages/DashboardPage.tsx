@@ -6,8 +6,9 @@ import WelcomeDashboard from '../components/WelcomeDashboard'
 import { useAuth } from '../context/AuthContext'
 import { getAllActiveSprints, getLogsForSprint, getTodayTask, getTodayLog, calculateDayNumber } from '../lib/db'
 import type { Sprint, Task, DailyLog } from '../lib/db'
-import { shouldTriggerReplan, generateReplan, getReplanThreshold } from '../lib/gemini'
+import { shouldTriggerReplan, generatePhaseReplan, getReplanThreshold } from '../lib/gemini'
 import { createTasks, getTasksForSprint } from '../lib/db'
+import { getPhases } from '../lib/phases'
 import { supabase } from '../lib/supabase'
 
 export default function DashboardPage() {
@@ -73,12 +74,17 @@ export default function DashboardPage() {
 
     setSprintsData(allData)
 
-    // Check replan for currently-selected sprint
+    // Check replan eligibility for current sprint: respect the once-per-sprint hard cap.
     const currentSprint = allData[selectedIdx] ?? allData[0]
-    if (currentSprint) {
+    if (currentSprint && !currentSprint.sprint.has_replanned) {
       const dn = calculateDayNumber(currentSprint.sprint.start_date)
+      const phases = getPhases(currentSprint.sprint.sprint_length)
+      const phase = phases.find((p) => dn >= p.from && dn <= p.to)
+      const daysLeftInPhase = phase ? phase.to - dn : 0
       const shouldReplan = shouldTriggerReplan(currentSprint.logs, dn, currentSprint.sprint.sprint_length)
-      if (shouldReplan) setReplanNeeded(true)
+      // Only show banner if (a) trigger fires, (b) not already used, (c) there are at least 2 days
+      // left in the current phase worth regenerating.
+      if (shouldReplan && daysLeftInPhase >= 2) setReplanNeeded(true)
     }
 
     setLoading(false)
@@ -86,26 +92,38 @@ export default function DashboardPage() {
 
   async function handleReplan() {
     if (!sprint) return
+    if (sprint.has_replanned) return  // hard cap: once per sprint
     setReplanLoading(true)
 
-    const allTasks = await getTasksForSprint(sprint.id)
     const dn = calculateDayNumber(sprint.start_date)
-    const missedDays = Array.from({ length: dn }, (_, i) => i + 1)
-      .filter(d => !logs.find(l => l.day_number === d && l.log_type === 'VERIFIED'))
-    const daysRemaining = sprint.sprint_length - dn
+    const phases = getPhases(sprint.sprint_length)
+    const phase = phases.find((p) => dn >= p.from && dn <= p.to)
+    if (!phase) { setReplanLoading(false); return }
 
-    const newTasks = await generateReplan({
+    const phaseFrom = dn + 1
+    const phaseTo = phase.to
+    const missedDays = Array.from({ length: dn }, (_, i) => i + 1)
+      .filter((d) => !logs.find((l) => l.day_number === d && l.log_type === 'VERIFIED'))
+
+    const newTasks = await generatePhaseReplan({
       goalText: sprint.goal_text,
-      originalTasks: allTasks.map(t => ({ day: t.day_number, task_text: t.task_text, task_type: t.task_type })),
-      completedLogs: logs.map(l => ({ day_number: l.day_number, log_text: l.log_text, log_type: l.log_type })),
-      missedDays,
-      daysRemaining,
+      phaseName: phase.name,
+      phaseFrom,
+      phaseTo,
       currentDay: dn,
       sprintLength: sprint.sprint_length,
+      completedLogs: logs.map((l) => ({ day_number: l.day_number, log_text: l.log_text, log_type: l.log_type })),
+      missedDays,
     })
 
-    await supabase.from('tasks').delete().eq('sprint_id', sprint.id).gt('day_number', dn)
-    await createTasks(newTasks.map(t => ({ sprint_id: sprint.id, day_number: t.day, task_text: t.task_text, task_type: t.task_type })))
+    // Wipe only the future days IN the current phase. Don't touch already-generated future phases.
+    await supabase.from('tasks').delete()
+      .eq('sprint_id', sprint.id)
+      .gt('day_number', dn)
+      .lte('day_number', phaseTo)
+    await createTasks(newTasks.map((t) => ({ sprint_id: sprint.id, day_number: t.day, task_text: t.task_text, task_type: t.task_type })))
+    // Mark sprint as having used its one replan
+    await supabase.from('sprints').update({ has_replanned: true }).eq('id', sprint.id)
 
     setReplanLoading(false)
     setReplanDone(true)
@@ -366,19 +384,30 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Replan Banner */}
-      {replanNeeded && !replanDone && (
+      {/* Replan Banner — phase-specific, once-per-sprint */}
+      {replanNeeded && !replanDone && (() => {
+        const phases = getPhases(sprint.sprint_length)
+        const phase = phases.find((p) => dayNumber >= p.from && dayNumber <= p.to)
+        const phaseName = phase?.name ?? 'current'
+        const threshold = getReplanThreshold(sprint.sprint_length)
+        return (
         <div style={{ margin: '0 16px 12px', background: 'linear-gradient(135deg, #FEF8F0, #FEF3E8)', borderRadius: '20px', padding: '16px', border: '1px solid #F5D5A8' }}>
-          <p style={{ fontFamily: 'var(--font-heading)', fontSize: '15px', fontWeight: 600, color: '#1A3028', margin: '0 0 4px' }}>🔄 Life happened. Your plan can adapt.</p>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', color: '#6B9E8A', margin: '0 0 12px' }}>You've had {getReplanThreshold(sprint.sprint_length)} consecutive hard days. Want us to rebuild your remaining plan?</p>
+          <p style={{ fontFamily: 'var(--font-heading)', fontSize: '15px', fontWeight: 600, color: '#1A3028', margin: '0 0 4px' }}>{phaseName} phase isn't clicking</p>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: '#3D5949', margin: '0 0 6px', lineHeight: 1.5 }}>
+            You've had {threshold} consecutive days that didn't go as planned. We can rebuild the rest of your <strong>{phaseName}</strong> phase using what you've actually logged so far.
+          </p>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#92400E', margin: '0 0 12px', lineHeight: 1.45 }}>
+            Please note: plan regeneration may be used only once per sprint.
+          </p>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <button onClick={handleReplan} disabled={replanLoading} style={{ height: '38px', background: 'linear-gradient(135deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', border: 'none', borderRadius: '9999px', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 500, cursor: 'pointer', padding: '0 16px', opacity: replanLoading ? 0.6 : 1, boxShadow: '0 4px 12px rgba(107,176,72,0.25)' }}>
-              {replanLoading ? 'Regenerating...' : 'Regenerate my plan →'}
+              {replanLoading ? 'Rebuilding…' : `Rebuild ${phaseName} phase →`}
             </button>
-            <button onClick={() => setReplanNeeded(false)} style={{ background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#9BBFB2', cursor: 'pointer' }}>Keep original plan</button>
+            <button onClick={() => setReplanNeeded(false)} style={{ background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#9BBFB2', cursor: 'pointer' }}>Not now</button>
           </div>
         </div>
-      )}
+        )
+      })()}
       {replanDone && (
         <div style={{ margin: '0 16px 12px', textAlign: 'center' }}>
           <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', color: '#3D7A5F' }}>✓ Your plan has been updated</p>

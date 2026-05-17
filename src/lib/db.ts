@@ -16,6 +16,7 @@ export interface Sprint {
   created_at: string
   phase_themes?: Partial<Record<SprintPhase, string>>
   last_generated_phase?: SprintPhase
+  has_replanned?: boolean
 }
 
 /** Day-range for each phase, scaled to the sprint length. Mirrors gemini.ts prompt math.
