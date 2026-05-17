@@ -269,8 +269,28 @@ export default function DashboardPage() {
           overflow: 'hidden',
         }}
       >
-        {/* Soft phase-tinted glow in the corner — static premium look (animation iteration pending) */}
-        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: `radial-gradient(ellipse at 85% 110%, ${phaseAccent}38 0%, transparent 55%), radial-gradient(ellipse at 15% -20%, ${phaseColor}22 0%, transparent 45%)` }} />
+        {/* Ambient gradient mesh — 3 soft phase-color blobs slowly drifting (Apple-wallpaper style) */}
+        <style>{`
+          @keyframes mesh-blob-1 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(-18px, 14px) scale(1.08); }
+            66% { transform: translate(12px, -10px) scale(0.96); }
+          }
+          @keyframes mesh-blob-2 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            40% { transform: translate(20px, 18px) scale(1.05); }
+            75% { transform: translate(-14px, 8px) scale(0.93); }
+          }
+          @keyframes mesh-blob-3 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(16px, -14px) scale(1.1); }
+          }
+        `}</style>
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', bottom: '-30%', right: '-15%', width: '70%', height: '120%', background: `radial-gradient(circle, ${phaseAccent}55 0%, transparent 65%)`, filter: 'blur(20px)', animation: 'mesh-blob-1 16s ease-in-out infinite' }} />
+          <div style={{ position: 'absolute', top: '-25%', left: '-15%', width: '60%', height: '110%', background: `radial-gradient(circle, ${phaseColor}44 0%, transparent 60%)`, filter: 'blur(24px)', animation: 'mesh-blob-2 19s ease-in-out infinite', animationDelay: '-4s' }} />
+          <div style={{ position: 'absolute', top: '20%', right: '15%', width: '40%', height: '70%', background: `radial-gradient(circle, ${phaseColor}33 0%, transparent 70%)`, filter: 'blur(18px)', animation: 'mesh-blob-3 22s ease-in-out infinite', animationDelay: '-8s' }} />
+        </div>
 
         {/* Top row */}
         <div className="flex items-center justify-between" style={{ position: 'relative', zIndex: 1 }}>
