@@ -48,6 +48,11 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 export default function WelcomePage() {
   const navigate = useNavigate()
   const { user, loading: authLoading } = useAuth()
+  // Send first-time visitors through the intro carousel; returning users skip straight to auth.
+  const goNext = () => {
+    const seen = (() => { try { return localStorage.getItem('stride_intro_seen') === '1' } catch { return false } })()
+    navigate(seen ? '/auth' : '/intro')
+  }
   const [goalIndex, setGoalIndex] = useState(0)
   const [visible, setVisible] = useState(true)
   const [previewOpen, setPreviewOpen] = useState(false)
@@ -452,7 +457,7 @@ export default function WelcomePage() {
 
         {/* Primary CTA — at the edge of the first fold */}
         <div style={{ padding: '20px 24px 0', position: 'relative', zIndex: 2 }}>
-          <button onClick={() => { track(Events.WelcomeCtaClicked, { location: 'hero' }); navigate('/auth') }} style={{ width: '100%', height: '54px', background: 'linear-gradient(180deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', borderRadius: '9999px', border: 'none', fontFamily: 'var(--font-heading)', fontSize: '16px', fontWeight: 500, cursor: 'pointer', boxShadow: '0 8px 24px rgba(107,176,72,0.32), 0 4px 12px rgba(107,176,72,0.18)', letterSpacing: '0.015em' }}>
+          <button onClick={() => { track(Events.WelcomeCtaClicked, { location: 'hero' }); goNext() }} style={{ width: '100%', height: '54px', background: 'linear-gradient(180deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', borderRadius: '9999px', border: 'none', fontFamily: 'var(--font-heading)', fontSize: '16px', fontWeight: 500, cursor: 'pointer', boxShadow: '0 8px 24px rgba(107,176,72,0.32), 0 4px 12px rgba(107,176,72,0.18)', letterSpacing: '0.015em' }}>
             Begin your journey today →
           </button>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '14px' }}>
@@ -602,7 +607,7 @@ export default function WelcomePage() {
             <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', color: 'rgba(255,255,255,0.85)', lineHeight: 1.6, marginBottom: '28px' }}>
               30 days. One goal. Daily verification. A Sprint Record that proves you showed up.
             </p>
-            <button onClick={() => { track(Events.WelcomeCtaClicked, { location: 'closing' }); navigate('/auth') }} style={{ backgroundColor: '#FFFFFF', color: '#3D7A5F', fontFamily: 'var(--font-heading)', fontSize: '15px', fontWeight: 600, borderRadius: '9999px', border: 'none', height: '50px', width: '100%', maxWidth: '300px', margin: '0 auto', display: 'block', cursor: 'pointer', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}>
+            <button onClick={() => { track(Events.WelcomeCtaClicked, { location: 'closing' }); goNext() }} style={{ backgroundColor: '#FFFFFF', color: '#3D7A5F', fontFamily: 'var(--font-heading)', fontSize: '15px', fontWeight: 600, borderRadius: '9999px', border: 'none', height: '50px', width: '100%', maxWidth: '300px', margin: '0 auto', display: 'block', cursor: 'pointer', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}>
               Start my 30-day sprint →
             </button>
             <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '20px' }}>
@@ -626,7 +631,7 @@ export default function WelcomePage() {
                 </div>
                 <button onClick={() => setPreviewOpen(false)} style={{ background: 'none', border: 'none', fontSize: '20px', color: '#9BBFB2', cursor: 'pointer', padding: 0 }}>✕</button>
               </div>
-              <ExampleRecordContent onCTA={() => { setPreviewOpen(false); navigate('/auth') }} ctaLabel="Start your sprint to earn this →" />
+              <ExampleRecordContent onCTA={() => { setPreviewOpen(false); goNext() }} ctaLabel="Start your sprint to earn this →" />
             </div>
           </>
         )}
