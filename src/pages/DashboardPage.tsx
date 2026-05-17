@@ -255,7 +255,6 @@ export default function DashboardPage() {
       {(() => {
         const phases = getPhases(sprint.sprint_length)
         const currentPhase = phases.find((p) => dayNumber >= p.from && dayNumber <= p.to) ?? phases[0]
-        const phaseEmoji = currentPhase.emoji
         const phaseColor = currentPhase.color
         const phaseAccent = currentPhase.accent
         return (
@@ -270,24 +269,8 @@ export default function DashboardPage() {
           overflow: 'hidden',
         }}
       >
-        <style>{`
-          @keyframes hero-particle-drift {
-            0% { transform: translateY(110%) translateX(0) rotate(-8deg); opacity: 0; }
-            12% { opacity: 0.22; }
-            85% { opacity: 0.22; }
-            100% { transform: translateY(-20%) translateX(18px) rotate(8deg); opacity: 0; }
-          }
-          @keyframes hero-glow-pulse {
-            0%, 100% { opacity: 0.35; transform: translateX(0); }
-            50% { opacity: 0.55; transform: translateX(8px); }
-          }
-        `}</style>
-        {/* Soft phase-tinted glow that breathes across the card */}
-        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: `radial-gradient(ellipse at 80% 110%, ${phaseAccent}33 0%, transparent 60%)`, animation: 'hero-glow-pulse 6s ease-in-out infinite' }} />
-        {/* Drifting phase-themed particles */}
-        <span style={{ position: 'absolute', left: '12%', bottom: 0, fontSize: '36px', pointerEvents: 'none', animation: 'hero-particle-drift 9s ease-in-out infinite', animationDelay: '0s', filter: `drop-shadow(0 0 12px ${phaseColor}88)` }}>{phaseEmoji}</span>
-        <span style={{ position: 'absolute', left: '58%', bottom: 0, fontSize: '28px', pointerEvents: 'none', animation: 'hero-particle-drift 11s ease-in-out infinite', animationDelay: '3s', filter: `drop-shadow(0 0 10px ${phaseColor}77)` }}>{phaseEmoji}</span>
-        <span style={{ position: 'absolute', left: '82%', bottom: 0, fontSize: '24px', pointerEvents: 'none', animation: 'hero-particle-drift 10s ease-in-out infinite', animationDelay: '6s', filter: `drop-shadow(0 0 8px ${phaseColor}66)` }}>{phaseEmoji}</span>
+        {/* Soft phase-tinted glow in the corner — static premium look (animation iteration pending) */}
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: `radial-gradient(ellipse at 85% 110%, ${phaseAccent}38 0%, transparent 55%), radial-gradient(ellipse at 15% -20%, ${phaseColor}22 0%, transparent 45%)` }} />
 
         {/* Top row */}
         <div className="flex items-center justify-between" style={{ position: 'relative', zIndex: 1 }}>

@@ -50,11 +50,11 @@ export default function RecordListPage() {
     window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`, '_blank')
   })
 
-  const handleShareNaukri = () => requireEarned(async () => {
+  const handleShareIndeed = () => requireEarned(async () => {
     const url = `${window.location.origin}/record/${earnedSprint!.id}`
     try { await navigator.clipboard.writeText(url) } catch { /* clipboard may be denied */ }
-    setToast('Link copied! Opening Naukri…')
-    setTimeout(() => window.open('https://www.naukri.com', '_blank'), 800)
+    setToast('Link copied! Opening Indeed…')
+    setTimeout(() => window.open('https://www.indeed.com', '_blank'), 800)
   })
 
   const handleShareInstagram = () => requireEarned(async () => {
@@ -260,7 +260,7 @@ export default function RecordListPage() {
         <div style={{ display: 'flex', justifyContent: 'center', gap: '14px' }}>
           {[
             { label: 'LinkedIn', node: <span style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 700, color: '#FFFFFF' }}>in</span>, bg: '#0A66C2', onClick: handleShareLinkedIn },
-            { label: 'Naukri', node: <span style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 700, color: '#FFFFFF' }}>N</span>, bg: '#FF7555', onClick: handleShareNaukri },
+            { label: 'Indeed', node: <span style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 700, color: '#FFFFFF' }}>in</span>, bg: '#2164F4', onClick: handleShareIndeed },
             { label: 'Instagram', node: <Camera size={14} color="#FFFFFF" />, bg: 'linear-gradient(45deg, #f09433, #dc2743, #bc1888)', onClick: handleShareInstagram },
             { label: 'Download', node: <Download size={14} color="#FFFFFF" />, bg: 'linear-gradient(135deg, #2D5A47 0%, #1C3D30 100%)', onClick: handleDownloadPDF },
             { label: 'Copy link', node: <Link2 size={14} color="#FFFFFF" />, bg: '#7B6FA0', onClick: handleCopyLink },
@@ -403,7 +403,7 @@ export default function RecordListPage() {
                 {[
                   { left: <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: 700, color: '#0A66C2' }}>in</span>, label: 'LinkedIn' },
                   { left: <Camera size={12} color="#E1306C" />, label: 'Instagram' },
-                  { left: <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: 700, color: '#FF7555' }}>N</span>, label: 'Naukri' },
+                  { left: <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: 700, color: '#2164F4' }}>in</span>, label: 'Indeed' },
                   { left: <Link2 size={12} color="#6B9E8A" />, label: 'Copy link' },
                 ].map((pill, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '9999px', border: '1px solid #EDF2EF', backgroundColor: '#FFFFFF' }}>

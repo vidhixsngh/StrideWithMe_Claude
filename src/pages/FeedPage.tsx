@@ -48,7 +48,6 @@ export default function FeedPage() {
   const { user } = useAuth()
   const [reactions, setReactions] = useState<Record<string, boolean>>({})
   const [reactionCounts, setReactionCounts] = useState<Record<string, { witnessed: number; facingThis: number; userWitnessed: boolean; userFacingThis: boolean }>>({})
-  const [expanded, setExpanded] = useState<Record<number, boolean>>({})
   const [realPosts, setRealPosts] = useState<FeedPost[]>([])
   const [, setLoadingPosts] = useState(true)
   const navigate = useNavigate()
@@ -324,9 +323,9 @@ export default function FeedPage() {
                     {initials}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                       <span style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 600, color: '#1A3028' }}>{displayName}</span>
-                      <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', fontWeight: 500, letterSpacing: '0.06em', color: isHonest ? '#D97706' : '#4A8C6F' }}>
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: isHonest ? '#D97706' : '#3D7A5F', backgroundColor: isHonest ? 'rgba(245,158,74,0.14)' : 'rgba(118,197,72,0.14)', border: `1px solid ${isHonest ? 'rgba(245,158,74,0.30)' : 'rgba(107,176,72,0.25)'}`, borderRadius: '9999px', padding: '2px 7px' }}>
                         {isHonest ? 'HONEST' : 'PROGRESS'}
                       </span>
                     </div>
@@ -383,7 +382,6 @@ export default function FeedPage() {
             const facingKey = `facing-${post.id}`
             const witnessedCount = post.witnessed + (reactions[witnessedKey] ? 1 : 0)
             const facingCount = post.facingThis + (reactions[facingKey] ? 1 : 0)
-            const isExpanded = expanded[post.id] ?? false
             const goalTruncated = post.goal.length > 45 ? post.goal.slice(0, 45) + '...' : post.goal
 
             return (
@@ -405,20 +403,15 @@ export default function FeedPage() {
                     {post.initials}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                       <span style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 600, color: '#1A3028' }}>{post.name}</span>
-                      <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontStyle: 'italic', fontWeight: 500, letterSpacing: '0.06em', color: isHonest ? '#D97706' : '#4A8C6F' }}>
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: isHonest ? '#D97706' : '#3D7A5F', backgroundColor: isHonest ? 'rgba(245,158,74,0.14)' : 'rgba(118,197,72,0.14)', border: `1px solid ${isHonest ? 'rgba(245,158,74,0.30)' : 'rgba(107,176,72,0.25)'}`, borderRadius: '9999px', padding: '2px 7px' }}>
                         {isHonest ? 'HONEST' : 'PROGRESS'}
                       </span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2' }}>
-                        Day {post.day} · {post.hoursAgo}
-                      </span>
-                      <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', backgroundColor: '#EAF5F0', color: '#3D7A5F', borderRadius: '9999px', padding: '2px 8px', border: '1px solid #B8D9CC' }}>
-                        Day {post.day}
-                      </span>
-                    </div>
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#9BBFB2' }}>
+                      Day {post.day} · {post.hoursAgo}
+                    </span>
                   </div>
                 </div>
 
@@ -428,37 +421,9 @@ export default function FeedPage() {
                 </p>
 
                 {/* Text */}
-                <p style={{
-                  fontFamily: 'var(--font-body)',
-                  fontSize: '13px',
-                  lineHeight: 1.55,
-                  color: '#2D4A3E',
-                  margin: '0 0 4px',
-                  ...(!isExpanded ? {
-                    display: '-webkit-box',
-                    WebkitLineClamp: 4,
-                    WebkitBoxOrient: 'vertical' as const,
-                    overflow: 'hidden',
-                  } : {}),
-                }}>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', lineHeight: 1.55, color: '#2D4A3E', margin: '0 0 4px' }}>
                   {post.text}
                 </p>
-                {post.text.length > 120 && !isExpanded && (
-                  <button
-                    onClick={() => setExpanded(prev => ({ ...prev, [post.id]: true }))}
-                    style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#3D7A5F', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: '10px' }}
-                  >
-                    Read more
-                  </button>
-                )}
-                {isExpanded && (
-                  <button
-                    onClick={() => setExpanded(prev => ({ ...prev, [post.id]: false }))}
-                    style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: '10px' }}
-                  >
-                    Show less
-                  </button>
-                )}
 
                 {/* Reactions */}
                 <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>

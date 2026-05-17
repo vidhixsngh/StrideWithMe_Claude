@@ -512,7 +512,7 @@ export default function WelcomePage() {
             {[
               { num: '01', title: 'Set your goal', body: "Write what you're actually going after. Be specific — the AI reads it and builds your entire daily plan from it.", emoji: '🎯', detail: '30 tasks. One per day. Escalating in complexity. Fully editable before you begin.' },
               { num: '02', title: 'Show up and log', body: 'Every day, log what you did — text, a photo, or a link to your work. Then Claude reads it.', emoji: '🔍', detail: "Not a word count. Not a checkbox. Claude decides: did this person actually move forward today? Vague logs don't pass. Real work does." },
-              { num: '03', title: 'Earn your Sprint Record', body: 'At the end, you receive a verified credential — an AI-narrated document of everything you built.', emoji: '🏆', detail: 'Share it on LinkedIn, Naukri, or anywhere you prove your work. It shows you actually showed up — not just that you intended to.' },
+              { num: '03', title: 'Earn your Sprint Record', body: 'At the end, you receive a verified credential — an AI-narrated document of everything you built.', emoji: '🏆', detail: 'Share it on LinkedIn, Indeed, or anywhere you prove your work. It shows you actually showed up — not just that you intended to.' },
             ].map((step) => (
               <div key={step.num} style={{ background: '#FFFFFF', borderRadius: '20px', padding: '20px', border: '1px solid rgba(184, 217, 204, 0.4)', boxShadow: '0 1px 3px rgba(28,61,48,0.04), 0 8px 24px rgba(107,176,72,0.06)', position: 'relative', overflow: 'hidden' }}>
                 {/* Top-right accent dot */}

@@ -506,6 +506,7 @@ function VerifyingPhase() {
 function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, onHonest, taskText, dayNum, verifying, verificationResult, attemptNumber, onSetLinkUrl, onSetLinkCaption, verifiedCount, upcomingTasks, currentDayNum: _currentDayNum, sprintLogs, imageFiles, setImageFiles, draftRestored, onDismissDraft }: {
   logText: string; setLogText: (v: string) => void; activeTab: string; setActiveTab: (v: string) => void; onVerify: () => void; onHonest: () => void; taskText?: string; dayNum?: number; verifying?: boolean; verificationResult?: VerificationResult | null; attemptNumber?: number; onSetLinkUrl?: (v: string) => void; onSetLinkCaption?: (v: string) => void; verifiedCount?: number; upcomingTasks?: Task[]; currentDayNum?: number; sprintLogs?: Array<{ day_number: number; log_type: string }>; imageFiles?: Array<{ file: File; preview: string; base64: string; mimeType: string; caption: string }>; setImageFiles?: (files: Array<{ file: File; preview: string; base64: string; mimeType: string; caption: string }>) => void; draftRestored?: boolean; onDismissDraft?: () => void
 }) {
+  const navigate = useNavigate()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const [linkUrl, setLinkUrl] = useState('')
@@ -929,31 +930,35 @@ function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, on
         Honest days count. They're part of your story.
       </p>
 
-      {/* Upcoming Plan */}
-      {upcomingTasks && upcomingTasks.length > 0 && (
-        <div style={{ marginTop: '24px', backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #EDF2EF', padding: '16px' }}>
-          <span style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 600, color: '#1A3028' }}>Coming up next</span>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', margin: '2px 0 12px' }}>Your plan for the days ahead</p>
-          {upcomingTasks.map((task) => {
-            const log = sprintLogs?.find(l => l.day_number === task.day_number)
-            return (
-              <div key={task.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '8px 0', borderBottom: '1px solid #F5F5F5' }}>
-                <div style={{ width: '28px', height: '28px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, backgroundColor: log ? '#3D7A5F' : '#D4EDE3', fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: 600, color: log ? '#FFFFFF' : '#6B9E8A', boxSizing: 'border-box' }}>
-                  {task.day_number}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', color: '#9BBFB2', fontStyle: 'italic', margin: '0 0 2px' }}>
-                    Day {task.day_number}{log ? ' · ✓' : ''}
-                  </p>
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: log ? '#6B9E8A' : '#1A3028', margin: 0, textDecoration: log ? 'line-through' : 'none' }}>
-                    {task.task_text}
-                  </p>
-                </div>
+      {/* Coming up next — just the next day task + a button to dashboard */}
+      {(() => {
+        const nextTask = upcomingTasks?.find((t) => !sprintLogs?.find((l) => l.day_number === t.day_number))
+        if (!nextTask) return null
+        return (
+          <div style={{ marginTop: '24px', backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #EDF2EF', padding: '16px' }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#9BBFB2', margin: '0 0 6px', fontWeight: 700 }}>Coming up next</p>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '14px' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, backgroundColor: '#D4EDE3', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 700, color: '#3D7A5F' }}>
+                {nextTask.day_number}
               </div>
-            )
-          })}
-        </div>
-      )}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', color: '#9BBFB2', fontStyle: 'italic', margin: '0 0 2px' }}>
+                  Day {nextTask.day_number}
+                </p>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '14px', color: '#1A3028', margin: 0, fontWeight: 500, lineHeight: 1.45, overflowWrap: 'break-word', wordBreak: 'break-word' }}>
+                  {nextTask.task_text}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate('/dashboard')}
+              style={{ width: '100%', height: '46px', background: 'linear-gradient(180deg, #76C548 0%, #6BB048 100%)', color: '#FFFFFF', border: 'none', borderRadius: '9999px', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 500, cursor: 'pointer', boxShadow: '0 6px 18px rgba(107,176,72,0.28)' }}
+            >
+              Back to dashboard →
+            </button>
+          </div>
+        )
+      })()}
     </>
   )
 }

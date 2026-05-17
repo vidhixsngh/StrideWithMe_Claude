@@ -58,18 +58,15 @@ export default function IOSInstallHint() {
             <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 700, color: '#78350F', margin: 0, lineHeight: 1.35 }}>
               Add to Home Screen to get reminders
             </p>
-            {!expanded && (
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#92400E', margin: '1px 0 0', lineHeight: 1.35, opacity: 0.85 }}>
-                Tap for the 3 steps
-              </p>
-            )}
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontStyle: 'italic', color: '#92400E', margin: '1px 0 0', lineHeight: 1.35, opacity: 0.85 }}>
+              {expanded ? 'Tap to collapse' : 'Tap for the 3 steps'}
+            </p>
           </div>
-          <span style={{ fontSize: '11px', color: '#92400E', flexShrink: 0, transform: expanded ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.15s ease', fontWeight: 700 }}>▾</span>
         </button>
         <button
-          onClick={handleDismiss}
+          onClick={(e) => { e.stopPropagation(); handleDismiss() }}
           aria-label="Dismiss"
-          style={{ position: 'absolute', top: '8px', right: '10px', width: '22px', height: '22px', borderRadius: '50%', background: 'rgba(245,158,11,0.18)', border: 'none', color: '#78350F', fontSize: '12px', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, lineHeight: 1 }}
+          style={{ position: 'absolute', top: '50%', right: '8px', transform: 'translateY(-50%)', width: '26px', height: '26px', borderRadius: '50%', background: 'rgba(245,158,11,0.20)', border: 'none', color: '#78350F', fontSize: '13px', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, lineHeight: 1 }}
         >
           ✕
         </button>
