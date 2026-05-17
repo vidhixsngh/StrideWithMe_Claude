@@ -10,6 +10,7 @@ import RecordListPage from './pages/RecordListPage'
 import SprintFullLogPage from './pages/SprintFullLogPage'
 import ProfilePage from './pages/ProfilePage'
 import AuthPage from './pages/AuthPage'
+import PlanPage from './pages/PlanPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import InstallPrompt from './components/InstallPrompt'
 import IOSInstallHint from './components/IOSInstallHint'
@@ -29,6 +30,7 @@ function App() {
         <Route path="/record/:id" element={<SprintRecordPage />} />
         <Route path="/record/:id/full" element={<ProtectedRoute><SprintFullLogPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+        <Route path="/plan" element={<ProtectedRoute><PlanPage /></ProtectedRoute>} />
       </Routes>
       <InstallPrompt />
       <IOSInstallHint />

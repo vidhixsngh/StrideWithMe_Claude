@@ -31,7 +31,6 @@ export default function DashboardPage() {
   const todayLog = sprintsData[selectedIdx]?.todayLog ?? null
   const upcomingTasks = sprintsData[selectedIdx]?.upcomingTasks ?? []
 
-  const [showFullPlan, setShowFullPlan] = useState(false)
   const swipeStartX = useRef<number | null>(null)
   const [replanNeeded, setReplanNeeded] = useState(false)
   const [replanLoading, setReplanLoading] = useState(false)
@@ -473,56 +472,55 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {/* Your Plan */}
-      {upcomingTasks.length > 0 && (
-        <div style={{ margin: '16px 16px 0', backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #EDF2EF', padding: '16px' }}>
-          <div className="flex items-center justify-between" style={{ marginBottom: '12px' }}>
-            <span style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 600, color: '#1A3028' }}>Your plan</span>
-            <button onClick={() => setShowFullPlan(!showFullPlan)} style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#3D7A5F', background: 'none', border: 'none', cursor: 'pointer' }}>
-              {showFullPlan ? 'Show less' : 'View all →'}
-            </button>
-          </div>
-          {showFullPlan && (
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', margin: '0 0 8px' }}>Your plan is locked. Show up daily — that's the work.</p>
-          )}
-          <div>
-          {(showFullPlan ? upcomingTasks : upcomingTasks.slice(0, 3)).map((task) => {
-            const isToday = task.day_number === dayNumber
-            const log = logs.find(l => l.day_number === task.day_number)
-            return (
-              <div
-                key={task.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '10px',
-                  padding: '8px 0',
-                  borderBottom: '1px solid #F5F5F5',
-                }}
-              >
-                {/* Day chip */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: log ? '#3D7A5F' : isToday ? '#FFFFFF' : '#D4EDE3', border: isToday && !log ? '2px solid #3D7A5F' : 'none', boxSizing: 'border-box', fontFamily: 'var(--font-body)', fontSize: isToday && !log ? '14px' : '11px', fontWeight: 600, color: log ? '#FFFFFF' : isToday ? '#1A3028' : '#6B9E8A' }}>
-                    {isToday && !log ? '🌱' : task.day_number}
-                  </div>
-                </div>
-                {/* Content */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', color: isToday ? '#3D7A5F' : '#9BBFB2', fontStyle: 'italic', margin: '0 0 2px' }}>
-                    Day {task.day_number}{isToday ? ' · Today' : ''}{log ? ' · ✓' : ''}
-                  </p>
-                  <p
-                    style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: log ? '#6B9E8A' : '#1A3028', margin: 0, textDecoration: log ? 'line-through' : 'none' }}
-                  >
-                    {task.task_text}
-                  </p>
-                </div>
+      {/* Your Plan — compact "what's coming up" preview (Tomorrow + Day after). Full plan lives at /plan. */}
+      {(() => {
+        const upcomingPreview = upcomingTasks.filter((t) => t.day_number > dayNumber).slice(0, 2)
+        return (
+          <div style={{ margin: '16px 16px 0', backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #EDF2EF', padding: '16px' }}>
+            <div className="flex items-center justify-between" style={{ marginBottom: '12px' }}>
+              <div>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 600, color: '#1A3028', margin: 0 }}>Your plan</p>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', margin: '2px 0 0' }}>What's coming up next</p>
               </div>
-            )
-          })}
+              <button onClick={() => navigate('/plan')} style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 600, color: '#3D7A5F', background: 'rgba(118,197,72,0.10)', border: '1px solid rgba(107,176,72,0.30)', borderRadius: '9999px', padding: '6px 12px', cursor: 'pointer' }}>
+                View full plan →
+              </button>
+            </div>
+
+            {upcomingPreview.length === 0 ? (
+              <div style={{ padding: '14px 12px', background: 'linear-gradient(135deg, rgba(118,197,72,0.08) 0%, rgba(245,213,71,0.04) 100%)', border: '1px dashed rgba(107,176,72,0.30)', borderRadius: '12px' }}>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A', margin: 0, textAlign: 'center', lineHeight: 1.5 }}>
+                  Today is your last task in this phase. Tap <strong>View full plan</strong> to peek at what's ahead.
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {upcomingPreview.map((task, idx) => {
+                  const label = idx === 0 ? 'Tomorrow' : idx === 1 ? 'Day after' : `Day ${task.day_number}`
+                  return (
+                    <div
+                      key={task.id}
+                      style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', background: '#FBFAF6', border: '1px solid #EDF2EF', borderRadius: '12px' }}
+                    >
+                      <div style={{ width: '28px', height: '28px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#D4EDE3', flexShrink: 0, fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: 700, color: '#6B9E8A' }}>
+                        {task.day_number}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#9BBFB2', margin: 0, fontWeight: 600 }}>
+                          {label}
+                        </p>
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: '#2D4A3E', margin: '2px 0 0', lineHeight: 1.4, overflowWrap: 'break-word', wordBreak: 'break-word' }}>
+                          {task.task_text}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Stats Row */}
       <div
