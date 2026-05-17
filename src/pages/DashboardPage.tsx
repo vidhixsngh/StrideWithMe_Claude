@@ -268,14 +268,15 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Sprint Hero Card — solid dark green, no gradient */}
+      {/* Sprint Hero Card — matches the gradient used on Feed and Record pages for visual consistency */}
       <div
         style={{
           margin: '16px',
           borderRadius: '24px',
-          backgroundColor: '#1C3D30',
+          background: 'linear-gradient(135deg, #1C3D30 0%, #2D5A47 60%, #1C3D30 100%)',
           padding: '20px',
           minHeight: '160px',
+          boxShadow: '0 12px 32px rgba(28,61,48,0.18)',
         }}
       >
         {/* Top row */}

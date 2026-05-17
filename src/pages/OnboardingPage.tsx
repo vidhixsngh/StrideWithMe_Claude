@@ -1084,7 +1084,7 @@ function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVa
       <StepLabel step={4} label="Your plan" />
       <Heading>Your {sprintLength}-day plan</Heading>
       <Subtext>
-        Your plan in 4 phases. Foundation unlocks first.
+        Your plan in {phases.length} phases. Foundation unlocks first.
       </Subtext>
 
       {/* Goal card — heroed */}
