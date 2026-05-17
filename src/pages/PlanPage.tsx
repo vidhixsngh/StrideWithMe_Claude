@@ -95,9 +95,10 @@ export default function PlanPage() {
             </p>
           </div>
 
-          {/* Phase timeline with current-day marker */}
-          <div style={{ marginBottom: '20px' }}>
-            <div style={{ position: 'relative', height: '32px' }}>
+          {/* Phase timeline — clean 🌱 → line → 🌻 journey with 🐝 marking today */}
+          <div style={{ marginBottom: '22px' }}>
+            <style>{`@keyframes bee-float { 0%, 100% { transform: translate(-50%, -50%); } 50% { transform: translate(-50%, calc(-50% - 3px)); } }`}</style>
+            <div style={{ position: 'relative', height: '36px' }}>
               {/* Line */}
               <div
                 style={{
@@ -108,64 +109,35 @@ export default function PlanPage() {
                   right: '11px',
                   height: '4px',
                   borderRadius: '9999px',
-                  background: `linear-gradient(90deg, ${phases.map((p, i) => {
-                    const cumulativeStart = phases.slice(0, i).reduce((acc, q) => acc + (q.to - q.from + 1), 0)
-                    const total = phases.reduce((acc, q) => acc + (q.to - q.from + 1), 0)
-                    const startPct = (cumulativeStart / total) * 100
-                    const endPct = ((cumulativeStart + (p.to - p.from + 1)) / total) * 100
-                    return `${p.accent} ${startPct}%, ${p.accent} ${endPct}%`
-                  }).join(', ')})`,
+                  background: 'linear-gradient(90deg, #A7F3A0 0%, #C4B5FD 100%)',
                   opacity: 0.9,
                   boxShadow: '0 2px 8px rgba(28,61,48,0.06)',
                 }}
               />
-              {/* Current-day dot */}
-              <div
+              {/* 🌱 left endcap */}
+              <span style={{ position: 'absolute', top: '50%', left: 0, transform: 'translateY(-50%)', fontSize: '22px', lineHeight: 1, filter: 'drop-shadow(0 2px 8px rgba(101,212,84,0.66)) drop-shadow(0 0 14px rgba(101,212,84,0.4))' }}>
+                🌱
+              </span>
+              {/* 🌻 right endcap */}
+              <span style={{ position: 'absolute', top: '50%', right: 0, transform: 'translateY(-50%)', fontSize: '22px', lineHeight: 1, filter: 'drop-shadow(0 2px 8px rgba(139,92,246,0.55)) drop-shadow(0 0 14px rgba(139,92,246,0.32))' }}>
+                🌻
+              </span>
+              {/* 🐝 bee marking today's position */}
+              <span
                 style={{
                   position: 'absolute',
                   top: '50%',
-                  left: `${(dayNumber / sprint.sprint_length) * 100}%`,
-                  transform: 'translate(-50%, -50%)',
-                  width: '14px',
-                  height: '14px',
-                  borderRadius: '50%',
-                  background: '#FFFFFF',
-                  border: '3px solid #1A3028',
-                  boxShadow: '0 2px 8px rgba(28,61,48,0.25)',
-                  zIndex: 2,
+                  left: `${Math.min(Math.max((dayNumber / sprint.sprint_length) * 100, 4), 96)}%`,
+                  fontSize: '22px',
+                  lineHeight: 1,
+                  zIndex: 3,
+                  filter: 'drop-shadow(0 3px 6px rgba(245,158,11,0.45)) drop-shadow(0 0 12px rgba(245,158,11,0.30))',
+                  animation: 'bee-float 1.8s ease-in-out infinite',
                 }}
-              />
-              {/* Emojis */}
-              {phases.map((phase, i) => {
-                const isFoundation = phase.name === 'Foundation'
-                const isFirst = i === 0
-                const isLast = i === phases.length - 1
-                const totalDays = phases.reduce((acc, q) => acc + (q.to - q.from + 1), 0)
-                const cumulativeStart = phases.slice(0, i).reduce((acc, q) => acc + (q.to - q.from + 1), 0)
-                const startPct = (cumulativeStart / totalDays) * 100
-                const positionStyle: React.CSSProperties = isFirst
-                  ? { left: 0, transform: 'translateY(-50%)' }
-                  : isLast
-                  ? { right: 0, transform: 'translateY(-50%)' }
-                  : { left: `${startPct}%`, transform: 'translate(-50%, -50%)' }
-                return (
-                  <span
-                    key={phase.name}
-                    style={{
-                      position: 'absolute',
-                      top: '50%',
-                      fontSize: '22px',
-                      lineHeight: 1,
-                      filter: isFoundation
-                        ? `drop-shadow(0 2px 8px ${phase.color}aa) drop-shadow(0 0 14px ${phase.color}66)`
-                        : `drop-shadow(0 2px 6px ${phase.color}66) drop-shadow(0 0 10px ${phase.color}33)`,
-                      ...positionStyle,
-                    }}
-                  >
-                    {phase.emoji}
-                  </span>
-                )
-              })}
+                title={`Day ${dayNumber} of ${sprint.sprint_length}`}
+              >
+                🐝
+              </span>
             </div>
           </div>
 

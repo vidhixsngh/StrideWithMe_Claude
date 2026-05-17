@@ -1022,7 +1022,7 @@ function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVa
         </div>
       )}
 
-      {/* Phase timeline — emojis sit ON the line, flush to the extremes */}
+      {/* Phase timeline — clean 🌱 → line → 🌻 journey (Build & Peak emojis live on their phase cards below) */}
       <div style={{ marginBottom: '24px' }}>
         <div style={{ position: 'relative', height: '32px' }}>
           {/* The line — passes through the vertical center. Inset so it ends where the seedling/sunflower glyphs visually sit. */}
@@ -1046,39 +1046,21 @@ function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVa
               boxShadow: '0 2px 8px rgba(28,61,48,0.06)',
             }}
           />
-          {/* Emoji checkpoints — absolute positioning at phase start boundaries */}
-          {phases.map((phase, i) => {
-            const isFoundation = phase.name === 'Foundation'
-            const isFirst = i === 0
-            const isLast = i === phases.length - 1
-            const totalDays = phases.reduce((acc, q) => acc + (q.to - q.from + 1), 0)
-            const cumulativeStart = phases.slice(0, i).reduce((acc, q) => acc + (q.to - q.from + 1), 0)
-            const startPct = (cumulativeStart / totalDays) * 100
-            // First emoji anchors to left edge; last anchors to right edge; middles center on phase-start boundary
-            const positionStyle: React.CSSProperties = isFirst
-              ? { left: 0, transform: 'translateY(-50%)' }
-              : isLast
-              ? { right: 0, transform: 'translateY(-50%)' }
-              : { left: `${startPct}%`, transform: 'translate(-50%, -50%)' }
+          {/* Endcaps only — 🌱 at start, 🌻 at end. Build/Peak emojis live on phase cards below. */}
+          {(() => {
+            const first = phases[0]
+            const last = phases[phases.length - 1]
             return (
-              <span
-                key={phase.name}
-                style={{
-                  position: 'absolute',
-                  top: '50%',
-                  fontSize: '22px',
-                  lineHeight: 1,
-                  filter: isFoundation
-                    ? `drop-shadow(0 2px 8px ${phase.color}aa) drop-shadow(0 0 14px ${phase.color}66)`
-                    : `drop-shadow(0 2px 6px ${phase.color}66) drop-shadow(0 0 10px ${phase.color}33)`,
-                  opacity: isFoundation ? 1 : 0.95,
-                  ...positionStyle,
-                }}
-              >
-                {phase.emoji}
-              </span>
+              <>
+                <span style={{ position: 'absolute', top: '50%', left: 0, transform: 'translateY(-50%)', fontSize: '22px', lineHeight: 1, filter: `drop-shadow(0 2px 8px ${first.color}aa) drop-shadow(0 0 14px ${first.color}66)` }}>
+                  {first.emoji}
+                </span>
+                <span style={{ position: 'absolute', top: '50%', right: 0, transform: 'translateY(-50%)', fontSize: '22px', lineHeight: 1, filter: `drop-shadow(0 2px 8px ${last.color}88) drop-shadow(0 0 14px ${last.color}44)` }}>
+                  {last.emoji}
+                </span>
+              </>
             )
-          })}
+          })()}
         </div>
       </div>
 

@@ -23,6 +23,9 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [sprints, setSprints] = useState<Sprint[]>([])
   const [bestStreak, setBestStreak] = useState(0)
+  const [verifiedCount, setVerifiedCount] = useState(0)
+  const [honestCount, setHonestCount] = useState(0)
+  const [currentStreak, setCurrentStreak] = useState(0)
   const [loading, setLoading] = useState(true)
   const [visibilityEditor, setVisibilityEditor] = useState<{ sprintId: string; current: Visibility } | null>(null)
   const [reminderEditor, setReminderEditor] = useState(false)
@@ -47,12 +50,17 @@ export default function ProfilePage() {
       setSprints(s)
       setLoading(false)
 
-      // Compute best streak across all sprints (longest run of consecutive logged days)
+      // Aggregate stats across all sprints
       if (s.length === 0) return
       const allSprintLogs = await Promise.all(s.map(sp => getLogsForSprint(sp.id)))
+
       let best = 0
+      let verified = 0
+      let honest = 0
       for (const logs of allSprintLogs) {
         if (logs.length === 0) continue
+        verified += logs.filter(l => l.log_type === 'VERIFIED').length
+        honest += logs.filter(l => l.log_type === 'HONEST').length
         const days = [...new Set(logs.map(l => l.day_number))].sort((a, b) => a - b)
         let run = 1
         for (let i = 1; i < days.length; i++) {
@@ -62,6 +70,21 @@ export default function ProfilePage() {
         if (days.length === 1 && best === 0) best = 1
       }
       setBestStreak(best)
+      setVerifiedCount(verified)
+      setHonestCount(honest)
+
+      // Current streak: from the most recent in-progress sprint (assumes sprints sorted by recency desc)
+      const recentSprint = s[0]
+      const recentLogs = allSprintLogs[0]
+      if (recentSprint && recentLogs && recentLogs.length > 0) {
+        const dn = calculateDayNumber(recentSprint.start_date)
+        let streak = 0
+        for (let d = dn; d >= 1; d--) {
+          if (recentLogs.find(l => l.day_number === d)) streak++
+          else break
+        }
+        setCurrentStreak(streak)
+      }
     }
     load()
   }, [user])
@@ -99,16 +122,31 @@ export default function ProfilePage() {
           <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontStyle: 'italic', color: '#6B9E8A', margin: 0 }}>{tagline}</p>
         </div>
 
-        {/* Stats */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '24px', marginBottom: '24px' }}>
+        {/* Sprint-level tiny stats above the grid */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '18px' }}>
+          <div style={{ textAlign: 'center' }}>
+            <span style={{ fontFamily: 'var(--font-heading)', fontSize: '15px', fontWeight: 600, color: '#1A3028' }}>{sprints.length}</span>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', marginLeft: '4px' }}>sprint{sprints.length !== 1 ? 's' : ''}</span>
+          </div>
+          <span style={{ color: '#D4EDE3' }}>·</span>
+          <div style={{ textAlign: 'center' }}>
+            <span style={{ fontFamily: 'var(--font-heading)', fontSize: '15px', fontWeight: 600, color: '#1A3028' }}>{totalDays}</span>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', marginLeft: '4px' }}>days committed</span>
+          </div>
+        </div>
+
+        {/* Modern 2x2 stat grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: '28px' }}>
           {[
-            { value: String(sprints.length), label: 'Sprints', color: '#1A3028' },
-            { value: String(totalDays), label: 'Total days', color: '#3D7A5F' },
-            { value: String(bestStreak), label: 'Best streak', color: '#1A3028' },
+            { value: verifiedCount, label: 'Verified', sub: 'days proven', color: '#65D454', bg: 'linear-gradient(135deg, rgba(101,212,84,0.10) 0%, rgba(167,243,160,0.06) 100%)', border: 'rgba(101,212,84,0.30)' },
+            { value: honestCount, label: 'Honest', sub: 'days logged real', color: '#F59E0B', bg: 'linear-gradient(135deg, rgba(245,158,11,0.10) 0%, rgba(252,211,77,0.06) 100%)', border: 'rgba(245,158,11,0.30)' },
+            { value: currentStreak, label: 'Current streak', sub: 'days in a row', color: '#14B8A6', bg: 'linear-gradient(135deg, rgba(20,184,166,0.10) 0%, rgba(94,234,212,0.06) 100%)', border: 'rgba(20,184,166,0.30)' },
+            { value: bestStreak, label: 'Best streak', sub: 'all-time peak', color: '#8B5CF6', bg: 'linear-gradient(135deg, rgba(139,92,246,0.10) 0%, rgba(196,181,253,0.06) 100%)', border: 'rgba(139,92,246,0.30)' },
           ].map((s) => (
-            <div key={s.label} style={{ textAlign: 'center' }}>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: '20px', fontWeight: 700, color: s.color }}>{s.value}</div>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#6B9E8A' }}>{s.label}</div>
+            <div key={s.label} style={{ background: s.bg, border: `1px solid ${s.border}`, borderRadius: '18px', padding: '14px 14px 12px' }}>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '9px', letterSpacing: '0.14em', textTransform: 'uppercase', color: s.color, margin: 0, fontWeight: 800 }}>{s.label}</p>
+              <p style={{ fontFamily: 'var(--font-heading)', fontSize: '34px', fontWeight: 700, color: '#1A3028', margin: '4px 0 2px', lineHeight: 1, letterSpacing: '-0.02em' }}>{s.value}</p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#6B9E8A', margin: 0 }}>{s.sub}</p>
             </div>
           ))}
         </div>

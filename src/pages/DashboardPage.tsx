@@ -135,8 +135,6 @@ export default function DashboardPage() {
   // Derived values
   const dayNumber = calculateDayNumber(sprint.start_date)
   const daysLeft = Math.max(sprint.sprint_length - dayNumber, 0)
-  const verifiedCount = logs.filter(l => l.log_type === 'VERIFIED').length
-  const honestCount = logs.filter(l => l.log_type === 'HONEST').length
   const percentComplete = Math.round((dayNumber / sprint.sprint_length) * 100)
   const todayLogged = todayLog !== null
 
@@ -149,17 +147,6 @@ export default function DashboardPage() {
       else break
     }
     return streak
-  })()
-
-  const bestStreak = (() => {
-    let best = 0
-    let current = 0
-    for (let d = 1; d <= dayNumber; d++) {
-      const log = logs.find(l => l.day_number === d)
-      if (log) { current++; best = Math.max(best, current) }
-      else { current = 0 }
-    }
-    return best
   })()
 
   // Heatmap data
@@ -472,96 +459,10 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {/* Your Plan — compact "what's coming up" preview (Tomorrow + Day after). Full plan lives at /plan. */}
-      {(() => {
-        const upcomingPreview = upcomingTasks.filter((t) => t.day_number > dayNumber).slice(0, 2)
-        return (
-          <div style={{ margin: '16px 16px 0', backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #EDF2EF', padding: '16px' }}>
-            <div className="flex items-center justify-between" style={{ marginBottom: '12px' }}>
-              <div>
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 600, color: '#1A3028', margin: 0 }}>Your plan</p>
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', margin: '2px 0 0' }}>What's coming up next</p>
-              </div>
-              <button onClick={() => navigate('/plan')} style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 600, color: '#3D7A5F', background: 'rgba(118,197,72,0.10)', border: '1px solid rgba(107,176,72,0.30)', borderRadius: '9999px', padding: '6px 12px', cursor: 'pointer' }}>
-                View full plan →
-              </button>
-            </div>
-
-            {upcomingPreview.length === 0 ? (
-              <div style={{ padding: '14px 12px', background: 'linear-gradient(135deg, rgba(118,197,72,0.08) 0%, rgba(245,213,71,0.04) 100%)', border: '1px dashed rgba(107,176,72,0.30)', borderRadius: '12px' }}>
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A', margin: 0, textAlign: 'center', lineHeight: 1.5 }}>
-                  Today is your last task in this phase. Tap <strong>View full plan</strong> to peek at what's ahead.
-                </p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {upcomingPreview.map((task, idx) => {
-                  const label = idx === 0 ? 'Tomorrow' : idx === 1 ? 'Day after' : `Day ${task.day_number}`
-                  return (
-                    <div
-                      key={task.id}
-                      style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', background: '#FBFAF6', border: '1px solid #EDF2EF', borderRadius: '12px' }}
-                    >
-                      <div style={{ width: '28px', height: '28px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#D4EDE3', flexShrink: 0, fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: 700, color: '#6B9E8A' }}>
-                        {task.day_number}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#9BBFB2', margin: 0, fontWeight: 600 }}>
-                          {label}
-                        </p>
-                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: '#2D4A3E', margin: '2px 0 0', lineHeight: 1.4, overflowWrap: 'break-word', wordBreak: 'break-word' }}>
-                          {task.task_text}
-                        </p>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )
-      })()}
-
-      {/* Stats Row */}
+      {/* 30-day journey heatmap — now lives directly under Today's task */}
       <div
         style={{
-          margin: '16px',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: '8px',
-        }}
-      >
-        {[
-          { emoji: '✅', value: verifiedCount, label: 'Verified' },
-          { emoji: '🤍', value: honestCount, label: 'Honest' },
-          { emoji: '🔥', value: dayStreak, label: 'Streak' },
-          { emoji: '⭐', value: bestStreak, label: 'Best' },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            style={{
-              backgroundColor: '#FFFFFF',
-              borderRadius: '16px',
-              border: '1px solid #EDF2EF',
-              padding: '12px 8px',
-              textAlign: 'center',
-            }}
-          >
-            <div style={{ fontSize: '18px' }}>{stat.emoji}</div>
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: '18px', fontWeight: 700, color: '#1A3028' }}>
-              {stat.value}
-            </div>
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#6B9E8A' }}>
-              {stat.label}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Heatmap */}
-      <div
-        style={{
-          margin: '0 16px',
+          margin: '16px 16px 0',
           backgroundColor: '#FFFFFF',
           borderRadius: '20px',
           border: '1px solid #EDF2EF',
@@ -625,6 +526,56 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Your Plan — compact preview of Tomorrow + Day after. Full plan lives at /plan. */}
+      {(() => {
+        const upcomingPreview = upcomingTasks.filter((t) => t.day_number > dayNumber).slice(0, 2)
+        return (
+          <div style={{ margin: '16px 16px 0', backgroundColor: '#FFFFFF', borderRadius: '20px', border: '1px solid #EDF2EF', padding: '16px' }}>
+            <div className="flex items-center justify-between" style={{ marginBottom: '12px' }}>
+              <div>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 600, color: '#1A3028', margin: 0 }}>Your plan</p>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic', color: '#9BBFB2', margin: '2px 0 0' }}>What's coming up next</p>
+              </div>
+              <button onClick={() => navigate('/plan')} style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 600, color: '#3D7A5F', background: 'rgba(118,197,72,0.10)', border: '1px solid rgba(107,176,72,0.30)', borderRadius: '9999px', padding: '6px 12px', cursor: 'pointer' }}>
+                View full plan →
+              </button>
+            </div>
+
+            {upcomingPreview.length === 0 ? (
+              <div style={{ padding: '14px 12px', background: 'linear-gradient(135deg, rgba(118,197,72,0.08) 0%, rgba(245,213,71,0.04) 100%)', border: '1px dashed rgba(107,176,72,0.30)', borderRadius: '12px' }}>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontStyle: 'italic', color: '#6B9E8A', margin: 0, textAlign: 'center', lineHeight: 1.5 }}>
+                  Today is your last task in this phase. Tap <strong>View full plan</strong> to peek at what's ahead.
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {upcomingPreview.map((task, idx) => {
+                  const label = idx === 0 ? 'Tomorrow' : idx === 1 ? 'Day after' : `Day ${task.day_number}`
+                  return (
+                    <div
+                      key={task.id}
+                      style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', background: '#FBFAF6', border: '1px solid #EDF2EF', borderRadius: '12px' }}
+                    >
+                      <div style={{ width: '28px', height: '28px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#D4EDE3', flexShrink: 0, fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: 700, color: '#6B9E8A' }}>
+                        {task.day_number}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#9BBFB2', margin: 0, fontWeight: 600 }}>
+                          {label}
+                        </p>
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: '#2D4A3E', margin: '2px 0 0', lineHeight: 1.4, overflowWrap: 'break-word', wordBreak: 'break-word' }}>
+                          {task.task_text}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Recent Days */}
       <div style={{ margin: '16px' }}>
