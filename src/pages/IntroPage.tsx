@@ -14,22 +14,22 @@ const SLIDES: Slide[] = [
     image: '/intro/intro-1.png',
     bg: '#F0FAEC',
     accent: '#3D7A5F',
-    title: '30 days. One goal.',
-    subtitle: 'Plant the roots of something real. We build the daily plan with you.',
+    title: 'Your goal. Our plan.',
+    subtitle: 'We build the daily steps with you.',
   },
   {
     image: '/intro/intro-2.png',
     bg: '#ECFDF8',
     accent: '#0F766E',
-    title: 'Show up daily.',
-    subtitle: 'AI verifies your work. Honest days count too — no perfection theatre.',
+    title: 'We verify every day.',
+    subtitle: 'No cheating. Honest days count too.',
   },
   {
     image: '/intro/intro-3.png',
     bg: '#F5F3FF',
     accent: '#6D28D9',
     title: 'Earn your Sprint Record.',
-    subtitle: 'A verified, shareable proof of what you actually built — not what you intended.',
+    subtitle: 'Proof of what you actually built.',
   },
 ]
 
@@ -214,9 +214,9 @@ export default function IntroPage() {
       `}</style>
 
       {/* Bottom nav — dots + CTA */}
-      <div style={{ padding: '20px 24px 28px' }}>
+      <div style={{ padding: '16px 24px 24px' }}>
         {/* Dot indicator */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '18px' }}>
           {SLIDES.map((_, i) => (
             <button
               key={i}
@@ -236,27 +236,54 @@ export default function IntroPage() {
           ))}
         </div>
 
-        {/* CTA */}
-        <button
-          onClick={advance}
-          style={{
-            width: '100%',
-            height: '54px',
-            background: `linear-gradient(135deg, ${slide.accent} 0%, ${slide.accent}dd 100%)`,
-            color: '#FFFFFF',
-            border: 'none',
-            borderRadius: '9999px',
-            fontFamily: 'var(--font-heading)',
-            fontSize: '16px',
-            fontWeight: 500,
-            cursor: 'pointer',
-            boxShadow: `0 8px 24px ${slide.accent}55, 0 4px 12px ${slide.accent}33`,
-            letterSpacing: '0.01em',
-            transition: 'background 0.5s ease, box-shadow 0.5s ease',
-          }}
-        >
-          {isLast ? 'Begin your journey →' : 'Continue →'}
-        </button>
+        {/* CTA — small circular arrow on slides 1-2; sprout-green pill on last slide */}
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          {isLast ? (
+            <button
+              onClick={advance}
+              style={{
+                height: '46px',
+                padding: '0 26px',
+                background: 'linear-gradient(180deg, #76C548 0%, #6BB048 100%)',
+                color: '#FFFFFF',
+                border: 'none',
+                borderRadius: '9999px',
+                fontFamily: 'var(--font-heading)',
+                fontSize: '14px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                boxShadow: '0 6px 18px rgba(107,176,72,0.32), 0 3px 8px rgba(107,176,72,0.18)',
+                letterSpacing: '0.01em',
+              }}
+            >
+              Begin your journey →
+            </button>
+          ) : (
+            <button
+              onClick={advance}
+              aria-label="Next slide"
+              style={{
+                width: '54px',
+                height: '54px',
+                background: '#FFFFFF',
+                color: slide.accent,
+                border: 'none',
+                borderRadius: '50%',
+                cursor: 'pointer',
+                boxShadow: `0 6px 18px ${slide.accent}33, 0 2px 6px rgba(28,61,48,0.10)`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '20px',
+                fontWeight: 600,
+                lineHeight: 1,
+                transition: 'color 0.5s ease, box-shadow 0.5s ease',
+              }}
+            >
+              →
+            </button>
+          )}
+        </div>
 
         <p
           style={{
@@ -265,7 +292,7 @@ export default function IntroPage() {
             fontSize: '10px',
             fontStyle: 'italic',
             color: '#9BBFB2',
-            margin: '12px 0 0',
+            margin: '14px 0 0',
             letterSpacing: '0.02em',
           }}
         >
