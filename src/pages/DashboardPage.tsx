@@ -150,6 +150,26 @@ export default function DashboardPage() {
     return streak
   })()
 
+  // Verification bloom — fire once per (sprint, day) the first time we render with today verified
+  const [showVerifyBloom, setShowVerifyBloom] = useState(false)
+  useEffect(() => {
+    if (!sprint || !todayLog || todayLog.log_type !== 'VERIFIED') return
+    const key = `verify-bloom-${sprint.id}-${dayNumber}`
+    if (localStorage.getItem(key)) return
+    setShowVerifyBloom(true)
+    localStorage.setItem(key, '1')
+    const t = setTimeout(() => setShowVerifyBloom(false), 1800)
+    return () => clearTimeout(t)
+  }, [sprint?.id, dayNumber, todayLog?.log_type])
+
+  // Streak flame tier — bigger and more glow as streak grows
+  const streakFlame = (() => {
+    if (dayStreak >= 14) return { size: 22, glow: '0 0 10px rgba(245,158,11,0.85), 0 0 18px rgba(245,158,11,0.45)' }
+    if (dayStreak >= 7)  return { size: 19, glow: '0 0 8px rgba(245,158,11,0.65)' }
+    if (dayStreak >= 3)  return { size: 16, glow: '0 0 4px rgba(245,158,11,0.35)' }
+    return { size: 14, glow: 'none' }
+  })()
+
   // Heatmap data
   const totalCells = Math.ceil(sprint.sprint_length / 7) * 7
   const heatmapDays = Array.from({ length: totalCells }, (_, i) => {
@@ -276,7 +296,34 @@ export default function DashboardPage() {
             0%, 100% { background-position: 0% 0%; }
             50% { background-position: 100% 100%; }
           }
+          @keyframes bee-buzz {
+            0%, 78%, 100% { transform: scaleX(-1) translate(0, 0); }
+            82% { transform: scaleX(-1) translate(-6px, -10px) rotate(-8deg); }
+            86% { transform: scaleX(-1) translate(2px, -16px) rotate(4deg); }
+            90% { transform: scaleX(-1) translate(8px, -8px) rotate(-4deg); }
+            94% { transform: scaleX(-1) translate(2px, -2px) rotate(0); }
+          }
+          @keyframes flame-flicker {
+            0%, 100% { transform: scale(1) translateY(0); }
+            25% { transform: scale(1.08) translateY(-1px); }
+            50% { transform: scale(0.95) translateY(0); }
+            75% { transform: scale(1.05) translateY(-1px); }
+          }
+          @keyframes bloom-spark {
+            0%   { transform: translate(-50%, -50%) rotate(var(--angle)) translateY(0) scale(0); opacity: 0; }
+            20%  { opacity: 1; transform: translate(-50%, -50%) rotate(var(--angle)) translateY(-12px) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--angle)) translateY(-46px) scale(0.2); }
+          }
         `}</style>
+        {/* Bee + flower mascot — bottom-right corner */}
+        <div style={{ position: 'absolute', bottom: '10px', right: '14px', display: 'flex', alignItems: 'flex-end', gap: '2px', zIndex: 1, pointerEvents: 'none' }}>
+          <span style={{ fontSize: '20px', display: 'inline-block', animation: 'bee-buzz 11s ease-in-out infinite', transformOrigin: 'center', filter: 'drop-shadow(0 2px 6px rgba(245,158,11,0.55))' }}>
+            🐝
+          </span>
+          <span style={{ fontSize: '22px', display: 'inline-block', filter: 'drop-shadow(0 2px 5px rgba(245,158,11,0.35))' }}>
+            🌼
+          </span>
+        </div>
 
         {/* Top row */}
         <div className="flex items-center justify-between" style={{ position: 'relative', zIndex: 1 }}>
@@ -295,7 +342,7 @@ export default function DashboardPage() {
               Active Sprint · {currentPhase.name} phase
             </span>
           </div>
-          {/* Circular progress */}
+          {/* Circular progress (+ verification bloom sparkles) */}
           <div className="flex flex-col items-center" style={{ position: 'relative' }}>
             <svg width="64" height="64" viewBox="0 0 64 64">
               <circle
@@ -331,6 +378,23 @@ export default function DashboardPage() {
                 of {sprint.sprint_length}
               </div>
             </div>
+            {/* Bloom sparkles — fire once when today's verification is first observed */}
+            {showVerifyBloom && [0, 60, 120, 180, 240, 300].map((angle) => (
+              <span
+                key={angle}
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  fontSize: '14px',
+                  pointerEvents: 'none',
+                  ['--angle' as string]: `${angle}deg`,
+                  animation: 'bloom-spark 1.6s ease-out forwards',
+                } as React.CSSProperties}
+              >
+                ✨
+              </span>
+            ))}
           </div>
         </div>
 
@@ -365,7 +429,7 @@ export default function DashboardPage() {
             <span style={{ fontFamily: 'var(--font-body)', fontSize: '18px', fontWeight: 700, color: '#FFFFFF' }}>
               {dayStreak}
             </span>
-            <span style={{ marginLeft: '2px' }}>🔥</span>
+            <span style={{ marginLeft: '4px', fontSize: `${streakFlame.size}px`, display: 'inline-block', animation: dayStreak > 0 ? 'flame-flicker 0.8s ease-in-out infinite' : 'none', filter: streakFlame.glow !== 'none' ? `drop-shadow(${streakFlame.glow})` : 'none', verticalAlign: 'middle', transformOrigin: 'bottom center' }}>🔥</span>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#7AB5A0', margin: 0 }}>day streak</p>
           </div>
           <div>
