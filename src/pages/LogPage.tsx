@@ -208,19 +208,40 @@ export default function LogPage() {
     setVerificationResult(null)
     track(Events.LogVerifyAttempted, { tab: activeTab, day_number: dayNumber, attempt: attemptNumber })
 
-    const result = await verifyLog({
-      goalText: sprint.goal_text,
-      todayTask: todayTaskData?.task_text ?? '',
-      logText: activeTab === 'text' ? logText : '',
-      dayNumber,
-      sprintLength: sprint.sprint_length,
-      attemptNumber,
-      mediaType: activeTab === 'image' ? 'image' : activeTab === 'link' ? 'link' : null,
-      linkUrl: activeTab === 'link' ? linkUrl : undefined,
-      linkCaption: activeTab === 'link' ? linkCaption : undefined,
-      recentLogs: recentLogTexts,
-      images: activeTab === 'image' ? imageFiles.map(img => ({ base64: img.base64, mimeType: img.mimeType, caption: img.caption })) : [],
-    })
+    // Strong-URL fast path: skip the AI call entirely if the user submitted a recognized work URL
+    // (github, figma, notion, vercel, loom, linear, etc.) with a non-empty caption.
+    // These URLs are already practically auto-passing in the AI prompt; we save the round-trip.
+    const STRONG_URL_HOSTS = ['github.com', 'figma.com', 'notion.so', 'notion.site', 'vercel.app', 'netlify.app', 'docs.google.com', 'drive.google.com', 'loom.com', 'linear.app', 'jira.atlassian.com', 'trello.com', 'miro.com', 'canva.com', 'codesandbox.io', 'codepen.io', 'stackblitz.com', 'replit.com', 'gitlab.com']
+    const isStrongUrl = (url: string): boolean => {
+      try {
+        const host = new URL(url).hostname.toLowerCase()
+        return STRONG_URL_HOSTS.some((pat) => host === pat || host.endsWith('.' + pat))
+      } catch { return false }
+    }
+    let result: VerificationResult
+    if (activeTab === 'link' && linkUrl.startsWith('http') && isStrongUrl(linkUrl) && (linkCaption?.trim().length ?? 0) >= 10) {
+      // Synthetic verification — no AI call, instant pass.
+      result = {
+        verified: true,
+        reason: 'Verified work link',
+        confidence: 'high',
+      }
+      track(Events.LogVerifyAttempted, { tab: activeTab, day_number: dayNumber, attempt: attemptNumber, fast_path: 'strong_url' })
+    } else {
+      result = await verifyLog({
+        goalText: sprint.goal_text,
+        todayTask: todayTaskData?.task_text ?? '',
+        logText: activeTab === 'text' ? logText : '',
+        dayNumber,
+        sprintLength: sprint.sprint_length,
+        attemptNumber,
+        mediaType: activeTab === 'image' ? 'image' : activeTab === 'link' ? 'link' : null,
+        linkUrl: activeTab === 'link' ? linkUrl : undefined,
+        linkCaption: activeTab === 'link' ? linkCaption : undefined,
+        recentLogs: recentLogTexts,
+        images: activeTab === 'image' ? imageFiles.map(img => ({ base64: img.base64, mimeType: img.mimeType, caption: img.caption })) : [],
+      })
+    }
 
     setVerifying(false)
 
@@ -519,27 +540,54 @@ function InputPhase({ logText, setLogText, activeTab, setActiveTab, onVerify, on
     const file = e.target.files?.[0]
     if (!file || !setImageFiles) return
 
-    const MAX_SIZE_BYTES = 3.5 * 1024 * 1024
-    if (file.size > MAX_SIZE_BYTES) {
-      setImageError(`File too large. Maximum size is 3.5MB. Your file is ${(file.size / 1024 / 1024).toFixed(1)}MB.`)
+    // Pre-compression file size cap is now generous — we'll shrink down anyway.
+    // Keep a hard ceiling at 10MB to catch absurd inputs early.
+    const MAX_RAW_BYTES = 10 * 1024 * 1024
+    if (file.size > MAX_RAW_BYTES) {
+      setImageError(`File too large. Please pick something under 10MB.`)
       return
     }
     setImageError('')
 
-    let mimeType = file.type
-    if (!mimeType || mimeType === '') {
-      const ext = file.name.split('.').pop()?.toLowerCase()
-      const mimeMap: Record<string, string> = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', heic: 'image/jpeg', heif: 'image/jpeg', bmp: 'image/png', tiff: 'image/jpeg', pdf: 'image/jpeg' }
-      mimeType = mimeMap[ext ?? ''] ?? 'image/jpeg'
-    }
-    const claudeAccepted = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-    const finalMimeType = claudeAccepted.includes(mimeType) ? mimeType : 'image/jpeg'
+    // Resize → JPEG 80% on the client. Reduces Claude image tokens by ~12x for typical
+    // phone photos with zero visible quality loss for verification. Also faster uploads.
+    const MAX_DIMENSION = 1024
+    const JPEG_QUALITY = 0.8
 
     const reader = new FileReader()
     reader.onload = () => {
-      const result = reader.result as string
-      const base64 = result.split(',')[1]
-      setImageFiles([{ file, preview: result, base64, mimeType: finalMimeType, caption: '' }])
+      const dataUrl = reader.result as string
+      const img = new Image()
+      img.onload = () => {
+        let { width, height } = img
+        if (width > height && width > MAX_DIMENSION) {
+          height = Math.round((height / width) * MAX_DIMENSION)
+          width = MAX_DIMENSION
+        } else if (height > MAX_DIMENSION) {
+          width = Math.round((width / height) * MAX_DIMENSION)
+          height = MAX_DIMENSION
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          // Canvas API unavailable — fall back to original
+          const base64 = dataUrl.split(',')[1]
+          setImageFiles([{ file, preview: dataUrl, base64, mimeType: file.type || 'image/jpeg', caption: '' }])
+          return
+        }
+        ctx.drawImage(img, 0, 0, width, height)
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', JPEG_QUALITY)
+        const base64 = compressedDataUrl.split(',')[1]
+        setImageFiles([{ file, preview: compressedDataUrl, base64, mimeType: 'image/jpeg', caption: '' }])
+      }
+      img.onerror = () => {
+        // Decode failed — fall back to original bytes
+        const base64 = dataUrl.split(',')[1]
+        setImageFiles([{ file, preview: dataUrl, base64, mimeType: file.type || 'image/jpeg', caption: '' }])
+      }
+      img.src = dataUrl
     }
     reader.readAsDataURL(file)
     e.target.value = ''
