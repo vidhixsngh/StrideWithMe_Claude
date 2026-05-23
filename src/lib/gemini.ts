@@ -153,7 +153,7 @@ export async function generateSprintPlan(
   pastReflection?: string,
   extraContext?: string,
   mode: 'full' | 'foundation' = 'full'
-): Promise<{ tasks: GeneratedTask[], wasVague: boolean, phase_themes?: Record<string, string> }> {
+): Promise<{ tasks: GeneratedTask[], wasVague: boolean, phase_themes?: Record<string, string>, aiFailed?: boolean }> {
   const extraContextBlock = extraContext && extraContext.trim().length > 0
     ? `
 
@@ -304,7 +304,7 @@ Generate exactly ${sprintLength} tasks, one per day. Day numbers run 1 to ${spri
 
     if (!parsed.tasks || parsed.tasks.length === 0) {
       console.warn('[AI-1] No tasks parsed — using fallback. Raw was:', raw.slice(0, 300))
-      return { tasks: getFallbackTasks(mode === 'foundation' ? Math.max(1, Math.round(sprintLength * 0.2)) : sprintLength), wasVague: false }
+      return { tasks: getFallbackTasks(mode === 'foundation' ? Math.max(1, Math.round(sprintLength * 0.2)) : sprintLength), wasVague: false, aiFailed: true }
     }
 
     const expectedCount = mode === 'foundation' ? Math.max(1, Math.round(sprintLength * 0.2)) : sprintLength
@@ -315,7 +315,7 @@ Generate exactly ${sprintLength} tasks, one per day. Day numbers run 1 to ${spri
     }
   } catch (err) {
     console.error('[AI-1] Error:', err)
-    return { tasks: getFallbackTasks(sprintLength), wasVague: false }
+    return { tasks: getFallbackTasks(sprintLength), wasVague: false, aiFailed: true }
   }
 }
 

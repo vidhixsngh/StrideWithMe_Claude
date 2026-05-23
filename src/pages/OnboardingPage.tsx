@@ -52,6 +52,7 @@ export default function OnboardingPage() {
   const [scopeModalState, setScopeModalState] = useState<'closed' | 'unrealistic'>('closed')
   const [assessingScope, setAssessingScope] = useState(false)
   const [phaseThemes, setPhaseThemes] = useState<Record<string, string> | undefined>(undefined)
+  const [aiPlanFailed, setAiPlanFailed] = useState(false)
   const [signupSheetOpen, setSignupSheetOpen] = useState(false)
   const hasAutoResumed = useRef(false)
 
@@ -273,6 +274,7 @@ export default function OnboardingPage() {
     setAiTasks(result.tasks)
     setWasVague(result.wasVague)
     setPhaseThemes(result.phase_themes)
+    setAiPlanFailed(!!result.aiFailed)
     setPlanGenerated(true)
     setGeneratingPlan(false)
     if (pastReflection?.trim()) track(Events.PastReflectionAdded, { length: pastReflection.length })
@@ -290,6 +292,7 @@ export default function OnboardingPage() {
     setAiTasks(result.tasks)
     setWasVague(result.wasVague)
     setPhaseThemes(result.phase_themes)
+    setAiPlanFailed(!!result.aiFailed)
     setPlanGenerated(true)
     setGeneratingPlan(false)
   }
@@ -334,7 +337,7 @@ export default function OnboardingPage() {
         {step === 3 && (
           <Step3Visibility visibility={visibility} setVisibility={setVisibility} onNext={handleGoToStep4} generatingPlan={generatingPlan} onBack={() => goToStep(2)} />
         )}
-        {step === 4 && <Step4Preview goal={goal} sprintLength={sprintLength ?? 30} onBegin={() => goToStep(5)} submitError={undefined} aiTasks={aiTasks} wasVague={wasVague} generatingPlan={generatingPlan} pastReflection={pastReflection} extraContext={extraContext} hasUsedExtraContext={hasUsedExtraContext} onRegenerateWithContext={handleRegenerateWithContext} onBack={() => goToStep(3)} scopeAssessment={scopeAssessment} phaseThemes={phaseThemes} />}
+        {step === 4 && <Step4Preview goal={goal} sprintLength={sprintLength ?? 30} onBegin={() => goToStep(5)} submitError={undefined} aiTasks={aiTasks} wasVague={wasVague} generatingPlan={generatingPlan} pastReflection={pastReflection} extraContext={extraContext} hasUsedExtraContext={hasUsedExtraContext} onRegenerateWithContext={handleRegenerateWithContext} onBack={() => goToStep(3)} scopeAssessment={scopeAssessment} phaseThemes={phaseThemes} aiPlanFailed={aiPlanFailed} />}
         {step === 5 && <Step5Reminder onBeginDay1={handleBeginDay1} submitting={submitting} submitError={submitError} onBack={() => goToStep(4)} />}
       </div>
 
@@ -1055,7 +1058,7 @@ function getPhases(total: number): Array<{ name: string; tag: string; from: numb
   ]
 }
 
-function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVague, generatingPlan, pastReflection, extraContext, hasUsedExtraContext, onRegenerateWithContext, onBack, scopeAssessment, phaseThemes }: { goal: string; sprintLength: number; onBegin: () => void; submitting?: boolean; submitError?: string; aiTasks?: GeneratedTask[]; wasVague?: boolean; generatingPlan?: boolean; pastReflection?: string; extraContext?: string; hasUsedExtraContext?: boolean; onRegenerateWithContext?: (text: string) => void; onBack?: () => void; scopeAssessment?: ScopeAssessment | null; phaseThemes?: Record<string, string> }) {
+function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVague, generatingPlan, pastReflection, extraContext, hasUsedExtraContext, onRegenerateWithContext, onBack, scopeAssessment, phaseThemes, aiPlanFailed }: { goal: string; sprintLength: number; onBegin: () => void; submitting?: boolean; submitError?: string; aiTasks?: GeneratedTask[]; wasVague?: boolean; generatingPlan?: boolean; pastReflection?: string; extraContext?: string; hasUsedExtraContext?: boolean; onRegenerateWithContext?: (text: string) => void; onBack?: () => void; scopeAssessment?: ScopeAssessment | null; phaseThemes?: Record<string, string>; aiPlanFailed?: boolean }) {
   const [contextOpen, setContextOpen] = useState(false)
   const [contextDraft, setContextDraft] = useState('')
   const [expandedDay, setExpandedDay] = useState<number | null>(null)
@@ -1086,6 +1089,21 @@ function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVa
       <Subtext>
         Your plan in {phases.length} phases. Foundation unlocks first.
       </Subtext>
+
+      {/* AI-unavailable notice — shown when generator returned fallback tasks */}
+      {aiPlanFailed && (
+        <div style={{ marginTop: '16px', padding: '12px 14px', background: 'linear-gradient(135deg, #FEF9C3 0%, #FEF3C7 100%)', border: '1px solid #FDE68A', borderRadius: '14px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+          <span style={{ fontSize: '18px', flexShrink: 0, marginTop: '1px' }}>⚠️</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 700, color: '#78350F', margin: '0 0 3px', letterSpacing: '0.02em' }}>
+              Our AI is taking a quick breather
+            </p>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#92400E', margin: 0, lineHeight: 1.5 }}>
+              Here's a starter plan you can use as-is or refine using <strong>Missed something?</strong> below. Your sprint can still begin now.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Goal card — heroed */}
       <div style={{ background: 'linear-gradient(135deg, rgba(118,197,72,0.12) 0%, rgba(107,176,72,0.07) 100%)', border: '2px solid rgba(107,176,72,0.45)', borderRadius: '22px', padding: '18px 20px', marginTop: '24px', marginBottom: '10px', position: 'relative', boxShadow: '0 4px 16px rgba(107,176,72,0.10)' }}>
