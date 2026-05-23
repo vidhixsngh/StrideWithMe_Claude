@@ -1,7 +1,6 @@
-const CLAUDE_API_KEY = import.meta.env.VITE_CLAUDE_API_KEY
-const CLAUDE_URL = 'https://api.anthropic.com/v1/messages'
-
-console.log('Claude key loaded:', CLAUDE_API_KEY ? 'YES — starts with: ' + CLAUDE_API_KEY.slice(0, 10) : 'NO — KEY IS MISSING')
+// All Claude calls now go through our server-side proxy at /api/ai/claude.
+// The API key lives in the server env (CLAUDE_API_KEY) and never reaches the browser bundle.
+const CLAUDE_PROXY_URL = '/api/ai/claude'
 
 async function callGemini(
   prompt: string,
@@ -11,7 +10,7 @@ async function callGemini(
 ): Promise<string> {
   const model = useHighQuality ? 'claude-sonnet-4-6' : 'claude-haiku-4-5-20251001'
 
-  const content: any[] = []
+  const content: Array<Record<string, unknown>> = []
   if (images && images.length > 0) {
     for (const img of images) {
       content.push({ type: 'image', source: { type: 'base64', media_type: img.mimeType, data: img.base64 } })
@@ -19,29 +18,19 @@ async function callGemini(
   }
   content.push({ type: 'text', text: prompt })
 
-  console.log('Calling Claude API...', { model, hasImages: !!images?.length, maxTokens })
-
-  const response = await fetch(CLAUDE_URL, {
+  const response = await fetch(CLAUDE_PROXY_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': CLAUDE_API_KEY,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: 'user', content }] })
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: 'user', content }] }),
   })
-
-  console.log('Claude response status:', response.status)
 
   if (!response.ok) {
     const errorBody = await response.text()
-    console.error('Claude error body:', errorBody)
+    console.error('Claude proxy error:', response.status, errorBody)
     throw new Error('Claude API error: ' + response.status + ' ' + errorBody)
   }
 
   const data = await response.json()
-  console.log('Claude raw response:', JSON.stringify(data).slice(0, 200))
   return data.content?.[0]?.text ?? ''
 }
 
