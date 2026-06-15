@@ -1221,7 +1221,11 @@ function Step4Preview({ goal, sprintLength, onBegin, submitError, aiTasks, wasVa
           const themeForPhase = phaseThemes?.[phaseKey]
           const hasTasks = phaseTasks.length > 0
           const isFoundation = phase.name === 'Foundation'
-          const isLocked = !hasTasks
+          // In the onboarding preview, only Foundation is "live" — Build/Peak/Finish should
+          // visually read as locked future phases regardless of whether their tasks have
+          // been generated yet (7-day sprints get the full plan upfront, but the journey
+          // narrative still says they unlock as the user progresses).
+          const isLocked = !isFoundation
           return (
             <div
               key={phase.name}
